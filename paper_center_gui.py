@@ -359,7 +359,7 @@ def main():
             st.caption("💡 未指定論文，Q&A 將自動搜尋最相關的論文")
 
         # 對話歷史
-        for qa in st.session_state.qa_history:
+        for qa_idx, qa in enumerate(st.session_state.qa_history):
             st.markdown(f'<div class="qa-user">❓ {qa["question"]}</div>', unsafe_allow_html=True)
             with st.container(border=True):
                 render_answer(qa["answer"])
@@ -367,7 +367,7 @@ def main():
                 cols = st.columns(len(qa["sources"]))
                 for ci, src in enumerate(qa["sources"]):
                     with cols[ci]:
-                        if st.button(f"📄 {src.get('title','?')[:20]}...", key=f"qa_src_{ci}_{src.get('id')}"):
+                        if st.button(f"📄 {src.get('title','?')[:20]}...", key=f"qa_src_{qa_idx}_{ci}_{src.get('id',ci)}"):
                             st.session_state.open_paper = src
                             st.rerun()
             st.divider()
