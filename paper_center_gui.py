@@ -76,7 +76,7 @@ def get_embedding(text: str) -> List[float]:
 
 
 def search_papers(query: str, top_k: int = 10) -> List[Dict]:
-    """混合搜尋：先做關鍵字文字比對，再用向量搜尋排序"""
+    """混合搜尋：先做關鍵字文字比對，再用向量搜尋排序，始終複算餘弦距離"""
     db = get_lance_db()
     if db is None:
         return []
@@ -88,19 +88,33 @@ def search_papers(query: str, top_k: int = 10) -> List[Dict]:
         st.error(f"搜尋錯誤: {e}")
         return []
     
-    # 第一階段：關鍵字文字比對（主要過濾）
-    query_lower = query.lower()
+    # 先取得 query 的 embedding（用於計算餘弦距離）
+    query_embedding = get_embedding(query)
+    
+    def get_cosine_distance(paper: Dict) -> float:
+        """對任一篇論文計算餘弦距離"""
+        if not query_embedding:
+            return 9999.0
+        try:
+            tbl2 = db.open_table("papers")
+            results = tbl2.search(query_embedding, vector_column_name="embedding") \
+                .where(f"id = '{paper.get('id', '')}'") \
+                .limit(1).to_pandas().to_dict("records")
+            if results:
+                return results[0].get('_distance', 9999.0)
+        except:
+            pass
+        return 9999.0
+    
+    # 第一階段：關鍵字文字比對
     query_terms = [t.strip() for t in re.split(r'[\s,，、]+', query) if t.strip()]
     
     def text_score(paper: Dict) -> float:
-        text = f"{paper.get('title','')}{paper.get('content','')}".lower()
         score = 0.0
         for term in query_terms:
-            term_lower = term.lower()
-            # 標題命中得更高分
-            if term_lower in paper.get('title','').lower():
+            if term in paper.get('title', ''):
                 score += 5.0
-            if term_lower in paper.get('content','').lower():
+            if term in paper.get('content', ''):
                 score += 1.0
         return score
     
@@ -111,17 +125,23 @@ def search_papers(query: str, top_k: int = 10) -> List[Dict]:
         if ts > 0:
             scored.append((ts, p))
     
-    # 如果文字匹配有結果就用文字分數排序
+    # 如果文字匹配有結果，用文字分數排序，並補算餘弦距離
     if scored:
         scored.sort(key=lambda x: x[0], reverse=True)
-        return [p for _, p in scored[:top_k]]
+        results = []
+        for _, p in scored[:top_k]:
+            p = dict(p)  # 複製避免修改原始
+            # 補算餘弦距離
+            dist = get_cosine_distance(p)
+            if dist < 9999:
+                p['_distance'] = dist
+            results.append(p)
+        return results
     
-    # 如果文字匹配無結果，試用向量搜尋（加身距離門榕）
-    embedding = get_embedding(query)
-    if embedding:
+    # 如果文字匹配無結果，用向量搜尋（加身距離門榕）
+    if query_embedding:
         try:
-            results = tbl.search(embedding, vector_column_name="embedding").limit(top_k).to_pandas().to_dict("records")
-            # 只返回 distance < 450 的結果（關聯度門榕）
+            results = tbl.search(query_embedding, vector_column_name="embedding").limit(top_k).to_pandas().to_dict("records")
             return [r for r in results if r.get('_distance', 9999) < 0.75]
         except:
             pass
