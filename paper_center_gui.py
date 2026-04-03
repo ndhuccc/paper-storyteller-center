@@ -122,7 +122,7 @@ def search_papers(query: str, top_k: int = 10) -> List[Dict]:
         try:
             results = tbl.search(embedding, vector_column_name="embedding").limit(top_k).to_list()
             # 只返回 distance < 450 的結果（關聯度門榕）
-            return [r for r in results if r.get('_distance', 9999) < 1.0]
+            return [r for r in results if r.get('_distance', 9999) < 0.75]
         except:
             pass
     
