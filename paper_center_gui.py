@@ -157,6 +157,7 @@ def render_answer(answer: str):
     answer = _re.sub(r'<think>.*?</think>', '', answer, flags=_re.DOTALL).strip()
 
     # 2. 先把 LaTeX 換成佔位符，避免被 Markdown 破壞
+    # 支援兩種常見分隔符：$...$/$$...$$ 與 \(...\)/\[...\]
     latex_blocks = []  # list[(kind, inner)]
 
     def protect_block(m):
@@ -169,8 +170,15 @@ def render_answer(answer: str):
         latex_blocks.append(("inline", inner))
         return f"LATEXPH{len(latex_blocks)-1}"
 
-    # 先抓行間公式，再抓行內公式
-    protected = _re.sub(r'\$\$(.*?)\$\$', protect_block, answer, flags=_re.DOTALL)
+    # 先抓行間公式，再抓行內公式，避免互相吞掉
+    protected = answer
+    # \[ ... \]
+    protected = _re.sub(r'\\\[(.*?)\\\]', protect_block, protected, flags=_re.DOTALL)
+    # $$ ... $$
+    protected = _re.sub(r'\$\$(.*?)\$\$', protect_block, protected, flags=_re.DOTALL)
+    # \( ... \)
+    protected = _re.sub(r'\\\((.*?)\\\)', protect_inline, protected, flags=_re.DOTALL)
+    # $ ... $
     protected = _re.sub(r'(?<!\$)\$([^\$\n]{1,300}?)\$(?!\$)', protect_inline, protected)
 
     # 3. Markdown 轉 HTML
