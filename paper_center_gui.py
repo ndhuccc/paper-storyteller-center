@@ -146,25 +146,49 @@ def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[st
 
 def render_answer(answer: str):
     """渲染 Q&A 回答，支援 LaTeX 公式（MathJax）"""
-    import html as html_lib
-    safe_answer = html_lib.escape(answer).replace("\n", "<br>")
+    import re
     
-    html_content = f"""
-    <div style="font-family: 'Noto Sans TC', sans-serif; line-height: 1.8; padding: 4px;">
-        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-        <script>
-        MathJax = {{
-            tex: {{
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-                displayMath: [['$$', '$$'], ['\\[', '\\]']]
-            }}
-        }};
-        </script>
-        {answer}
-    </div>
-    """
-    st.components.v1.html(html_content, height=None, scrolling=False)
+    # 過濾 DeepSeek-R1 的 <think>...</think> 推理鏈
+    answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
+    
+    # 換行轉 HTML（但不 escape，保留 LaTeX 符號）
+    # 將 Markdown 換行轉為 <br>，段落空行轉為 <p>
+    paragraphs = answer.split("\n\n")
+    html_parts = []
+    for para in paragraphs:
+        lines = para.replace("\n", "<br>")
+        html_parts.append(f"<p>{lines}</p>")
+    body_html = "\n".join(html_parts)
+    
+    html_content = f"""<!DOCTYPE html>
+<html>
+<head>
+<script>
+MathJax = {{
+    tex: {{
+        inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]],
+        displayMath: [["$$", "$$"], ["\\\\[", "\\\\]"]]
+    }},
+    startup: {{
+        typeset: true
+    }}
+}};
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<style>
+body {{ font-family: "Noto Sans TC", sans-serif; line-height: 1.8; padding: 8px; margin: 0; font-size: 14px; }}
+p {{ margin: 8px 0; }}
+</style>
+</head>
+<body>
+{body_html}
+</body>
+</html>"""
+    
+    # 估算高度
+    lines = answer.count("\n") + len(paragraphs) * 2 + 3
+    height = max(120, min(600, lines * 28 + 60))
+    st.components.v1.html(html_content, height=height, scrolling=True)
 
 
 def estimate_height(text: str) -> int:
