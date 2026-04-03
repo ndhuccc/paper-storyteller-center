@@ -6,7 +6,6 @@
 
 import streamlit as st
 import json
-import re
 from pathlib import Path
 from typing import List, Dict
 import urllib.request
@@ -17,7 +16,7 @@ from qa_render import answer_to_mathjax_html
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
 OLLAMA_BASE_URL = "http://localhost:11434"
-EMBEDDING_MODEL = "qwen3-embedding:8b"  # Qwen3 中文 embedding
+EMBEDDING_MODEL = "qwen3-embedding:8b"
 LLM_MODEL = "deepseek-r1:8b"
 
 # ==================== 頁面設定 ====================
@@ -31,26 +30,11 @@ st.set_page_config(
 st.markdown("""
 <style>
     [data-testid="stMain"] { background: #f0f4f8; }
-    .paper-item {
-        background: white;
-        padding: 12px 16px;
-        border-radius: 10px;
-        margin: 6px 0;
-        border-left: 4px solid #3b82f6;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-    }
     .qa-user {
         background: #dbeafe;
         padding: 10px 14px;
         border-radius: 10px 10px 2px 10px;
         margin: 6px 0;
-    }
-    .qa-bot {
-        background: white;
-        padding: 10px 14px;
-        border-radius: 2px 10px 10px 10px;
-        margin: 6px 0;
-        border-left: 3px solid #10b981;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -78,7 +62,7 @@ def get_embedding(text: str) -> List[float]:
 
 
 def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0) -> List[Dict]:
-    """純向量搜尋（Chunk Embedding）：搜尋最相關 chunks，依論文去重後返回"""
+    """純向量搜尋：以 chunk 為單位搜尋，再依論文去重。"""
     db = get_lance_db()
     if db is None:
         return []
@@ -89,14 +73,14 @@ def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0
     
     try:
         tbl = db.open_table("papers")
-        # 多抓幾個 chunk，去重後取 top_k 篇論文
+        # 多抓幾個 chunk，去重後再取前 top_k 篇論文
         results = tbl.search(query_embedding, vector_column_name="embedding") \
                      .limit(top_k * 5).to_pandas().to_dict("records")
         
-        # 過濾餘弦相似度門檻（similarity_threshold=0.0 表示全部顯示）
+        # similarity_threshold=0.0 表示全部顯示
         results = [r for r in results if (1.0 - r.get('_distance', 9999)) >= similarity_threshold]
         
-        # 依論文去重：每篇論文只保留相似度最高的 chunk
+        # 每篇論文只保留相似度最高的 chunk
         best_per_paper = {}
         for r in results:
             pid = r.get('paper_id', r.get('id', ''))
@@ -117,10 +101,8 @@ def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0
 
 def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[str, List[Dict]]:
     if forced_papers:
-        # 使用指定論文
         results = forced_papers
     else:
-        # 自動搜尋最相關論文
         results = search_papers(question, top_k=3)
     if not results:
         return "抱歉，沒有找到相關論文內容。", []
@@ -153,24 +135,23 @@ def render_answer(answer: str):
 
 
 def load_paper_html(paper_id: str) -> str:
-    # paper_id 可能是 chunk id（如 xxx_chunk_0），取出真正的 paper_id
+    # chunk id（如 xxx_chunk_0）要先還原成原始論文 id
     if '_chunk_' in paper_id:
         paper_id = paper_id.rsplit('_chunk_', 1)[0]
     for filename in [f"{paper_id}.html"]:
         filepath = STORYTELLERS_DIR / filename
         if filepath.exists():
             content = filepath.read_text(encoding='utf-8')
-            # 確保 MathJax 正確加載
+            # 若原始 HTML 沒帶 MathJax，就補上
             if 'MathJax' not in content and '</head>' in content:
                 mathjax = '<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>'
                 content = content.replace('</head>', f'{mathjax}</head>')
             
-            # 修復錨點連結：讓 href="#xxx" 在 iframe 內正常滾動
-            # 加入 JS 攔截器確保錨點在 iframe 內有效
+            # 讓 href="#xxx" 在 iframe 內也能正常滾動
             anchor_fix = """
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // 攔截所有 a[href^="#"] 連結，確保在 iframe 內滾動
+    // 攔截 a[href^="#"]，改為 iframe 內部滾動
     document.querySelectorAll('a[href^="#"]').forEach(function(link) {
         link.addEventListener('click', function(e) {
             e.preventDefault();
@@ -193,14 +174,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 def get_all_papers() -> List[Dict]:
-    """取得所有論文（去重，每篇只返回一筆）"""
+    """取得所有論文，每篇只回傳一筆。"""
     db = get_lance_db()
     if db is None:
         return []
     try:
         tbl = db.open_table("papers")
         all_rows = tbl.to_pandas().to_dict("records")
-        # 依 paper_id 去重，只保留每篇論文的第一筆
+        # 依 paper_id 去重，只保留第一筆
         seen = {}
         for r in all_rows:
             pid = r.get('paper_id', r.get('id', ''))
@@ -211,17 +192,17 @@ def get_all_papers() -> List[Dict]:
         return []
 
 
-# ==================== Dialog（Pop-up Modal）====================
+# ==================== Dialog ====================
 @st.dialog("📖 論文閱覽", width="large")
 def show_paper_dialog(paper: Dict):
     html_content = load_paper_html(paper.get('paper_id', paper.get('id', '')))
-    # 直接顯示 HTML 渲染結果，不加任何標頭
+    # 只顯示 HTML 內容本身
     st.components.v1.html(html_content, height=750, scrolling=True)
 
 
 # ==================== 主介面 ====================
 def main():
-    # Session State 初始化
+    # 初始化 session state
     if "qa_history" not in st.session_state:
         st.session_state.qa_history = []
     if "open_paper" not in st.session_state:
@@ -229,12 +210,12 @@ def main():
     if "selected_papers" not in st.session_state:
         st.session_state.selected_papers = {}  # paper_id -> paper dict
 
-    # 觸發 dialog（必須在主程式流程中）
+    # 在主流程中觸發 dialog
     if st.session_state.open_paper is not None:
         show_paper_dialog(st.session_state.open_paper)
         st.session_state.open_paper = None
 
-    # 標題
+    # 標題區
     st.title("🦞 論文說書人中心")
     st.markdown("*用自然語言搜尋論文、對論文內容提問*")
 
@@ -365,10 +346,8 @@ def main():
             with st.spinner("🤔 思考中..."):
                 selected_list = list(st.session_state.selected_papers.values())
                 if selected_list:
-                    # 使用選取的論文作為 context
                     answer, sources = answer_question(question, forced_papers=selected_list)
                 else:
-                    # 自動搜尋
                     answer, sources = answer_question(question)
             st.session_state.qa_history.append({
                 "question": question,
