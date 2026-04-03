@@ -65,7 +65,7 @@ def get_lance_db():
 
 def get_embedding(text: str) -> List[float]:
     url = f"{OLLAMA_BASE_URL}/api/embeddings"
-    data = {"model": EMBEDDING_MODEL, "prompt": text[:1500]}
+    data = {"model": EMBEDDING_MODEL, "prompt": text[:3000]}
     try:
         req = urllib.request.Request(url, data=json.dumps(data).encode(), headers={'Content-Type': 'application/json'})
         with urllib.request.urlopen(req, timeout=60) as response:
@@ -75,23 +75,39 @@ def get_embedding(text: str) -> List[float]:
         return []
 
 
-def search_papers(query: str, top_k: int = 10) -> List[Dict]:
-    """純向量搜尋：使用 qwen3-embedding 計算餘弦相似度"""
+def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0) -> List[Dict]:
+    """純向量搜尋（Chunk Embedding）：搜尋最相關 chunks，依論文去重後返回"""
     db = get_lance_db()
     if db is None:
         return []
     
-    # 生成 query 的 embedding
     query_embedding = get_embedding(query)
     if not query_embedding:
         return []
     
     try:
         tbl = db.open_table("papers")
+        # 多抓幾個 chunk，去重後取 top_k 篇論文
         results = tbl.search(query_embedding, vector_column_name="embedding") \
-                     .limit(top_k).to_pandas().to_dict("records")
-        # 只返回餘弦距離 < 0.75 的結果
-        return [r for r in results if r.get('_distance', 9999) < 0.75]
+                     .limit(top_k * 5).to_pandas().to_dict("records")
+        
+        # 過濾餘弦相似度門檻（similarity_threshold=0.0 表示全部顯示）
+        results = [r for r in results if (1.0 - r.get('_distance', 9999)) >= similarity_threshold]
+        
+        # 依論文去重：每篇論文只保留相似度最高的 chunk
+        best_per_paper = {}
+        for r in results:
+            pid = r.get('paper_id', r.get('id', ''))
+            sim = 1.0 - r.get('_distance', 9999)
+            if pid not in best_per_paper or sim > (1.0 - best_per_paper[pid].get('_distance', 9999)):
+                best_per_paper[pid] = r
+        
+        # 依相似度排序
+        sorted_papers = sorted(best_per_paper.values(),
+                               key=lambda x: 1.0 - x.get('_distance', 9999),
+                               reverse=True)
+        return sorted_papers[:top_k]
+        
     except Exception as e:
         st.error(f"搜尋錯誤: {e}")
         return []
