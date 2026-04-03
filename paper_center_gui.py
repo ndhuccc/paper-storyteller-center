@@ -113,8 +113,13 @@ def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0
         return []
 
 
-def answer_question(question: str) -> tuple[str, List[Dict]]:
-    results = search_papers(question, top_k=3)
+def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[str, List[Dict]]:
+    if forced_papers:
+        # 使用指定論文
+        results = forced_papers
+    else:
+        # 自動搜尋最相關論文
+        results = search_papers(question, top_k=3)
     if not results:
         return "抱歉，沒有找到相關論文內容。", []
     context = "\n\n".join([f"=== {r.get('title','未知')} ===\n{r.get('content','')[:3000]}" for r in results])
@@ -213,6 +218,8 @@ def main():
         st.session_state.qa_history = []
     if "open_paper" not in st.session_state:
         st.session_state.open_paper = None
+    if "selected_papers" not in st.session_state:
+        st.session_state.selected_papers = {}  # paper_id -> paper dict
 
     # 觸發 dialog（必須在主程式流程中）
     if st.session_state.open_paper is not None:
@@ -266,27 +273,36 @@ def main():
 
             if results:
                 st.success(f"找到 **{len(results)}** 篇相關論文")
+                st.caption("☑ 勾選論文加入 Q&A 範圍（不勾選則自動搜尋）")
                 for i, r in enumerate(results):
+                    pid = r.get('paper_id', r.get('id', ''))
                     with st.container(border=True):
-                        col_info, col_btn = st.columns([4, 1])
+                        col_chk, col_info, col_btn = st.columns([0.5, 4, 1])
+                        with col_chk:
+                            st.write("")
+                            checked = st.checkbox("", key=f"chk_{i}_{pid}",
+                                                  value=pid in st.session_state.selected_papers)
+                            if checked:
+                                st.session_state.selected_papers[pid] = r
+                            else:
+                                st.session_state.selected_papers.pop(pid, None)
                         with col_info:
                             st.markdown(f"**{i+1}. {r.get('title','未知')}**")
-                            # 計算餘弦相似度（cosine similarity = 1 - cosine distance）
                             dist = r.get('_distance', None)
                             if dist is not None:
-                                similarity = 1.0 - dist  # 範圍 -1 ~ 1，越大越相關
+                                similarity = 1.0 - dist
                                 if similarity >= 0.5:
-                                    sim_color = "#22c55e"  # 綠色：高度相關
+                                    sim_color = "#22c55e"
                                 elif similarity >= 0.25:
-                                    sim_color = "#f59e0b"  # 黃色：中度相關
+                                    sim_color = "#f59e0b"
                                 else:
-                                    sim_color = "#ef4444"  # 紅色：低度相關
-                                sim_badge = f'<span style="background:{sim_color};color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 餘弦相似度 {similarity:.2f}</span>'
+                                    sim_color = "#ef4444"
+                                sim_badge = f'<span style="background:{sim_color};color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 相似度 {similarity:.2f}</span>'
                             else:
-                                sim_badge = '<span style="background:#3b82f6;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 關鍵字匹配</span>'
-                            st.markdown(f"📅 {r.get('date','未知')}　✍️ {r.get('authors','未知')[:40]}　{sim_badge}", unsafe_allow_html=True)
+                                sim_badge = ''
+                            st.markdown(f"📅 {r.get('date','未知')}　✍️ {r.get('authors','未知')[:35]}　{sim_badge}", unsafe_allow_html=True)
                         with col_btn:
-                            st.write("")  # 垂直對齊
+                            st.write("")
                             if st.button("📖 閱覽", key=f"view_{i}_{r.get('id')}", use_container_width=True):
                                 st.session_state.open_paper = r
                                 st.rerun()
@@ -296,6 +312,21 @@ def main():
     # ── 右欄：Q&A ──────────────────────────
     with col2:
         st.header("💬 Q&A 對話")
+
+        # 顯示目前選取的論文
+        selected = st.session_state.selected_papers
+        if selected:
+            st.info(f"📌 Q&A 範圍：{len(selected)} 篇選取的論文")
+            for pid, p in selected.items():
+                col_tag, col_rm = st.columns([5, 1])
+                with col_tag:
+                    st.markdown(f"・{p.get('title','?')[:40]}...")
+                with col_rm:
+                    if st.button("✕", key=f"rm_{pid}"):
+                        st.session_state.selected_papers.pop(pid, None)
+                        st.rerun()
+        else:
+            st.caption("💡 未指定論文，Q&A 將自動搜尋最相關的論文")
 
         # 對話歷史
         for qa in st.session_state.qa_history:
@@ -323,7 +354,13 @@ def main():
 
         if ask_btn and question:
             with st.spinner("🤔 思考中..."):
-                answer, sources = answer_question(question)
+                selected_list = list(st.session_state.selected_papers.values())
+                if selected_list:
+                    # 使用選取的論文作為 context
+                    answer, sources = answer_question(question, forced_papers=selected_list)
+                else:
+                    # 自動搜尋
+                    answer, sources = answer_question(question)
             st.session_state.qa_history.append({
                 "question": question,
                 "answer": answer,
