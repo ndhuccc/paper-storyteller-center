@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import List, Dict
 import urllib.request
 
+from qa_render import answer_to_mathjax_html
+
 # ==================== 配置 ====================
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
@@ -145,105 +147,8 @@ def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[st
 
 
 def render_answer(answer: str):
-    """渲染 Q&A 回答，支援 Markdown + LaTeX（行內/行間）"""
-    import re as _re
-    try:
-        import markdown as _md
-        has_md = True
-    except Exception:
-        has_md = False
-
-    # 1. 過濾 DeepSeek-R1 的 thinking 區塊
-    answer = _re.sub(r'<think>.*?</think>', '', answer, flags=_re.DOTALL).strip()
-
-    # 2. 先把 LaTeX 換成佔位符，避免被 Markdown 破壞
-    # 支援兩種常見分隔符：$...$/$$...$$ 與 \(...\)/\[...\]
-    latex_blocks = []  # list[(kind, inner)]
-
-    def protect_block(m):
-        inner = m.group(1).strip()
-        latex_blocks.append(("block", inner))
-        return f"\n\nLATEXPH{len(latex_blocks)-1}\n\n"
-
-    def protect_inline(m):
-        inner = m.group(1).strip()
-        latex_blocks.append(("inline", inner))
-        return f"LATEXPH{len(latex_blocks)-1}"
-
-    # 先抓行間公式，再抓行內公式，避免互相吞掉
-    protected = answer
-    # \[ ... \]
-    protected = _re.sub(r'\\\[(.*?)\\\]', protect_block, protected, flags=_re.DOTALL)
-    # $$ ... $$
-    protected = _re.sub(r'\$\$(.*?)\$\$', protect_block, protected, flags=_re.DOTALL)
-    # \( ... \)
-    protected = _re.sub(r'\\\((.*?)\\\)', protect_inline, protected, flags=_re.DOTALL)
-    # $ ... $
-    protected = _re.sub(r'(?<!\$)\$([^\$\n]{1,300}?)\$(?!\$)', protect_inline, protected)
-
-    # 3. Markdown 轉 HTML
-    if has_md:
-        body_html = _md.markdown(protected, extensions=['tables', 'fenced_code'])
-    else:
-        paras = protected.split('\n\n')
-        body_html = '\n'.join(f'<p>{p.replace(chr(10), "<br>")}</p>' for p in paras)
-
-    # 4. 還原 LaTeX：Markdown 完成後再放回，避免被破壞
-    for i, (kind, inner) in enumerate(latex_blocks):
-        if kind == 'block':
-            repl = f'</p><div class="math-block">$${inner}$$</div><p>'
-        else:
-            repl = f'<span class="math-inline">${inner}$</span>'
-        body_html = body_html.replace(f'LATEXPH{i}', repl)
-
-    # 清掉可能殘留的空段落，避免 block math 前後出現怪異空白
-    body_html = body_html.replace('<p></p>', '')
-    body_html = body_html.replace('<p>\n</p>', '')
-
-    # 5. 高度估算放寬，避免內容看起來被截斷
-    lines_count = answer.count('\n') + len(answer) // 70 + 8
-    height = max(260, min(1200, lines_count * 30 + 120))
-
-    # 6. 完整 HTML
-    html_content = r"""<!DOCTYPE html>
-<html>
-<head>
-<meta charset="utf-8">
-<script>
-window.MathJax = {
-  tex: {
-    inlineMath: [['$', '$'], ['\\(', '\\)']],
-    displayMath: [['$$', '$$'], ['\\[', '\\]']],
-    processEscapes: true
-  },
-  options: {
-    skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-  },
-  startup: {
-    ready() {
-      MathJax.startup.defaultReady();
-      MathJax.startup.promise.then(() => MathJax.typesetPromise());
-    }
-  }
-};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
-<style>
-* { box-sizing: border-box; }
-body { font-family: "Noto Sans TC", sans-serif; line-height: 1.8; padding: 8px 12px; margin: 0; font-size: 14px; }
-p { margin: 6px 0; }
-.math-block { text-align: center; margin: 16px 0; overflow-x: auto; }
-.math-inline { white-space: normal; }
-table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-th, td { border: 1px solid #e2e8f0; padding: 8px 12px; }
-th { background: #f1f5f9; }
-code { background: #f1f5f9; padding: 2px 5px; border-radius: 3px; font-size: 12px; }
-blockquote { border-left: 3px solid #3b82f6; padding-left: 12px; color: #475569; }
-</style>
-</head>
-<body>""" + body_html + """</body>
-</html>"""
-
+    """渲染 Q&A 回答，支援 Markdown + LaTeX（行內/行間）。"""
+    html_content, height = answer_to_mathjax_html(answer)
     st.components.v1.html(html_content, height=height, scrolling=True)
 
 
