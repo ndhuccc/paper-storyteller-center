@@ -188,20 +188,34 @@ def render_answer(answer: str):
 <html>
 <head>
 <script>
-MathJax = {{
+window.MathJax = {{
     tex: {{
-        inlineMath: [["$", "$"], ["\\\\(", "\\\\)"]],
-        displayMath: [["$$", "$$"], ["\\\\[", "\\\\]"]]
+        inlineMath: [["\\(", "\\)"]],
+        displayMath: [["\\[", "\\]"]]
+    }},
+    options: {{
+        skipHtmlTags: ["script", "noscript", "style", "textarea", "pre"]
     }},
     startup: {{
-        typeset: true
+        ready() {{
+            MathJax.startup.defaultReady();
+            MathJax.startup.promise.then(() => {{
+                MathJax.typesetPromise();
+            }});
+        }}
     }}
 }};
 </script>
-<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <style>
 body {{ font-family: "Noto Sans TC", sans-serif; line-height: 1.8; padding: 8px; margin: 0; font-size: 14px; }}
 p {{ margin: 8px 0; }}
+.math-block {{ margin: 16px 0; text-align: center; }}
+.math-inline {{ }}
+table {{ border-collapse: collapse; width: 100%; margin: 12px 0; }}
+th, td {{ border: 1px solid #e2e8f0; padding: 8px 12px; }}
+th {{ background: #f1f5f9; }}
+code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 13px; }}
 </style>
 </head>
 <body>
