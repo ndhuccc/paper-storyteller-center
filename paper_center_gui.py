@@ -146,12 +146,17 @@ def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[st
 
 def render_answer(answer: str):
     """渲染 Q&A 回答，支援 LaTeX 公式（MathJax）+ Markdown"""
-    import re as _re, markdown as _md
+    import re as _re
+    try:
+        import markdown as _md
+        has_md = True
+    except:
+        has_md = False
     
     # 1. 過濾 DeepSeek-R1 的 <think>...</think>
     answer = _re.sub(r'<think>.*?</think>', '', answer, flags=_re.DOTALL).strip()
     
-    # 2. 保護 LaTeX 公式（避免 Markdown 解析破壞）
+    # 2. 保護 LaTeX：先替換成佔位符
     latex_blocks = []  # list of (kind, inner)
     
     def protect_block(m):
@@ -168,61 +173,58 @@ def render_answer(answer: str):
     protected = _re.sub(r'(?<!\$)\$([^\$\n]{1,200}?)\$(?!\$)', protect_inline, protected)
     
     # 3. Markdown 轉 HTML
-    try:
+    if has_md:
         body_html = _md.markdown(protected, extensions=['tables', 'fenced_code'])
-    except Exception:
+    else:
         paras = protected.split('\n\n')
         body_html = '\n'.join(f'<p>{p.replace(chr(10), "<br>")}</p>' for p in paras)
     
-    # 4. 還原 LaTeX（區塊公式需先閉合 <p>）
+    # 4. 還原 LaTeX
     for i, (kind, inner) in enumerate(latex_blocks):
+        # 使用 HTML 實體 &#92; 代替反斜線，確保不被 HTML 解析器破壞
         if kind == 'block':
-            repl = f'</p><div style="text-align:center;margin:16px 0;">\\[{inner}\\]</div><p>'
+            repl = f'</p><div class="math-block">$${inner}$$</div><p>'
         else:
-            repl = f'\\({inner}\\)'
+            repl = f'<span class="math-inline">${inner}$</span>'
         body_html = body_html.replace(f'LATEXPH{i}', repl)
     
-    # 5. 組合完整 HTML
-    html_content = f"""<!DOCTYPE html>
+    # 5. 估算高度
+    lines_count = answer.count('\n') + len(answer) // 80 + 5
+    height = max(200, min(800, lines_count * 28 + 80))
+    
+    # 6. 完整 HTML（用 $ 定界符，讓 MathJax 識別）
+    html_content = """<!DOCTYPE html>
 <html>
 <head>
 <script>
-window.MathJax = {{
-    tex: {{
-        inlineMath: [["\\\\(", "\\\\)"]],
-        displayMath: [["\\\\[", "\\\\]"]]
-    }},
-    startup: {{
-        ready() {{
-            MathJax.startup.defaultReady();
-            MathJax.startup.promise.then(() => MathJax.typesetPromise());
-        }}
-    }}
-}};
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$']],
+    displayMath: [['$$', '$$']],
+    processEscapes: true
+  },
+  options: {
+    skipHtmlTags: ['script','noscript','style','textarea','pre','code']
+  }
+};
 </script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <style>
-body {{ font-family: "Noto Sans TC", sans-serif; line-height: 1.8; padding: 8px; margin: 0; font-size: 14px; }}
-p {{ margin: 8px 0; }}
-table {{ border-collapse: collapse; width: 100%; margin: 12px 0; }}
-th, td {{ border: 1px solid #e2e8f0; padding: 8px 12px; }}
-th {{ background: #f1f5f9; }}
-code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }}
+* { box-sizing: border-box; }
+body { font-family: "Noto Sans TC", sans-serif; line-height: 1.8; padding: 8px 12px; margin: 0; font-size: 14px; }
+p { margin: 6px 0; }
+.math-block { text-align: center; margin: 16px 0; overflow-x: auto; }
+table { border-collapse: collapse; width: 100%%; margin: 12px 0; }
+th, td { border: 1px solid #e2e8f0; padding: 8px 12px; }
+th { background: #f1f5f9; }
+code { background: #f1f5f9; padding: 2px 5px; border-radius: 3px; font-size: 12px; }
+blockquote { border-left: 3px solid #3b82f6; padding-left: 12px; color: #475569; }
 </style>
 </head>
-<body>{body_html}</body>
+<body>""" + body_html + """</body>
 </html>"""
     
-    lines = answer.count('\n') + answer.count('\n\n') * 2 + 3
-    height = max(120, min(600, lines * 28 + 60))
     st.components.v1.html(html_content, height=height, scrolling=True)
-
-
-def estimate_height(text: str) -> int:
-    """估算回答高度"""
-    lines = text.count('\n') + text.count('<br>') + 3
-    chars = len(text)
-    return max(200, min(800, lines * 30 + chars // 80 * 24))
 
 
 def load_paper_html(paper_id: str) -> str:
