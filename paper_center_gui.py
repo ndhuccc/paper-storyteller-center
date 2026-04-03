@@ -76,77 +76,25 @@ def get_embedding(text: str) -> List[float]:
 
 
 def search_papers(query: str, top_k: int = 10) -> List[Dict]:
-    """混合搜尋：先做關鍵字文字比對，再用向量搜尋排序，始終複算餘弦距離"""
+    """純向量搜尋：使用 qwen3-embedding 計算餘弦相似度"""
     db = get_lance_db()
     if db is None:
         return []
     
+    # 生成 query 的 embedding
+    query_embedding = get_embedding(query)
+    if not query_embedding:
+        return []
+    
     try:
         tbl = db.open_table("papers")
-        all_papers = tbl.to_pandas().to_dict("records")
+        results = tbl.search(query_embedding, vector_column_name="embedding") \
+                     .limit(top_k).to_pandas().to_dict("records")
+        # 只返回餘弦距離 < 0.75 的結果
+        return [r for r in results if r.get('_distance', 9999) < 0.75]
     except Exception as e:
         st.error(f"搜尋錯誤: {e}")
         return []
-    
-    # 先取得 query 的 embedding（用於計算餘弦距離）
-    query_embedding = get_embedding(query)
-    
-    def get_cosine_distance(paper: Dict) -> float:
-        """對任一篇論文計算餘弦距離"""
-        if not query_embedding:
-            return 9999.0
-        try:
-            tbl2 = db.open_table("papers")
-            results = tbl2.search(query_embedding, vector_column_name="embedding") \
-                .where(f"id = '{paper.get('id', '')}'") \
-                .limit(1).to_pandas().to_dict("records")
-            if results:
-                return results[0].get('_distance', 9999.0)
-        except:
-            pass
-        return 9999.0
-    
-    # 第一階段：關鍵字文字比對
-    query_terms = [t.strip() for t in re.split(r'[\s,，、]+', query) if t.strip()]
-    
-    def text_score(paper: Dict) -> float:
-        score = 0.0
-        for term in query_terms:
-            if term in paper.get('title', ''):
-                score += 5.0
-            if term in paper.get('content', ''):
-                score += 1.0
-        return score
-    
-    # 計算文字分數
-    scored = []
-    for p in all_papers:
-        ts = text_score(p)
-        if ts > 0:
-            scored.append((ts, p))
-    
-    # 如果文字匹配有結果，用文字分數排序，並補算餘弦距離
-    if scored:
-        scored.sort(key=lambda x: x[0], reverse=True)
-        results = []
-        for _, p in scored[:top_k]:
-            p = dict(p)  # 複製避免修改原始
-            # 補算餘弦距離
-            dist = get_cosine_distance(p)
-            if dist < 9999:
-                p['_distance'] = dist
-            results.append(p)
-        return results
-    
-    # 如果文字匹配無結果，用向量搜尋（加身距離門榕）
-    if query_embedding:
-        try:
-            results = tbl.search(query_embedding, vector_column_name="embedding").limit(top_k).to_pandas().to_dict("records")
-            return [r for r in results if r.get('_distance', 9999) < 0.75]
-        except:
-            pass
-    
-    return []
 
 
 def answer_question(question: str) -> tuple[str, List[Dict]]:
