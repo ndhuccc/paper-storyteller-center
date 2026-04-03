@@ -140,6 +140,9 @@ def answer_question(question: str) -> tuple[str, List[Dict]]:
 
 
 def load_paper_html(paper_id: str) -> str:
+    # paper_id 可能是 chunk id（如 xxx_chunk_0），取出真正的 paper_id
+    if '_chunk_' in paper_id:
+        paper_id = paper_id.rsplit('_chunk_', 1)[0]
     for filename in [f"{paper_id}.html"]:
         filepath = STORYTELLERS_DIR / filename
         if filepath.exists():
@@ -177,12 +180,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 def get_all_papers() -> List[Dict]:
+    """取得所有論文（去重，每篇只返回一筆）"""
     db = get_lance_db()
     if db is None:
         return []
     try:
         tbl = db.open_table("papers")
-        return tbl.to_pandas().to_dict("records")
+        all_rows = tbl.to_pandas().to_dict("records")
+        # 依 paper_id 去重，只保留每篇論文的第一筆
+        seen = {}
+        for r in all_rows:
+            pid = r.get('paper_id', r.get('id', ''))
+            if pid not in seen:
+                seen[pid] = r
+        return list(seen.values())
     except:
         return []
 
@@ -190,7 +201,7 @@ def get_all_papers() -> List[Dict]:
 # ==================== Dialog（Pop-up Modal）====================
 @st.dialog("📖 論文閱覽", width="large")
 def show_paper_dialog(paper: Dict):
-    html_content = load_paper_html(paper.get('id', ''))
+    html_content = load_paper_html(paper.get('paper_id', paper.get('id', '')))
     # 直接顯示 HTML 渲染結果，不加任何標頭
     st.components.v1.html(html_content, height=750, scrolling=True)
 
