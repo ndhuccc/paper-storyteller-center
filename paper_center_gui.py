@@ -15,7 +15,7 @@ import urllib.request
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
 OLLAMA_BASE_URL = "http://localhost:11434"
-EMBEDDING_MODEL = "nomic-embed-text"
+EMBEDDING_MODEL = "qwen3-embedding:8b"  # Qwen3 中文 embedding
 LLM_MODEL = "qwen3:8b"
 
 # ==================== 頁面設定 ====================
@@ -122,7 +122,7 @@ def search_papers(query: str, top_k: int = 10) -> List[Dict]:
         try:
             results = tbl.search(embedding, vector_column_name="embedding").limit(top_k).to_list()
             # 只返回 distance < 450 的結果（關聯度門榕）
-            return [r for r in results if r.get('_distance', 9999) < 450]
+            return [r for r in results if r.get('_distance', 9999) < 1.0]
         except:
             pass
     

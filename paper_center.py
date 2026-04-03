@@ -16,7 +16,7 @@ import urllib.parse
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
 OLLAMA_BASE_URL = "http://localhost:11434"
-EMBEDDING_MODEL = "nomic-embed-text"  # 本地 embedding 模型（限制 1000 tokens）
+EMBEDDING_MODEL = "qwen3-embedding:8b"  # Qwen3 中文 embedding  # 本地 embedding 模型（限制 1000 tokens）
 
 # ==================== LanceDB ====================
 def get_lance_db():
@@ -60,7 +60,7 @@ def create_table_if_not_exists(db):
         pa.field("date", pa.string()),
         pa.field("keywords", pa.list_(pa.string())),
         pa.field("content", pa.string()),
-        pa.field("embedding", pa.list_(pa.float32(), list_size=768)),  # 768維向量
+        pa.field("embedding", pa.list_(pa.float32(), list_size=4096)),  # 4096維向量
     ])
     
     try:
