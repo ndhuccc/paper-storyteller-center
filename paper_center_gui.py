@@ -83,7 +83,7 @@ def search_papers(query: str, top_k: int = 10) -> List[Dict]:
     
     try:
         tbl = db.open_table("papers")
-        all_papers = tbl.to_list()
+        all_papers = tbl.to_pandas().to_dict("records")
     except Exception as e:
         st.error(f"搜尋錯誤: {e}")
         return []
@@ -120,7 +120,7 @@ def search_papers(query: str, top_k: int = 10) -> List[Dict]:
     embedding = get_embedding(query)
     if embedding:
         try:
-            results = tbl.search(embedding, vector_column_name="embedding").limit(top_k).to_list()
+            results = tbl.search(embedding, vector_column_name="embedding").limit(top_k).to_pandas().to_dict("records")
             # 只返回 distance < 450 的結果（關聯度門榕）
             return [r for r in results if r.get('_distance', 9999) < 0.75]
         except:
@@ -198,7 +198,7 @@ def get_all_papers() -> List[Dict]:
         return []
     try:
         tbl = db.open_table("papers")
-        return tbl.to_list()
+        return tbl.to_pandas().to_dict("records")
     except:
         return []
 
