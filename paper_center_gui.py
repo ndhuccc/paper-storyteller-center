@@ -244,17 +244,16 @@ def main():
                         col_info, col_btn = st.columns([4, 1])
                         with col_info:
                             st.markdown(f"**{i+1}. {r.get('title','未知')}**")
-                            # 計算餘弦相似度
+                            # 計算餘弦相似度（cosine similarity = 1 - cosine distance）
                             dist = r.get('_distance', None)
                             if dist is not None:
-                                similarity = 1.0 - dist
-                                # 顏色塊
+                                similarity = 1.0 - dist  # 範圍 -1 ~ 1，越大越相關
                                 if similarity >= 0.5:
-                                    sim_color = "#22c55e"  # 綠色
-                                elif similarity >= 0.3:
-                                    sim_color = "#f59e0b"  # 黃色
+                                    sim_color = "#22c55e"  # 綠色：高度相關
+                                elif similarity >= 0.25:
+                                    sim_color = "#f59e0b"  # 黃色：中度相關
                                 else:
-                                    sim_color = "#ef4444"  # 紅色
+                                    sim_color = "#ef4444"  # 紅色：低度相關
                                 sim_badge = f'<span style="background:{sim_color};color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 餘弦相似度 {similarity:.2f}</span>'
                             else:
                                 sim_badge = '<span style="background:#3b82f6;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 關鍵字匹配</span>'
