@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""Q&A 回答渲染工具：把 Markdown + LaTeX 轉成可給 Streamlit iframe 顯示的 HTML。"""
+"""Q&A 回答渲染工具。
+
+設計目標：
+1. 先保護 LaTeX，避免被 Markdown 解析器破壞。
+2. 同時支援 `$...$`、`$$...$$`、`\\(...\\)`、`\\[...\\]`。
+3. 輸出單一 HTML 文件，供 Streamlit iframe 直接顯示。
+"""
 
 from __future__ import annotations
 
@@ -20,7 +26,7 @@ def strip_thinking_block(answer: str) -> str:
 
 
 def protect_latex(answer: str) -> tuple[str, List[Tuple[str, str]]]:
-    """把 LaTeX 公式替換成佔位符，避免被 Markdown 破壞。"""
+    """把公式替換成佔位符，等 Markdown 轉完再還原。"""
     latex_blocks: List[Tuple[str, str]] = []
 
     def protect_block(match: re.Match[str]) -> str:
@@ -43,7 +49,7 @@ def protect_latex(answer: str) -> tuple[str, List[Tuple[str, str]]]:
 
 
 def markdown_to_html(text: str) -> str:
-    """把 Markdown 轉成 HTML；若缺 markdown 套件則退回簡易段落模式。"""
+    """把 Markdown 轉成 HTML；缺套件時退回簡易段落模式。"""
     if _markdown is not None:
         return _markdown.markdown(text, extensions=["tables", "fenced_code"])
 
@@ -73,7 +79,7 @@ def estimate_answer_height(answer: str) -> int:
 
 
 def build_mathjax_document(body_html: str) -> str:
-    """組合成完整 HTML 文件，交給 Streamlit iframe 顯示。"""
+    """組合成完整 HTML 文件，供 Streamlit iframe 顯示。"""
     return r'''<!DOCTYPE html>
 <html>
 <head>
@@ -115,7 +121,11 @@ blockquote { border-left: 3px solid #3b82f6; padding-left: 12px; color: #475569;
 
 
 def answer_to_mathjax_html(answer: str) -> tuple[str, int]:
-    """把原始回答轉成最終 HTML 與建議高度。"""
+    """把原始回答轉成最終 HTML 與建議高度。
+
+    流程：
+    thinking 區塊清理 → LaTeX 保護 → Markdown 轉 HTML → 還原 LaTeX → 組成完整文件。
+    """
     cleaned = strip_thinking_block(answer)
     protected, latex_blocks = protect_latex(cleaned)
     body_html = markdown_to_html(protected)

@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
 論文說書人中心 - Streamlit GUI
-功能：論文搜尋、Q&A 對話、論文閱覽
+
+設計原則：
+1. GUI 只負責畫面與互動流程。
+2. Q&A 回答的 Markdown/LaTeX 渲染集中在 qa_render.py。
+3. 搜尋結果以 chunk 命中為基礎，再依 paper_id 去重成論文列表。
 """
 
 import streamlit as st
@@ -11,6 +15,7 @@ from pathlib import Path
 from typing import List, Dict
 import urllib.request
 
+# Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from qa_render import answer_to_mathjax_html
 
 # ==================== 配置 ====================
@@ -43,6 +48,7 @@ st.markdown("""
 # ==================== 函數 ====================
 @st.cache_resource
 def get_lance_db():
+    """建立並快取 LanceDB 連線。"""
     try:
         import lancedb
         return lancedb.connect(str(LANCEDB_PATH))
@@ -51,6 +57,7 @@ def get_lance_db():
 
 
 def get_embedding(text: str) -> List[float]:
+    """呼叫 Ollama embedding API，回傳查詢向量。"""
     url = f"{OLLAMA_BASE_URL}/api/embeddings"
     data = {"model": EMBEDDING_MODEL, "prompt": text[:3000]}
     try:
@@ -101,6 +108,7 @@ def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0
 
 
 def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[str, List[Dict]]:
+    """根據指定論文或自動搜尋結果，產生 Q&A 回答。"""
     if forced_papers:
         results = forced_papers
     else:
@@ -130,12 +138,13 @@ def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[st
 
 
 def render_answer(answer: str):
-    """渲染 Q&A 回答，支援 Markdown + LaTeX（行內/行間）。"""
+    """把回答交給 qa_render.py 轉成可嵌入的 MathJax HTML。"""
     html_content, height = answer_to_mathjax_html(answer)
     st.components.v1.html(html_content, height=height, scrolling=True)
 
 
 def load_paper_html(paper_id: str) -> str:
+    """讀取論文 HTML，並補上 iframe 內需要的 MathJax / 錨點行為。"""
     # chunk id（如 xxx_chunk_0）要先還原成原始論文 id
     if '_chunk_' in paper_id:
         paper_id = paper_id.rsplit('_chunk_', 1)[0]
@@ -196,12 +205,14 @@ def get_all_papers() -> List[Dict]:
 # ==================== Dialog ====================
 @st.dialog("📖 論文閱覽", width="large")
 def show_paper_dialog(paper: Dict):
+    """以原生 Streamlit dialog 顯示論文 HTML。"""
     html_content = load_paper_html(paper.get('paper_id', paper.get('id', '')))
     # 只顯示 HTML 內容本身
     st.components.v1.html(html_content, height=750, scrolling=True)
 
 
 def init_session_state():
+    """初始化本頁會用到的 session state。"""
     if "qa_history" not in st.session_state:
         st.session_state.qa_history = []
     if "open_paper" not in st.session_state:
@@ -211,12 +222,14 @@ def init_session_state():
 
 
 def maybe_show_open_paper_dialog():
+    """若有待開啟論文，就在主流程中觸發 dialog。"""
     if st.session_state.open_paper is not None:
         show_paper_dialog(st.session_state.open_paper)
         st.session_state.open_paper = None
 
 
 def rebuild_index():
+    """呼叫 paper_center.py 重建向量索引。"""
     result = subprocess.run(
         ["/home/linuxbrew/.linuxbrew/bin/python3", str(STORYTELLERS_DIR / "paper_center.py"), "rebuild"],
         capture_output=True,
@@ -231,6 +244,7 @@ def rebuild_index():
 
 
 def similarity_badge(result: Dict) -> str:
+    """把 _distance 轉成對使用者顯示的 similarity badge。"""
     dist = result.get("_distance")
     if dist is None:
         return ""
@@ -250,6 +264,7 @@ def similarity_badge(result: Dict) -> str:
 
 
 def render_sidebar(all_papers: List[Dict]):
+    """渲染側邊欄：統計、重建索引、論文列表。"""
     with st.sidebar:
         st.header("📊 統計")
         st.metric("論文數量", len(all_papers))
@@ -268,6 +283,7 @@ def render_sidebar(all_papers: List[Dict]):
 
 
 def render_search_result_item(index: int, result: Dict):
+    """渲染單一搜尋結果卡片。"""
     paper_id = result.get("paper_id", result.get("id", ""))
     with st.container(border=True):
         col_chk, col_info, col_btn = st.columns([0.5, 4, 1])
@@ -294,6 +310,7 @@ def render_search_result_item(index: int, result: Dict):
 
 
 def render_search_panel():
+    """渲染左欄搜尋面板與搜尋結果。"""
     st.header("🔍 語意搜尋")
     query = st.text_input("輸入關鍵字", placeholder="例如：知識蒸餾、深度學習...", key="search_input")
 
@@ -314,6 +331,7 @@ def render_search_panel():
 
 
 def render_selected_papers_section():
+    """顯示目前被指定為 Q&A 範圍的論文。"""
     selected = st.session_state.selected_papers
     if selected:
         st.info(f"📌 Q&A 範圍：{len(selected)} 篇選取的論文")
@@ -330,6 +348,7 @@ def render_selected_papers_section():
 
 
 def render_qa_history():
+    """渲染 Q&A 歷史與每輪來源按鈕。"""
     for qa_idx, qa in enumerate(st.session_state.qa_history):
         st.markdown(f'<div class="qa-user">❓ {qa["question"]}</div>', unsafe_allow_html=True)
         with st.container(border=True):
@@ -345,6 +364,7 @@ def render_qa_history():
 
 
 def render_qa_input_section():
+    """渲染提問輸入區，並在送出後寫入對話歷史。"""
     question = st.text_input("輸入問題", placeholder="例如：兩篇論文的樣本選取有何不同？", key="qa_input")
 
     col_submit, col_clear = st.columns([3, 1])
@@ -374,6 +394,7 @@ def render_qa_input_section():
 
 
 def render_qa_panel():
+    """渲染右欄 Q&A 面板。"""
     st.header("💬 Q&A 對話")
     render_selected_papers_section()
     render_qa_history()
@@ -382,6 +403,7 @@ def render_qa_panel():
 
 # ==================== 主介面 ====================
 def main():
+    """頁面主流程：初始化 → dialog → 標題 → sidebar → 左右兩欄。"""
     init_session_state()
     maybe_show_open_paper_dialog()
 
