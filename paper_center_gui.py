@@ -151,14 +151,30 @@ def render_answer(answer: str):
     # 過濾 DeepSeek-R1 的 <think>...</think> 推理鏈
     answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
     
-    # 換行轉 HTML（但不 escape，保留 LaTeX 符號）
-    # 將 Markdown 換行轉為 <br>，段落空行轉為 <p>
-    paragraphs = answer.split("\n\n")
-    html_parts = []
-    for para in paragraphs:
-        lines = para.replace("\n", "<br>")
-        html_parts.append(f"<p>{lines}</p>")
-    body_html = "\n".join(html_parts)
+    # 保護 LaTeX 公式區塊，避免 Markdown 解析器破壞 $...$ 和 $$...$$
+    # 先把公式替換成佔位符，Markdown 轉換後再換回來
+    import re as _re
+    latex_blocks = []
+    def protect_latex(m):
+        latex_blocks.append(m.group(0))
+        return f"LATEXBLOCK{len(latex_blocks)-1}END"
+    
+    # 保護 $$...$$ 區塊（先）
+    protected = _re.sub(r'\$\$.*?\$\$', protect_latex, answer, flags=_re.DOTALL)
+    # 保護 $...$ 行內（後）
+    protected = _re.sub(r'\$[^\$\n]+?\$', protect_latex, protected)
+    
+    # Markdown 轉 HTML
+    try:
+        import markdown as md_lib
+        body_html = md_lib.markdown(protected, extensions=['tables', 'fenced_code'])
+    except:
+        paragraphs = protected.split("\n\n")
+        body_html = "\n".join(f"<p>{p.replace(chr(10), '<br>')}</p>" for p in paragraphs)
+    
+    # 還原 LaTeX 公式
+    for i, block in enumerate(latex_blocks):
+        body_html = body_html.replace(f"LATEXBLOCK{i}END", block)
     
     html_content = f"""<!DOCTYPE html>
 <html>
