@@ -144,6 +144,36 @@ def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[st
         return f"生成錯誤：{e}", results
 
 
+def render_answer(answer: str):
+    """渲染 Q&A 回答，支援 LaTeX 公式（MathJax）"""
+    import html as html_lib
+    safe_answer = html_lib.escape(answer).replace("\n", "<br>")
+    
+    html_content = f"""
+    <div style="font-family: 'Noto Sans TC', sans-serif; line-height: 1.8; padding: 4px;">
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+        <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+        <script>
+        MathJax = {{
+            tex: {{
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            }}
+        }};
+        </script>
+        {answer}
+    </div>
+    """
+    st.components.v1.html(html_content, height=None, scrolling=False)
+
+
+def estimate_height(text: str) -> int:
+    """估算回答高度"""
+    lines = text.count('\n') + text.count('<br>') + 3
+    chars = len(text)
+    return max(200, min(800, lines * 30 + chars // 80 * 24))
+
+
 def load_paper_html(paper_id: str) -> str:
     # paper_id 可能是 chunk id（如 xxx_chunk_0），取出真正的 paper_id
     if '_chunk_' in paper_id:
@@ -331,7 +361,8 @@ def main():
         # 對話歷史
         for qa in st.session_state.qa_history:
             st.markdown(f'<div class="qa-user">❓ {qa["question"]}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="qa-bot">📝 {qa["answer"]}</div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                render_answer(qa["answer"])
             if qa.get("sources"):
                 cols = st.columns(len(qa["sources"]))
                 for ci, src in enumerate(qa["sources"]):
