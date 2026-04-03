@@ -6,6 +6,7 @@
 
 import streamlit as st
 import json
+import subprocess
 from pathlib import Path
 from typing import List, Dict
 import urllib.request
@@ -200,161 +201,201 @@ def show_paper_dialog(paper: Dict):
     st.components.v1.html(html_content, height=750, scrolling=True)
 
 
-# ==================== 主介面 ====================
-def main():
-    # 初始化 session state
+def init_session_state():
     if "qa_history" not in st.session_state:
         st.session_state.qa_history = []
     if "open_paper" not in st.session_state:
         st.session_state.open_paper = None
     if "selected_papers" not in st.session_state:
-        st.session_state.selected_papers = {}  # paper_id -> paper dict
+        st.session_state.selected_papers = {}
 
-    # 在主流程中觸發 dialog
+
+def maybe_show_open_paper_dialog():
     if st.session_state.open_paper is not None:
         show_paper_dialog(st.session_state.open_paper)
         st.session_state.open_paper = None
 
-    # 標題區
-    st.title("🦞 論文說書人中心")
-    st.markdown("*用自然語言搜尋論文、對論文內容提問*")
 
-    # ── 側邊欄 ──────────────────────────────
+def rebuild_index():
+    result = subprocess.run(
+        ["/home/linuxbrew/.linuxbrew/bin/python3", str(STORYTELLERS_DIR / "paper_center.py"), "rebuild"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        st.success("✅ 完成！")
+        st.cache_resource.clear()
+        st.rerun()
+    else:
+        st.error(f"❌ {result.stderr[:200]}")
+
+
+def similarity_badge(result: Dict) -> str:
+    dist = result.get("_distance")
+    if dist is None:
+        return ""
+
+    similarity = 1.0 - dist
+    if similarity >= 0.5:
+        sim_color = "#22c55e"
+    elif similarity >= 0.25:
+        sim_color = "#f59e0b"
+    else:
+        sim_color = "#ef4444"
+
+    return (
+        f'<span style="background:{sim_color};color:white;padding:2px 8px;'
+        f'border-radius:4px;font-size:12px;">📌 相似度 {similarity:.2f}</span>'
+    )
+
+
+def render_sidebar(all_papers: List[Dict]):
     with st.sidebar:
         st.header("📊 統計")
-        all_papers = get_all_papers()
         st.metric("論文數量", len(all_papers))
         st.divider()
 
         if st.button("🔄 重建索引", use_container_width=True):
             with st.spinner("重建中..."):
-                import subprocess
-                r = subprocess.run(
-                    ["/home/linuxbrew/.linuxbrew/bin/python3",
-                     str(STORYTELLERS_DIR / "paper_center.py"), "rebuild"],
-                    capture_output=True, text=True
-                )
-                if r.returncode == 0:
-                    st.success("✅ 完成！")
-                    st.cache_resource.clear()
-                    st.rerun()
-                else:
-                    st.error(f"❌ {r.stderr[:200]}")
+                rebuild_index()
 
         st.divider()
         st.header("📚 所有論文")
-        for p in all_papers:
-            if st.button(f"📄 {p.get('title','?')[:28]}...", key=f"sidebar_{p.get('id')}"):
-                st.session_state.open_paper = p
+        for paper in all_papers:
+            if st.button(f"📄 {paper.get('title', '?')[:28]}...", key=f"sidebar_{paper.get('id')}"):
+                st.session_state.open_paper = paper
                 st.rerun()
 
-    # ── 主欄 ──────────────────────────────────
-    col1, col2 = st.columns([1, 1])
 
-    # ── 左欄：搜尋 ──────────────────────────
-    with col1:
-        st.header("🔍 語意搜尋")
-        query = st.text_input("輸入關鍵字", placeholder="例如：知識蒸餾、深度學習...", key="search_input")
-
-        if query:
-            with st.spinner("搜尋中..."):
-                results = search_papers(query)
-
-            if results:
-                st.success(f"找到 **{len(results)}** 篇相關論文")
-                st.caption("☑ 勾選論文加入 Q&A 範圍（不勾選則自動搜尋）")
-                for i, r in enumerate(results):
-                    pid = r.get('paper_id', r.get('id', ''))
-                    with st.container(border=True):
-                        col_chk, col_info, col_btn = st.columns([0.5, 4, 1])
-                        with col_chk:
-                            st.write("")
-                            checked = st.checkbox("", key=f"chk_{i}_{pid}",
-                                                  value=pid in st.session_state.selected_papers)
-                            if checked:
-                                st.session_state.selected_papers[pid] = r
-                            else:
-                                st.session_state.selected_papers.pop(pid, None)
-                        with col_info:
-                            st.markdown(f"**{i+1}. {r.get('title','未知')}**")
-                            dist = r.get('_distance', None)
-                            if dist is not None:
-                                similarity = 1.0 - dist
-                                if similarity >= 0.5:
-                                    sim_color = "#22c55e"
-                                elif similarity >= 0.25:
-                                    sim_color = "#f59e0b"
-                                else:
-                                    sim_color = "#ef4444"
-                                sim_badge = f'<span style="background:{sim_color};color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 相似度 {similarity:.2f}</span>'
-                            else:
-                                sim_badge = ''
-                            st.markdown(f"📅 {r.get('date','未知')}　✍️ {r.get('authors','未知')[:35]}　{sim_badge}", unsafe_allow_html=True)
-                        with col_btn:
-                            st.write("")
-                            if st.button("📖 閱覽", key=f"view_{i}_{r.get('id')}", use_container_width=True):
-                                st.session_state.open_paper = r
-                                st.rerun()
+def render_search_result_item(index: int, result: Dict):
+    paper_id = result.get("paper_id", result.get("id", ""))
+    with st.container(border=True):
+        col_chk, col_info, col_btn = st.columns([0.5, 4, 1])
+        with col_chk:
+            st.write("")
+            checked = st.checkbox("", key=f"chk_{index}_{paper_id}", value=paper_id in st.session_state.selected_papers)
+            if checked:
+                st.session_state.selected_papers[paper_id] = result
             else:
-                st.warning("⚠️ 沒有找到相關論文")
+                st.session_state.selected_papers.pop(paper_id, None)
 
-    # ── 右欄：Q&A ──────────────────────────
-    with col2:
-        st.header("💬 Q&A 對話")
+        with col_info:
+            st.markdown(f"**{index + 1}. {result.get('title', '未知')}**")
+            st.markdown(
+                f"📅 {result.get('date', '未知')}　✍️ {result.get('authors', '未知')[:35]}　{similarity_badge(result)}",
+                unsafe_allow_html=True,
+            )
 
-        # 顯示目前選取的論文
-        selected = st.session_state.selected_papers
-        if selected:
-            st.info(f"📌 Q&A 範圍：{len(selected)} 篇選取的論文")
-            for pid, p in selected.items():
-                col_tag, col_rm = st.columns([5, 1])
-                with col_tag:
-                    st.markdown(f"・{p.get('title','?')[:40]}...")
-                with col_rm:
-                    if st.button("✕", key=f"rm_{pid}"):
-                        st.session_state.selected_papers.pop(pid, None)
-                        st.rerun()
-        else:
-            st.caption("💡 未指定論文，Q&A 將自動搜尋最相關的論文")
-
-        # 對話歷史
-        for qa_idx, qa in enumerate(st.session_state.qa_history):
-            st.markdown(f'<div class="qa-user">❓ {qa["question"]}</div>', unsafe_allow_html=True)
-            with st.container(border=True):
-                render_answer(qa["answer"])
-            if qa.get("sources"):
-                cols = st.columns(len(qa["sources"]))
-                for ci, src in enumerate(qa["sources"]):
-                    with cols[ci]:
-                        if st.button(f"📄 {src.get('title','?')[:20]}...", key=f"qa_src_{qa_idx}_{ci}_{src.get('id',ci)}"):
-                            st.session_state.open_paper = src
-                            st.rerun()
-            st.divider()
-
-        # 輸入框
-        question = st.text_input("輸入問題", placeholder="例如：兩篇論文的樣本選取有何不同？", key="qa_input")
-
-        c1, c2 = st.columns([3, 1])
-        with c1:
-            ask_btn = st.button("🚀 送出問題", use_container_width=True)
-        with c2:
-            if st.button("🗑️ 清除", use_container_width=True):
-                st.session_state.qa_history = []
+        with col_btn:
+            st.write("")
+            if st.button("📖 閱覽", key=f"view_{index}_{result.get('id')}", use_container_width=True):
+                st.session_state.open_paper = result
                 st.rerun()
 
-        if ask_btn and question:
-            with st.spinner("🤔 思考中..."):
-                selected_list = list(st.session_state.selected_papers.values())
-                if selected_list:
-                    answer, sources = answer_question(question, forced_papers=selected_list)
-                else:
-                    answer, sources = answer_question(question)
-            st.session_state.qa_history.append({
-                "question": question,
-                "answer": answer,
-                "sources": sources
-            })
+
+def render_search_panel():
+    st.header("🔍 語意搜尋")
+    query = st.text_input("輸入關鍵字", placeholder="例如：知識蒸餾、深度學習...", key="search_input")
+
+    if not query:
+        return
+
+    with st.spinner("搜尋中..."):
+        results = search_papers(query)
+
+    if not results:
+        st.warning("⚠️ 沒有找到相關論文")
+        return
+
+    st.success(f"找到 **{len(results)}** 篇相關論文")
+    st.caption("☑ 勾選論文加入 Q&A 範圍（不勾選則自動搜尋）")
+    for index, result in enumerate(results):
+        render_search_result_item(index, result)
+
+
+def render_selected_papers_section():
+    selected = st.session_state.selected_papers
+    if selected:
+        st.info(f"📌 Q&A 範圍：{len(selected)} 篇選取的論文")
+        for paper_id, paper in selected.items():
+            col_tag, col_rm = st.columns([5, 1])
+            with col_tag:
+                st.markdown(f"・{paper.get('title', '?')[:40]}...")
+            with col_rm:
+                if st.button("✕", key=f"rm_{paper_id}"):
+                    st.session_state.selected_papers.pop(paper_id, None)
+                    st.rerun()
+    else:
+        st.caption("💡 未指定論文，Q&A 將自動搜尋最相關的論文")
+
+
+def render_qa_history():
+    for qa_idx, qa in enumerate(st.session_state.qa_history):
+        st.markdown(f'<div class="qa-user">❓ {qa["question"]}</div>', unsafe_allow_html=True)
+        with st.container(border=True):
+            render_answer(qa["answer"])
+        if qa.get("sources"):
+            cols = st.columns(len(qa["sources"]))
+            for ci, src in enumerate(qa["sources"]):
+                with cols[ci]:
+                    if st.button(f"📄 {src.get('title', '?')[:20]}...", key=f"qa_src_{qa_idx}_{ci}_{src.get('id', ci)}"):
+                        st.session_state.open_paper = src
+                        st.rerun()
+        st.divider()
+
+
+def render_qa_input_section():
+    question = st.text_input("輸入問題", placeholder="例如：兩篇論文的樣本選取有何不同？", key="qa_input")
+
+    col_submit, col_clear = st.columns([3, 1])
+    with col_submit:
+        ask_btn = st.button("🚀 送出問題", use_container_width=True)
+    with col_clear:
+        if st.button("🗑️ 清除", use_container_width=True):
+            st.session_state.qa_history = []
             st.rerun()
+
+    if not (ask_btn and question):
+        return
+
+    with st.spinner("🤔 思考中..."):
+        selected_list = list(st.session_state.selected_papers.values())
+        if selected_list:
+            answer, sources = answer_question(question, forced_papers=selected_list)
+        else:
+            answer, sources = answer_question(question)
+
+    st.session_state.qa_history.append({
+        "question": question,
+        "answer": answer,
+        "sources": sources,
+    })
+    st.rerun()
+
+
+def render_qa_panel():
+    st.header("💬 Q&A 對話")
+    render_selected_papers_section()
+    render_qa_history()
+    render_qa_input_section()
+
+
+# ==================== 主介面 ====================
+def main():
+    init_session_state()
+    maybe_show_open_paper_dialog()
+
+    st.title("🦞 論文說書人中心")
+    st.markdown("*用自然語言搜尋論文、對論文內容提問*")
+
+    all_papers = get_all_papers()
+    render_sidebar(all_papers)
+
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        render_search_panel()
+    with col2:
+        render_qa_panel()
 
 
 if __name__ == "__main__":
