@@ -145,86 +145,75 @@ def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[st
 
 
 def render_answer(answer: str):
-    """渲染 Q&A 回答，支援 LaTeX 公式（MathJax）"""
-    import re
+    """渲染 Q&A 回答，支援 LaTeX 公式（MathJax）+ Markdown"""
+    import re as _re, markdown as _md
     
-    # 過濾 DeepSeek-R1 的 <think>...</think> 推理鏈
-    answer = re.sub(r'<think>.*?</think>', '', answer, flags=re.DOTALL).strip()
+    # 1. 過濾 DeepSeek-R1 的 <think>...</think>
+    answer = _re.sub(r'<think>.*?</think>', '', answer, flags=_re.DOTALL).strip()
     
-    # 保護 LaTeX 公式區塊：先轉成 MathJax HTML 格式再讓 Markdown 處理
-    import re as _re
-    latex_blocks = []
+    # 2. 保護 LaTeX 公式（避免 Markdown 解析破壞）
+    latex_blocks = []  # list of (kind, inner)
     
     def protect_block(m):
-        # $$...$$ → <div class="math">...</div>（block）
-        inner = m.group(1)
-        latex_blocks.append(f'<div class="math-block">\\[{inner}\\]</div>')
-        return f"LATEXBLOCK{len(latex_blocks)-1}END"
+        inner = m.group(1).strip()
+        latex_blocks.append(('block', inner))
+        return f'\n\nLATEXPH{len(latex_blocks)-1}\n\n'
     
     def protect_inline(m):
-        # $...$ → <span class="math">...</span>（inline）
         inner = m.group(1)
-        latex_blocks.append(f'<span class="math-inline">\\({inner}\\)</span>')
-        return f"LATEXBLOCK{len(latex_blocks)-1}END"
+        latex_blocks.append(('inline', inner))
+        return f'LATEXPH{len(latex_blocks)-1}'
     
-    # 保護 $$...$$ 區塊（先）
     protected = _re.sub(r'\$\$(.*?)\$\$', protect_block, answer, flags=_re.DOTALL)
-    # 保護 $...$ 行內（後，排除空白和換行）
-    protected = _re.sub(r'(?<![\$])\$([^\$\n]{1,200}?)\$(?!\$)', protect_inline, protected)
+    protected = _re.sub(r'(?<!\$)\$([^\$\n]{1,200}?)\$(?!\$)', protect_inline, protected)
     
-    # Markdown 轉 HTML
+    # 3. Markdown 轉 HTML
     try:
-        import markdown as md_lib
-        body_html = md_lib.markdown(protected, extensions=['tables', 'fenced_code'])
-    except:
-        paras = protected.split("\n\n")
-        body_html = "\n".join(f"<p>{p.replace(chr(10), '<br>')}</p>" for p in paras)
+        body_html = _md.markdown(protected, extensions=['tables', 'fenced_code'])
+    except Exception:
+        paras = protected.split('\n\n')
+        body_html = '\n'.join(f'<p>{p.replace(chr(10), "<br>")}</p>' for p in paras)
     
-    # 還原 LaTeX 公式（HTML 原樣插入）
-    for i, block in enumerate(latex_blocks):
-        body_html = body_html.replace(f"LATEXBLOCK{i}END", block)
+    # 4. 還原 LaTeX（區塊公式需先閉合 <p>）
+    for i, (kind, inner) in enumerate(latex_blocks):
+        if kind == 'block':
+            repl = f'</p><div style="text-align:center;margin:16px 0;">\\[{inner}\\]</div><p>'
+        else:
+            repl = f'\\({inner}\\)'
+        body_html = body_html.replace(f'LATEXPH{i}', repl)
     
+    # 5. 組合完整 HTML
     html_content = f"""<!DOCTYPE html>
 <html>
 <head>
 <script>
 window.MathJax = {{
     tex: {{
-        inlineMath: [["\\(", "\\)"]],
-        displayMath: [["\\[", "\\]"]]
-    }},
-    options: {{
-        skipHtmlTags: ["script", "noscript", "style", "textarea", "pre"]
+        inlineMath: [["\\\\(", "\\\\)"]],
+        displayMath: [["\\\\[", "\\\\]"]]
     }},
     startup: {{
         ready() {{
             MathJax.startup.defaultReady();
-            MathJax.startup.promise.then(() => {{
-                MathJax.typesetPromise();
-            }});
+            MathJax.startup.promise.then(() => MathJax.typesetPromise());
         }}
     }}
 }};
 </script>
-<script id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 <style>
 body {{ font-family: "Noto Sans TC", sans-serif; line-height: 1.8; padding: 8px; margin: 0; font-size: 14px; }}
 p {{ margin: 8px 0; }}
-.math-block {{ margin: 16px 0; text-align: center; }}
-.math-inline {{ }}
 table {{ border-collapse: collapse; width: 100%; margin: 12px 0; }}
 th, td {{ border: 1px solid #e2e8f0; padding: 8px 12px; }}
 th {{ background: #f1f5f9; }}
-code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 13px; }}
+code {{ background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }}
 </style>
 </head>
-<body>
-{body_html}
-</body>
+<body>{body_html}</body>
 </html>"""
     
-    # 估算高度
-    lines = answer.count("\n") + answer.count("\n\n") * 2 + 3
+    lines = answer.count('\n') + answer.count('\n\n') * 2 + 3
     height = max(120, min(600, lines * 28 + 60))
     st.components.v1.html(html_content, height=height, scrolling=True)
 
