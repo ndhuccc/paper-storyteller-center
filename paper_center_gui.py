@@ -16,7 +16,7 @@ STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
 OLLAMA_BASE_URL = "http://localhost:11434"
 EMBEDDING_MODEL = "qwen3-embedding:8b"  # Qwen3 中文 embedding
-LLM_MODEL = "qwen3:8b"
+LLM_MODEL = "deepseek-r1:8b"
 
 # ==================== 頁面設定 ====================
 st.set_page_config(
