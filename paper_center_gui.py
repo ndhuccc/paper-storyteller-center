@@ -202,7 +202,7 @@ p {{ margin: 8px 0; }}
 </html>"""
     
     # 估算高度
-    lines = answer.count("\n") + len(paragraphs) * 2 + 3
+    lines = answer.count("\n") + answer.count("\n\n") * 2 + 3
     height = max(120, min(600, lines * 28 + 60))
     st.components.v1.html(html_content, height=height, scrolling=True)
 
