@@ -276,7 +276,21 @@ def main():
                         col_info, col_btn = st.columns([4, 1])
                         with col_info:
                             st.markdown(f"**{i+1}. {r.get('title','未知')}**")
-                            st.caption(f"📅 {r.get('date','未知')}　✍️ {r.get('authors','未知')[:40]}")
+                            # 計算餘弦相似度
+                            dist = r.get('_distance', None)
+                            if dist is not None:
+                                similarity = 1.0 - dist
+                                # 顏色塊
+                                if similarity >= 0.5:
+                                    sim_color = "#22c55e"  # 綠色
+                                elif similarity >= 0.3:
+                                    sim_color = "#f59e0b"  # 黃色
+                                else:
+                                    sim_color = "#ef4444"  # 紅色
+                                sim_badge = f'<span style="background:{sim_color};color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 餘弦相似度 {similarity:.2f}</span>'
+                            else:
+                                sim_badge = '<span style="background:#3b82f6;color:white;padding:2px 8px;border-radius:4px;font-size:12px;">📌 關鍵字匹配</span>'
+                            st.markdown(f"📅 {r.get('date','未知')}　✍️ {r.get('authors','未知')[:40]}　{sim_badge}", unsafe_allow_html=True)
                         with col_btn:
                             st.write("")  # 垂直對齊
                             if st.button("📖 閱覽", key=f"view_{i}_{r.get('id')}", use_container_width=True):
