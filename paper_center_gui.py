@@ -152,10 +152,34 @@ def load_paper_html(paper_id: str) -> str:
         filepath = STORYTELLERS_DIR / filename
         if filepath.exists():
             content = filepath.read_text(encoding='utf-8')
-            # 若原始 HTML 沒帶 MathJax，就補上
-            if 'MathJax' not in content and '</head>' in content:
-                mathjax = '<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script><script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>'
-                content = content.replace('</head>', f'{mathjax}</head>')
+            # 若原始 HTML 沒帶 KaTeX，就補上 KaTeX + auto-render，避免 iframe 內 MathJax 載入不穩
+            if 'katex.min.css' not in content and '</head>' in content:
+                katex = """
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  function renderKatexWhenReady() {
+    if (typeof renderMathInElement !== 'function') {
+      setTimeout(renderKatexWhenReady, 80);
+      return;
+    }
+    renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '\\[', right: '\\]', display: true},
+        {left: '$', right: '$', display: false},
+        {left: '\\(', right: '\\)', display: false}
+      ],
+      throwOnError: false
+    });
+  }
+  renderKatexWhenReady();
+});
+</script>
+"""
+                content = content.replace('</head>', f'{katex}</head>')
             
             # 讓 href="#xxx" 在 iframe 內也能正常滾動
             anchor_fix = """
