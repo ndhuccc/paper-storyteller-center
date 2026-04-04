@@ -4,6 +4,7 @@
 from typing import Dict, List, Optional, Tuple
 
 from generation_service import get_job as generation_get_job
+from generation_service import launch_job_background as generation_launch_job_background
 from generation_service import list_jobs as generation_list_jobs
 from generation_service import run_job as generation_run_job
 from generation_service import submit_job as generation_submit_job
@@ -84,3 +85,8 @@ def get_generation_job(job_id: str) -> Optional[Dict]:
 def run_generation_job(job_id: str) -> Optional[Dict]:
     """Run one storyteller generation job via stub pipeline."""
     return generation_run_job(job_id)
+
+
+def launch_generation_job(job_id: str) -> Optional[Dict]:
+    """Launch one storyteller generation job in detached background process."""
+    return generation_launch_job_background(job_id)

@@ -15,10 +15,10 @@ from typing import List, Dict
 from center_service import answer as service_answer
 from center_service import get_all_papers
 from center_service import get_generation_job
+from center_service import launch_generation_job
 from center_service import load_html as load_paper_html
 from center_service import list_generation_jobs
 from center_service import rebuild_index as service_rebuild_index
-from center_service import run_generation_job
 from center_service import search as service_search
 from center_service import submit_generation_job
 from qa_render import answer_to_mathjax_html
@@ -297,33 +297,20 @@ def render_generation_panel():
                 "auto_index": auto_index,
             }
             try:
-                with st.spinner("提交並執行生成任務中..."):
+                with st.spinner("提交生成任務中..."):
                     job = submit_generation_job(payload=payload)
                     job_id = str(job.get("job_id", "")).strip()
                     if not job_id:
                         raise RuntimeError("job_id is missing in submit response")
-                    executed = run_generation_job(job_id)
-                    latest = get_generation_job(job_id)
-                    final_job = latest or executed or job
+                    launched = launch_generation_job(job_id)
+                    if launched is None:
+                        raise RuntimeError("failed to launch background generation job")
             except Exception as e:
                 st.error(f"生成任務失敗: {e}")
             else:
-                st.session_state.last_generation_job_id = str(final_job.get("job_id", ""))
-                status = str(final_job.get("status", "unknown"))
-                if status == "succeeded":
-                    output_path = (
-                        (final_job.get("result") or {}).get("output_path")
-                        if isinstance(final_job.get("result"), dict)
-                        else None
-                    )
-                    if output_path:
-                        st.success(f"✅ 任務完成，輸出：{output_path}")
-                    else:
-                        st.success("✅ 任務完成")
-                elif status == "failed":
-                    st.error(f"❌ 任務失敗：{final_job.get('error', 'unknown error')}")
-                else:
-                    st.info(f"任務狀態：{status}")
+                st.session_state.last_generation_job_id = job_id
+                st.success(f"✅ 任務已提交：{job_id[:8]}（背景執行中）")
+                st.caption("請在下方任務列表追蹤狀態。")
                 st.rerun()
 
     st.caption("最近任務（最多 8 筆）")

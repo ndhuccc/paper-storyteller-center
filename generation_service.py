@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Generation job service for storyteller pipeline orchestration."""
 
+import argparse
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -260,6 +263,8 @@ class GenerationService:
         job = self.store.get_job(job_id)
         if not job:
             return None
+        if job.get("status") != STATUS_PENDING:
+            return job
 
         payload = job.get("payload", {})
         if not isinstance(payload, dict):
@@ -318,6 +323,26 @@ class GenerationService:
                 },
             )
 
+    def launch_job_background(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Launch one generation job in a detached background Python process."""
+        job = self.store.get_job(job_id)
+        if not job:
+            return None
+        if job.get("status") != STATUS_PENDING:
+            return job
+
+        module_dir = Path(__file__).resolve().parent
+        cmd = [sys.executable, "-m", "generation_service", "--run-job", job_id]
+        subprocess.Popen(
+            cmd,
+            cwd=str(module_dir),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        return job
+
 
 _service = GenerationService()
 
@@ -340,3 +365,27 @@ def list_jobs(limit: int = 20, status: Optional[str] = None) -> List[Dict[str, A
 def run_job(job_id: str) -> Optional[Dict[str, Any]]:
     """Run one generation job with stub pipeline."""
     return _service.run_job(job_id)
+
+
+def launch_job_background(job_id: str) -> Optional[Dict[str, Any]]:
+    """Launch one generation job in background process."""
+    return _service.launch_job_background(job_id)
+
+
+def _build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Generation job runner")
+    parser.add_argument("--run-job", dest="run_job_id", help="Run one job by job id")
+    return parser
+
+
+def _main(argv: Optional[List[str]] = None) -> int:
+    parser = _build_arg_parser()
+    args = parser.parse_args(argv)
+
+    if args.run_job_id:
+        run_job(args.run_job_id)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main())
