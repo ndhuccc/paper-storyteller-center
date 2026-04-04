@@ -257,7 +257,8 @@ def rebuild_index() -> bool:
         return False
 
     try:
-        if "papers" in db.list_tables():
+        tables = set(db.list_tables().tables)
+        if "papers" in tables:
             db.drop_table("papers")
         tbl = create_table(db)
         if tbl is None:
