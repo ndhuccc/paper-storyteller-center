@@ -261,7 +261,7 @@ def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str]]:
         sample_file = genai.upload_file(path=str(pdf_path))
         _wait_for_gemini_file_ready(sample_file.name)
 
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         try:
             response = model.generate_content(
                 [sample_file, GEMINI_EXTRACTION_PROMPT],
