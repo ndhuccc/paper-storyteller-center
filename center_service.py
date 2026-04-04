@@ -3,9 +3,11 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from generation_service import cancel_job as generation_cancel_job
 from generation_service import get_job as generation_get_job
 from generation_service import launch_job_background as generation_launch_job_background
 from generation_service import list_jobs as generation_list_jobs
+from generation_service import retry_job as generation_retry_job
 from generation_service import run_job as generation_run_job
 from generation_service import submit_job as generation_submit_job
 from html_loader import load_paper_html as service_load_paper_html
@@ -120,3 +122,13 @@ def run_generation_job(job_id: str) -> Optional[Dict]:
 def launch_generation_job(job_id: str) -> Optional[Dict]:
     """Launch one storyteller generation job in detached background process."""
     return generation_launch_job_background(job_id)
+
+
+def retry_generation_job(job_id: str) -> Optional[Dict]:
+    """Retry one storyteller generation job in detached background process."""
+    return generation_retry_job(job_id)
+
+
+def cancel_generation_job(job_id: str) -> Optional[Dict]:
+    """Soft-cancel one pending/running storyteller generation job."""
+    return generation_cancel_job(job_id)

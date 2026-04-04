@@ -24,6 +24,7 @@ STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
 STATUS_SUCCEEDED = "succeeded"
 STATUS_FAILED = "failed"
+STATUS_CANCELED = "canceled"
 AUTO_INDEX_MODE_FULL_REBUILD = "full_rebuild"
 AUTO_INDEX_REQUIRED_MODULES: Tuple[str, ...] = ("lancedb",)
 
@@ -595,6 +596,12 @@ class GenerationService:
         if not isinstance(payload, dict):
             payload = {}
 
+        latest = self.store.get_job(job_id)
+        if not latest:
+            return None
+        if latest.get("status") != STATUS_PENDING:
+            return latest
+
         started_at = _utc_now_iso()
         job = self.store.update_job(
             job_id,
@@ -608,8 +615,16 @@ class GenerationService:
         if not job:
             return None
 
+        latest = self.store.get_job(job_id)
+        if latest and latest.get("status") == STATUS_CANCELED:
+            return latest
+
         try:
             pipeline_output = run_storyteller_pipeline(job)
+            latest = self.store.get_job(job_id)
+            if latest and latest.get("status") == STATUS_CANCELED:
+                return latest
+
             completed_at = _utc_now_iso()
             result = _build_success_result(
                 job=job,
@@ -629,6 +644,10 @@ class GenerationService:
                 },
             )
         except Exception as exc:
+            latest = self.store.get_job(job_id)
+            if latest and latest.get("status") == STATUS_CANCELED:
+                return latest
+
             completed_at = _utc_now_iso()
             result = _build_failed_result(
                 job=job,
@@ -675,6 +694,66 @@ class GenerationService:
         )
         return job
 
+    def retry_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Reset a finished job to pending, then relaunch in background."""
+        job = self.store.get_job(job_id)
+        if not job:
+            return None
+
+        if job.get("status") not in {STATUS_FAILED, STATUS_SUCCEEDED, STATUS_CANCELED}:
+            return job
+
+        now = _utc_now_iso()
+        retry_count_raw = job.get("retry_count", 0)
+        try:
+            retry_count = int(retry_count_raw)
+        except (TypeError, ValueError):
+            retry_count = 0
+
+        reset_job = self.store.update_job(
+            job_id,
+            {
+                "status": STATUS_PENDING,
+                "updated_at": now,
+                "started_at": None,
+                "completed_at": None,
+                "result": None,
+                "error": None,
+                "canceled_at": None,
+                "retry_count": max(retry_count, 0) + 1,
+                "last_retried_at": now,
+            },
+        )
+        if not reset_job:
+            return None
+
+        launched = self.launch_job_background(job_id)
+        if launched is None:
+            return self.store.get_job(job_id)
+        return launched
+
+    def cancel_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        """Soft-cancel one pending/running job."""
+        job = self.store.get_job(job_id)
+        if not job:
+            return None
+
+        current_status = str(job.get("status", "")).strip()
+        if current_status in {STATUS_SUCCEEDED, STATUS_FAILED, STATUS_CANCELED}:
+            return job
+        if current_status not in {STATUS_PENDING, STATUS_RUNNING}:
+            return job
+
+        now = _utc_now_iso()
+        updates: Dict[str, Any] = {
+            "status": STATUS_CANCELED,
+            "updated_at": now,
+            "completed_at": now,
+            "canceled_at": now,
+            "error": "canceled by user",
+        }
+        return self.store.update_job(job_id, updates)
+
 
 _service = GenerationService()
 
@@ -702,6 +781,16 @@ def run_job(job_id: str) -> Optional[Dict[str, Any]]:
 def launch_job_background(job_id: str) -> Optional[Dict[str, Any]]:
     """Launch one generation job in background process."""
     return _service.launch_job_background(job_id)
+
+
+def retry_job(job_id: str) -> Optional[Dict[str, Any]]:
+    """Retry one generation job by job id."""
+    return _service.retry_job(job_id)
+
+
+def cancel_job(job_id: str) -> Optional[Dict[str, Any]]:
+    """Cancel one generation job by job id."""
+    return _service.cancel_job(job_id)
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:

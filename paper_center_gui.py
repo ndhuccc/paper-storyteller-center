@@ -14,6 +14,7 @@ from typing import Any, Dict, List
 
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from center_service import answer as service_answer
+from center_service import cancel_generation_job
 from center_service import get_all_papers
 from center_service import get_generation_job
 from center_service import is_paper_ready
@@ -23,6 +24,7 @@ from center_service import list_generation_jobs
 from center_service import normalize_paper
 from center_service import rebuild_index as service_rebuild_index
 from center_service import resolve_generation_manifest_paper
+from center_service import retry_generation_job
 from center_service import search as service_search
 from center_service import submit_generation_job
 from paper_repository import PAPER_STATUS_GENERATED_NOT_INDEXED
@@ -777,6 +779,40 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             st.write(f"auto_index_duration_ms: {info['auto_index_duration_ms']}")
             st.write(f"auto_index_manifest: {info['auto_index_manifest_summary']}")
             st.write(f"updated_at: {info['updated_at']}")
+
+            job_id_full = info["job_id_full"]
+            status = str(info["status"]).strip().lower()
+            if status == "failed":
+                if st.button(
+                    "🔄 重試任務",
+                    key=f"retry_job_{job_id_full}",
+                    use_container_width=True,
+                ):
+                    try:
+                        retried = retry_generation_job(job_id_full)
+                        if retried is None:
+                            raise RuntimeError("retry request returned None")
+                    except Exception as e:
+                        st.error(f"重試任務失敗: {e}")
+                    else:
+                        st.success("已送出重試，任務將於背景執行。")
+                        st.rerun()
+
+            if status in {"pending", "running"}:
+                if st.button(
+                    "🛑 取消任務",
+                    key=f"cancel_job_{job_id_full}",
+                    use_container_width=True,
+                ):
+                    try:
+                        canceled = cancel_generation_job(job_id_full)
+                        if canceled is None:
+                            raise RuntimeError("cancel request returned None")
+                    except Exception as e:
+                        st.error(f"取消任務失敗: {e}")
+                    else:
+                        st.success("任務已標記為取消。")
+                        st.rerun()
 
             if info["warnings"]:
                 st.write(f"warnings ({info['warnings_count']}):")
