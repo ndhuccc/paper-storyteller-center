@@ -12,18 +12,12 @@ import streamlit as st
 from typing import List, Dict
 
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
+from center_service import answer as service_answer
+from center_service import get_all_papers
+from center_service import load_html as load_paper_html
+from center_service import rebuild_index as service_rebuild_index
+from center_service import search as service_search
 from qa_render import answer_to_mathjax_html
-from qa_service import answer_with_search as service_answer_with_search
-from qa_service import build_gui_prompt
-from html_loader import load_paper_html
-from paper_repository import get_all_papers
-from retrieval_service import clear_lance_db_cache
-from retrieval_service import rebuild_index as service_rebuild_index
-from retrieval_service import search_papers as service_search_papers
-
-# ==================== 配置 ====================
-OLLAMA_BASE_URL = "http://localhost:11434"
-LLM_MODEL = "deepseek-r1:8b"
 
 # ==================== 頁面設定 ====================
 st.set_page_config(
@@ -49,7 +43,7 @@ st.markdown("""
 def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0) -> List[Dict]:
     """純向量搜尋：以 chunk 為單位搜尋，再依論文去重。"""
     try:
-        return service_search_papers(query, top_k=top_k, similarity_threshold=similarity_threshold)
+        return service_search(query, top_k=top_k, similarity_threshold=similarity_threshold)
     except Exception as e:
         st.error(f"搜尋錯誤: {e}")
         return []
@@ -57,18 +51,7 @@ def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0
 
 def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[str, List[Dict]]:
     """根據指定論文或自動搜尋結果，產生 Q&A 回答。"""
-    return service_answer_with_search(
-        question=question,
-        search_fn=search_papers,
-        top_k=3,
-        model=LLM_MODEL,
-        prompt_builder=build_gui_prompt,
-        context_content_limit=3000,
-        not_found_message="抱歉，沒有找到相關論文內容。",
-        error_prefix="生成錯誤：",
-        ollama_base_url=OLLAMA_BASE_URL,
-        forced_papers=forced_papers,
-    )
+    return service_answer(question=question, forced_papers=forced_papers)
 
 
 def render_answer(answer: str):
@@ -106,7 +89,6 @@ def maybe_show_open_paper_dialog():
 def rebuild_index():
     """重建向量索引。"""
     if service_rebuild_index():
-        clear_lance_db_cache()
         st.success("✅ 完成！")
         st.cache_resource.clear()
         st.rerun()
