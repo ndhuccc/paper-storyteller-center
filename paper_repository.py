@@ -16,6 +16,85 @@ from typing import Any, Dict, List, Optional, Union
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
 
+MANIFEST_SOURCE_INDEX_AND_HTML = "index_and_html"
+MANIFEST_SOURCE_HTML_ONLY = "html_only"
+MANIFEST_SOURCE_INDEX_ONLY = "index_only"
+MANIFEST_SOURCE_UNKNOWN = "unknown"
+
+PAPER_STATUS_READY = "ready"
+PAPER_STATUS_GENERATED_NOT_INDEXED = "generated_not_indexed"
+PAPER_STATUS_INDEX_ONLY = "index_only"
+PAPER_STATUS_UNAVAILABLE = "unavailable"
+
+_MANIFEST_SOURCES = {
+    MANIFEST_SOURCE_INDEX_AND_HTML,
+    MANIFEST_SOURCE_HTML_ONLY,
+    MANIFEST_SOURCE_INDEX_ONLY,
+    MANIFEST_SOURCE_UNKNOWN,
+}
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on", "y"}
+    return False
+
+
+def _manifest_source_from_flags(has_html: bool, is_indexed: bool) -> str:
+    if has_html and is_indexed:
+        return MANIFEST_SOURCE_INDEX_AND_HTML
+    if has_html:
+        return MANIFEST_SOURCE_HTML_ONLY
+    if is_indexed:
+        return MANIFEST_SOURCE_INDEX_ONLY
+    return MANIFEST_SOURCE_UNKNOWN
+
+
+def resolve_paper_status(has_html: Any, is_indexed: Any, manifest_source: Any = "") -> str:
+    """Resolve canonical paper status for center-facing usage."""
+    source = str(manifest_source or "").strip().lower()
+    if source == MANIFEST_SOURCE_INDEX_AND_HTML:
+        return PAPER_STATUS_READY
+    if source == MANIFEST_SOURCE_HTML_ONLY:
+        return PAPER_STATUS_GENERATED_NOT_INDEXED
+    if source == MANIFEST_SOURCE_INDEX_ONLY:
+        return PAPER_STATUS_INDEX_ONLY
+
+    html_flag = _as_bool(has_html)
+    indexed_flag = _as_bool(is_indexed)
+    if html_flag and indexed_flag:
+        return PAPER_STATUS_READY
+    if html_flag and not indexed_flag:
+        return PAPER_STATUS_GENERATED_NOT_INDEXED
+    if indexed_flag and not html_flag:
+        return PAPER_STATUS_INDEX_ONLY
+    return PAPER_STATUS_UNAVAILABLE
+
+
+def normalize_manifest_paper(paper: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize one manifest row so status/source/flags are explicit and stable."""
+    item = dict(paper)
+    has_html = _as_bool(item.get("has_html"))
+    is_indexed = _as_bool(item.get("is_indexed"))
+
+    manifest_source = str(item.get("manifest_source", "")).strip().lower()
+    if manifest_source not in _MANIFEST_SOURCES:
+        manifest_source = _manifest_source_from_flags(has_html=has_html, is_indexed=is_indexed)
+
+    item["has_html"] = has_html
+    item["is_indexed"] = is_indexed
+    item["manifest_source"] = manifest_source
+    item["paper_status"] = resolve_paper_status(
+        has_html=has_html,
+        is_indexed=is_indexed,
+        manifest_source=manifest_source,
+    )
+    return item
+
 
 @lru_cache(maxsize=1)
 def _get_lance_db():
@@ -70,7 +149,7 @@ def parse_paper_metadata(html_path: Union[str, Path]) -> Optional[Dict]:
         "content": plain_text,
         "has_html": True,
         "is_indexed": False,
-        "manifest_source": "html_only",
+        "manifest_source": MANIFEST_SOURCE_HTML_ONLY,
     }
 
 
@@ -139,10 +218,10 @@ def get_indexed_papers() -> List[Dict]:
                 "content": row.get("content") or "",
                 "has_html": filepath.exists(),
                 "is_indexed": True,
-                "manifest_source": "index_only",
+                "manifest_source": MANIFEST_SOURCE_INDEX_ONLY,
             }
 
-        return list(seen.values())
+        return [normalize_manifest_paper(item) for item in seen.values()]
     except Exception:
         return []
 
@@ -179,14 +258,14 @@ def merge_paper_sources(html_papers: List[Dict], indexed_papers: List[Dict]) -> 
                     "content": _prefer(indexed.get("content"), html.get("content")) or "",
                     "has_html": True,
                     "is_indexed": True,
-                    "manifest_source": "index_and_html",
+                    "manifest_source": MANIFEST_SOURCE_INDEX_AND_HTML,
                 }
             )
         else:
             item = dict(indexed)
             item["paper_id"] = pid
             item["is_indexed"] = True
-            item["manifest_source"] = "index_only"
+            item["manifest_source"] = MANIFEST_SOURCE_INDEX_ONLY
             item["has_html"] = bool(item.get("has_html"))
             merged.append(item)
 
@@ -196,10 +275,10 @@ def merge_paper_sources(html_papers: List[Dict], indexed_papers: List[Dict]) -> 
         html["id"] = html.get("id") or pid
         html["has_html"] = True
         html["is_indexed"] = False
-        html["manifest_source"] = "html_only"
+        html["manifest_source"] = MANIFEST_SOURCE_HTML_ONLY
         merged.append(html)
 
-    return merged
+    return [normalize_manifest_paper(item) for item in merged]
 
 
 def build_paper_manifest() -> List[Dict]:

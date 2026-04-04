@@ -9,7 +9,9 @@ from generation_service import list_jobs as generation_list_jobs
 from generation_service import run_job as generation_run_job
 from generation_service import submit_job as generation_submit_job
 from html_loader import load_paper_html as service_load_paper_html
+from paper_repository import PAPER_STATUS_READY
 from paper_repository import get_all_papers as repository_get_all_papers
+from paper_repository import normalize_manifest_paper
 from qa_service import answer_with_search as service_answer_with_search
 from qa_service import build_gui_prompt
 from retrieval_service import clear_lance_db_cache
@@ -25,7 +27,17 @@ QAResult = Tuple[str, List[Dict]]
 
 def list_papers() -> List[Dict]:
     """List repository paper manifest (indexed and/or html-available)."""
-    return repository_get_all_papers()
+    return [normalize_manifest_paper(paper) for paper in repository_get_all_papers()]
+
+
+def normalize_paper(paper: Dict) -> Dict:
+    """Normalize one paper manifest row for stable center usage."""
+    return normalize_manifest_paper(paper)
+
+
+def is_paper_ready(paper: Dict) -> bool:
+    """Whether paper can safely enter retrieval/Q&A flow."""
+    return normalize_manifest_paper(paper).get("paper_status") == PAPER_STATUS_READY
 
 
 def get_all_papers() -> List[Dict]:

@@ -16,9 +16,11 @@ from typing import Any, Dict, List
 from center_service import answer as service_answer
 from center_service import get_all_papers
 from center_service import get_generation_job
+from center_service import is_paper_ready
 from center_service import launch_generation_job
 from center_service import load_html as load_paper_html
 from center_service import list_generation_jobs
+from center_service import normalize_paper
 from center_service import rebuild_index as service_rebuild_index
 from center_service import search as service_search
 from center_service import submit_generation_job
@@ -150,6 +152,19 @@ def similarity_badge(result: Dict) -> str:
     )
 
 
+def _paper_status_badge_text(paper: Dict[str, Any]) -> str:
+    status = str(paper.get("paper_status", "")).strip()
+    if status == "ready":
+        return "[ready]"
+    if status == "generated_not_indexed":
+        return "[generated_not_indexed]"
+    if status == "index_only":
+        return "[index_only]"
+    if status:
+        return f"[{status}]"
+    return "[unavailable]"
+
+
 def render_sidebar(all_papers: List[Dict]):
     """渲染側邊欄：統計、重建索引、論文列表。"""
     with st.sidebar:
@@ -164,8 +179,15 @@ def render_sidebar(all_papers: List[Dict]):
         st.divider()
         st.header("📚 所有論文")
         for paper in all_papers:
-            if st.button(f"📄 {paper.get('title', '?')[:28]}...", key=f"sidebar_{paper.get('id')}"):
-                st.session_state.open_paper = paper
+            normalized = normalize_paper(paper)
+            paper_id = str(normalized.get("paper_id", normalized.get("id", ""))).strip()
+            button_title = str(normalized.get("title", "?"))[:24]
+            badge = _paper_status_badge_text(normalized)
+            if st.button(
+                f"📄 {badge} {button_title}...",
+                key=f"sidebar_{paper_id or normalized.get('id')}",
+            ):
+                st.session_state.open_paper = normalized
                 st.rerun()
 
 
@@ -548,12 +570,12 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
     job_summaries = [_build_generation_job_summary(job) for job in recent_jobs]
     st.dataframe(_build_generation_rows(job_summaries), use_container_width=True)
 
-    indexed_papers_by_id: Dict[str, Dict[str, Any]] = {}
+    papers_by_id: Dict[str, Dict[str, Any]] = {}
     for paper in all_papers:
-        paper_id = str(paper.get("paper_id", paper.get("id", ""))).strip()
-        is_indexed = bool(paper.get("is_indexed", True))
-        if paper_id and is_indexed and paper_id not in indexed_papers_by_id:
-            indexed_papers_by_id[paper_id] = paper
+        normalized = normalize_paper(paper)
+        paper_id = str(normalized.get("paper_id", normalized.get("id", ""))).strip()
+        if paper_id and paper_id not in papers_by_id:
+            papers_by_id[paper_id] = normalized
 
     st.caption("點開可查看每筆任務細節")
     for info in job_summaries:
@@ -612,13 +634,15 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             if output_exists:
                 output_exists = Path(output_path).expanduser().exists()
 
-            indexed_paper = indexed_papers_by_id.get(paper_id)
+            manifest_paper = papers_by_id.get(paper_id)
+            paper_status = str((manifest_paper or {}).get("paper_status", "unavailable")).strip() or "unavailable"
             title_fallback = paper_id or "這篇論文"
             display_title = _sanitize_title_for_prefill(
-                indexed_paper.get("title") if indexed_paper else "",
+                manifest_paper.get("title") if manifest_paper else "",
                 fallback=title_fallback,
             )
-            can_handoff_to_search_qa = auto_index_ok and indexed_paper is not None
+            can_handoff_to_search_qa = auto_index_ok and bool(manifest_paper) and is_paper_ready(manifest_paper)
+            st.write(f"paper_status: {paper_status}")
 
             col_open, col_search, col_ask = st.columns([1, 1, 1])
             with col_open:
@@ -652,7 +676,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                     use_container_width=True,
                     disabled=not can_handoff_to_search_qa,
                 ):
-                    st.session_state.handoff_prefill_selected_paper = indexed_paper
+                    st.session_state.handoff_prefill_selected_paper = manifest_paper
                     st.session_state.handoff_prefill_question = (
                         f"請幫我整理《{display_title}》的核心貢獻、方法、實驗結果與限制。"
                     )
@@ -661,7 +685,12 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             if not output_exists:
                 st.caption("找不到輸出 HTML，請先確認 output_path 是否存在。")
             elif not can_handoff_to_search_qa:
-                st.caption("尚未完成可用索引，請先重建索引後再使用「搜尋這篇 / 詢問這篇」。")
+                if manifest_paper is None:
+                    st.caption("尚未在 paper manifest 找到這篇輸出內容，請稍後刷新或重建索引。")
+                else:
+                    st.caption(
+                        f"目前 paper_status={paper_status}，尚未可用於搜尋/Q&A。請先重建索引後再使用「搜尋這篇 / 詢問這篇」。"
+                    )
 
     last_job_id = st.session_state.last_generation_job_id
     if last_job_id:
