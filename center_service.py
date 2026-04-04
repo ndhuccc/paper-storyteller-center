@@ -3,6 +3,10 @@
 
 from typing import Dict, List, Optional, Tuple
 
+from generation_service import get_job as generation_get_job
+from generation_service import list_jobs as generation_list_jobs
+from generation_service import run_job as generation_run_job
+from generation_service import submit_job as generation_submit_job
 from html_loader import load_paper_html as service_load_paper_html
 from paper_repository import get_all_papers as repository_get_all_papers
 from qa_service import answer_with_search as service_answer_with_search
@@ -60,3 +64,23 @@ def rebuild_index() -> bool:
     if ok:
         clear_lance_db_cache()
     return ok
+
+
+def submit_generation_job(payload: Optional[Dict] = None) -> Dict:
+    """Submit a storyteller generation job (skeleton)."""
+    return generation_submit_job(payload=payload)
+
+
+def list_generation_jobs(limit: int = 20, status: Optional[str] = None) -> List[Dict]:
+    """List storyteller generation jobs (skeleton)."""
+    return generation_list_jobs(limit=limit, status=status)
+
+
+def get_generation_job(job_id: str) -> Optional[Dict]:
+    """Get one storyteller generation job (skeleton)."""
+    return generation_get_job(job_id)
+
+
+def run_generation_job(job_id: str) -> Optional[Dict]:
+    """Run one storyteller generation job via stub pipeline."""
+    return generation_run_job(job_id)
