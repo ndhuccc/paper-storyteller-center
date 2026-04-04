@@ -83,7 +83,7 @@ def delete_paper(paper_id: str) -> Dict[str, Any]:
         index_error = "無法連接 LanceDB"
     else:
         try:
-            tables = set(db.list_tables())
+            tables = set(db.list_tables().tables)
             if "papers" in tables:
                 table = db.open_table("papers")
                 table.delete(f"paper_id = {_lancedb_string_literal(normalized_paper_id)}")
