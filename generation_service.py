@@ -10,6 +10,8 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from job_store import JobStore
+from paper_repository import get_all_papers as repository_get_all_papers
+from paper_repository import resolve_manifest_paper_from_generation_output
 from retrieval_service import clear_lance_db_cache
 from retrieval_service import rebuild_index as retrieval_rebuild_index
 from storyteller_pipeline import run_storyteller_pipeline
@@ -19,6 +21,7 @@ STATUS_PENDING = "pending"
 STATUS_RUNNING = "running"
 STATUS_SUCCEEDED = "succeeded"
 STATUS_FAILED = "failed"
+AUTO_INDEX_MODE_FULL_REBUILD = "full_rebuild"
 
 
 def _utc_now_iso() -> str:
@@ -72,6 +75,118 @@ def _coerce_artifacts(raw: Any) -> List[Dict[str, Any]]:
                 artifact["size_bytes"] = artifact_path.stat().st_size
         artifacts.append(artifact)
     return artifacts
+
+
+def _extract_output_filename(*, pipeline_output: Dict[str, Any], output_path: Any) -> str:
+    direct = str(
+        pipeline_output.get("filename")
+        or pipeline_output.get("output_filename")
+        or ""
+    ).strip()
+    if direct:
+        return Path(direct).name
+
+    artifacts = pipeline_output.get("artifacts")
+    if isinstance(artifacts, list):
+        for artifact in artifacts:
+            if not isinstance(artifact, dict):
+                continue
+            if str(artifact.get("type", "")).strip().lower() != "html":
+                continue
+            filename = str(artifact.get("filename", "")).strip()
+            if filename:
+                return Path(filename).name
+            path_value = str(artifact.get("path", "")).strip()
+            if path_value:
+                return Path(path_value).name
+
+    text_path = str(output_path or "").strip()
+    if text_path:
+        return Path(text_path).name
+    return ""
+
+
+def _compact_manifest_paper(paper: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "paper_id": str(paper.get("paper_id", paper.get("id", ""))).strip(),
+        "id": str(paper.get("id", paper.get("paper_id", ""))).strip(),
+        "title": str(paper.get("title", "")).strip(),
+        "filename": str(paper.get("filename", "")).strip(),
+        "filepath": str(paper.get("filepath", "")).strip(),
+        "paper_status": str(paper.get("paper_status", "")).strip(),
+        "manifest_source": str(paper.get("manifest_source", "")).strip(),
+        "has_html": _coerce_bool(paper.get("has_html")),
+        "is_indexed": _coerce_bool(paper.get("is_indexed")),
+    }
+
+
+def _resolve_manifest_link_after_auto_index(
+    *,
+    payload: Dict[str, Any],
+    pipeline_output: Dict[str, Any],
+    output_path: Any,
+) -> Dict[str, Any]:
+    requested_paper_id = str(
+        pipeline_output.get("paper_id")
+        or payload.get("paper_id")
+        or ""
+    ).strip()
+    requested_output_path = str(output_path or "").strip()
+    requested_filename = _extract_output_filename(
+        pipeline_output=pipeline_output,
+        output_path=output_path,
+    )
+
+    resolution: Dict[str, Any] = {
+        "attempted": True,
+        "ok": False,
+        "message": "",
+        "resolved_paper_id": "",
+        "match_rule": "",
+        "requested": {
+            "paper_id": requested_paper_id,
+            "output_path": requested_output_path,
+            "filename": requested_filename,
+        },
+        "paper": None,
+    }
+
+    try:
+        manifest_papers = repository_get_all_papers()
+        matched = resolve_manifest_paper_from_generation_output(
+            manifest_papers,
+            output_path=requested_output_path,
+            filename=requested_filename,
+            paper_id=requested_paper_id,
+        )
+        if not isinstance(matched, dict):
+            resolution["message"] = "manifest resolver returned invalid response"
+            return resolution
+
+        resolution["resolved_paper_id"] = str(matched.get("resolved_paper_id", "")).strip()
+        resolution["match_rule"] = str(matched.get("match_rule", "")).strip()
+
+        matched_paper = matched.get("paper")
+        if isinstance(matched_paper, dict):
+            compact_paper = _compact_manifest_paper(matched_paper)
+            resolution["ok"] = True
+            resolution["paper"] = compact_paper
+            rule = resolution["match_rule"] or "unknown_rule"
+            status = compact_paper.get("paper_status") or "unknown"
+            resolution["message"] = (
+                f"manifest paper resolved by {rule}; paper_status={status}"
+            )
+            if not resolution["resolved_paper_id"]:
+                resolution["resolved_paper_id"] = str(compact_paper.get("paper_id", "")).strip()
+            return resolution
+
+        resolution["ok"] = False
+        resolution["message"] = "manifest paper not uniquely resolved after full rebuild"
+        return resolution
+    except Exception as exc:
+        resolution["ok"] = False
+        resolution["message"] = f"manifest resolution raised {type(exc).__name__}: {exc}"
+        return resolution
 
 
 def _build_success_result(
@@ -130,38 +245,102 @@ def _build_success_result(
         },
     }
 
-    result["metadata"]["auto_index"] = {
-        "requested": False,
+    auto_index_requested = _coerce_bool(payload.get("auto_index"))
+    auto_index = {
+        "requested": auto_index_requested,
         "attempted": False,
+        "mode": AUTO_INDEX_MODE_FULL_REBUILD,
+        "state": "not_requested" if not auto_index_requested else "pending",
         "ok": None,
-        "message": None,
+        "message": (
+            "auto-index not requested; mode=full_rebuild"
+            if not auto_index_requested
+            else "auto-index requested; pending full rebuild"
+        ),
+        "started_at": None,
+        "completed_at": None,
+        "duration_ms": None,
+        "manifest_resolution": {
+            "attempted": False,
+            "ok": None,
+            "message": "manifest resolution skipped because auto-index did not run",
+            "resolved_paper_id": "",
+            "match_rule": "",
+            "requested": {
+                "paper_id": str(payload.get("paper_id", "")).strip(),
+                "output_path": str(output_html_path or "").strip(),
+                "filename": _extract_output_filename(
+                    pipeline_output=pipeline_output,
+                    output_path=output_html_path,
+                ),
+            },
+            "paper": None,
+        },
     }
+    result["metadata"]["auto_index"] = auto_index
 
-    if _coerce_bool(payload.get("auto_index")):
-        auto_index = {
-            "requested": True,
-            "attempted": True,
-            "ok": False,
-            "message": None,
-        }
+    if auto_index_requested:
+        auto_index_started_at = _utc_now_iso()
+        auto_index["attempted"] = True
+        auto_index["started_at"] = auto_index_started_at
         try:
             rebuild_ok = retrieval_rebuild_index()
+            auto_index_completed_at = _utc_now_iso()
+            auto_index["completed_at"] = auto_index_completed_at
+            auto_index["duration_ms"] = _elapsed_ms(auto_index_started_at, auto_index_completed_at)
             if rebuild_ok:
                 clear_lance_db_cache()
                 auto_index["ok"] = True
-                auto_index["message"] = "Index rebuild completed"
+                auto_index["state"] = "succeeded"
+                auto_index["message"] = "auto-index full rebuild completed"
+
+                manifest_resolution = _resolve_manifest_link_after_auto_index(
+                    payload=payload,
+                    pipeline_output=pipeline_output,
+                    output_path=output_html_path,
+                )
+                auto_index["manifest_resolution"] = manifest_resolution
+
+                if manifest_resolution.get("ok") is True:
+                    resolved_paper_id = str(manifest_resolution.get("resolved_paper_id", "")).strip()
+                    if resolved_paper_id:
+                        result["paper_id"] = resolved_paper_id
+                        result["output"]["paper_id"] = resolved_paper_id
+                        result["metadata"]["paper_id"] = resolved_paper_id
+                    manifest_paper = manifest_resolution.get("paper")
+                    if isinstance(manifest_paper, dict):
+                        result["metadata"]["manifest_paper"] = manifest_paper
+                else:
+                    result["warnings"].append(
+                        "auto_index succeeded but generated output was not uniquely resolved in manifest"
+                    )
             else:
-                auto_index["message"] = "Index rebuild returned False"
+                auto_index["ok"] = False
+                auto_index["state"] = "failed"
+                auto_index["message"] = "auto-index full rebuild returned False"
+                auto_index["manifest_resolution"] = {
+                    **auto_index["manifest_resolution"],
+                    "message": "manifest resolution skipped because full rebuild failed",
+                }
                 result["warnings"].append("auto_index requested but index rebuild failed")
                 result["errors"].append(
                     {
                         "stage": "auto_index",
                         "type": "IndexRebuildFailed",
-                        "message": "Index rebuild returned False",
+                        "message": "auto-index full rebuild returned False",
                     }
                 )
         except Exception as exc:
-            auto_index["message"] = f"{type(exc).__name__}: {exc}"
+            auto_index_completed_at = _utc_now_iso()
+            auto_index["completed_at"] = auto_index_completed_at
+            auto_index["duration_ms"] = _elapsed_ms(auto_index_started_at, auto_index_completed_at)
+            auto_index["ok"] = False
+            auto_index["state"] = "error"
+            auto_index["message"] = f"auto-index full rebuild raised {type(exc).__name__}: {exc}"
+            auto_index["manifest_resolution"] = {
+                **auto_index["manifest_resolution"],
+                "message": "manifest resolution skipped because full rebuild raised exception",
+            }
             result["warnings"].append("auto_index requested but index rebuild raised exception")
             result["errors"].append(
                 {
@@ -170,7 +349,6 @@ def _build_success_result(
                     "message": str(exc),
                 }
             )
-        result["metadata"]["auto_index"] = auto_index
 
     return result
 
@@ -224,8 +402,26 @@ def _build_failed_result(
             "auto_index": {
                 "requested": _coerce_bool(payload.get("auto_index")),
                 "attempted": False,
+                "mode": AUTO_INDEX_MODE_FULL_REBUILD,
+                "state": "skipped_pipeline_failed",
                 "ok": None,
-                "message": "pipeline failed before auto-index",
+                "message": "pipeline failed before auto-index full rebuild",
+                "started_at": None,
+                "completed_at": None,
+                "duration_ms": None,
+                "manifest_resolution": {
+                    "attempted": False,
+                    "ok": None,
+                    "message": "manifest resolution skipped because pipeline failed before auto-index",
+                    "resolved_paper_id": "",
+                    "match_rule": "",
+                    "requested": {
+                        "paper_id": str(payload.get("paper_id", "")).strip(),
+                        "output_path": "",
+                        "filename": "",
+                    },
+                    "paper": None,
+                },
             },
         },
     }
