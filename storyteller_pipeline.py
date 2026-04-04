@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import html
 import json
+import markdown
 import re
 import shutil
 import subprocess
@@ -41,9 +42,15 @@ HEADING_HINTS = (
 )
 
 STYLE_PROMPTS: Dict[str, str] = {
-    "storyteller": """說書人（生活化類比，重點在「為什麼」）
-- 用生活化類比解釋觀念，優先回答「為什麼這樣設計」與「為什麼有效」。
-- 讓讀者先理解核心動機，再補充方法細節與影響。""",
+    "storyteller": """說書人（生活化類比 + Why-first + 公式拆解）
+- 先講「為什麼」：每段都要先回答這個設計在解決什麼痛點、為何這樣做會有效。
+- 多用生活化類比：把抽象概念對照到日常情境（交通、廚房、工廠、排隊、導航、團隊協作等）。
+- 內容節奏：先動機與直覺，再方法步驟，最後講效益、限制與適用情境。
+- 公式硬性規則（必須遵守）：
+  1) 看到公式一定要拆解：逐一說明變數代表什麼與彼此關係。
+  2) 一定要提供「白話文字版」公式意思（不只貼 LaTeX）。
+  3) 一定要給一個具體數值例子（代入合理數字，算出結果並解讀意義）。
+  4) 保留原始 LaTeX，不得改寫成錯誤的偽公式。""",
     "blog": """科普部落格（鉤子句 + 段落標題 + 結尾留問題）
 - 第一段先用一句有吸引力的鉤子句開場。
 - 內文用 2-3 個短標題分段（例如【問題背景】、【方法重點】）。
@@ -358,13 +365,14 @@ def _split_into_sections(extracted_text: str) -> List[Dict[str, str]]:
         if inline_heading is not None:
             heading, body = inline_heading
             if current_paragraphs:
-                sections.append(
-                    {
-                        "title": current_title,
-                        "source_text": "\n\n".join(current_paragraphs).strip(),
-                    }
+                _append_or_merge_section(
+                    sections=sections,
+                    title=current_title,
+                    source_text="\n\n".join(current_paragraphs).strip(),
                 )
                 current_paragraphs = []
+            if _same_heading(heading, current_title) and not body:
+                continue
             current_title = heading
             if body:
                 current_paragraphs.append(body)
@@ -372,28 +380,45 @@ def _split_into_sections(extracted_text: str) -> List[Dict[str, str]]:
 
         if _looks_like_heading(block):
             if current_paragraphs:
-                sections.append(
-                    {
-                        "title": current_title,
-                        "source_text": "\n\n".join(current_paragraphs).strip(),
-                    }
+                _append_or_merge_section(
+                    sections=sections,
+                    title=current_title,
+                    source_text="\n\n".join(current_paragraphs).strip(),
                 )
                 current_paragraphs = []
+            if _same_heading(block, current_title):
+                continue
             current_title = block
             continue
         current_paragraphs.append(block)
 
     if current_paragraphs:
-        sections.append(
-            {
-                "title": current_title,
-                "source_text": "\n\n".join(current_paragraphs).strip(),
-            }
+        _append_or_merge_section(
+            sections=sections,
+            title=current_title,
+            source_text="\n\n".join(current_paragraphs).strip(),
         )
 
     if not sections:
         return [{"title": "Content", "source_text": "\n\n".join(blocks)}]
     return sections
+
+
+def _append_or_merge_section(*, sections: List[Dict[str, str]], title: str, source_text: str) -> None:
+    text = source_text.strip()
+    if not text:
+        return
+    if sections and _same_heading(sections[-1].get("title", ""), title):
+        previous = str(sections[-1].get("source_text", "")).strip()
+        sections[-1]["source_text"] = f"{previous}\n\n{text}".strip() if previous else text
+        return
+    sections.append({"title": title, "source_text": text})
+
+
+def _same_heading(left: str, right: str) -> bool:
+    left_key = re.sub(r"\s+", " ", str(left or "")).strip().casefold()
+    right_key = re.sub(r"\s+", " ", str(right or "")).strip().casefold()
+    return bool(left_key and right_key and left_key == right_key)
 
 
 def _split_inline_heading_block(block: str) -> Optional[Tuple[str, str]]:
@@ -616,7 +641,7 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> 
     clipped = source_text[:3000]
     style_key = _normalize_style(style)
     style_hint = STYLE_PROMPTS.get(style_key, STYLE_PROMPTS[DEFAULT_STYLE])
-    return f"""你是專業論文說書人，請把論文段落改寫成易懂的繁體中文敘事說明。
+    return f"""你是頂尖的論文說書人，請把論文段落改寫成「易懂、可信、具教學感」的繁體中文說明。
 
 改寫風格：
 {style_hint}
@@ -624,8 +649,15 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> 
 規則：
 1. 保留原文技術重點，不要發明新實驗數據。
 2. 保留所有數學式的 LaTeX 分隔符與內容，包含 $...$、$$...$$、\\(...\\)、\\[...\\]，不可改成 Unicode 偽公式。
-3. 輸出 2-4 個短段落，不要使用條列或 markdown 標題。
-4. 如果原文太破碎，先做最小整理再說明，但不要脫離原意。
+3. 請優先說明「為什麼」：為什麼要這樣設計、為什麼這會有效、相比直覺做法差在哪裡。
+4. 使用生活化類比輔助理解，類比必須貼合原意，不能偏離技術內容。
+5. 若內容含有任何公式，必須同時做到三件事：
+   - 逐一解釋變數與公式在做什麼（白話文字版）。
+   - 提供至少一個具體數值代入例子，並算出可解讀的結果。
+   - 解釋這個數字結果在實務上代表什麼意義。
+6. 可使用 Markdown 結構強化可讀性（例如 `**重點**`、清單、短小標），但不要過度冗長。
+7. 如果原文太破碎，先做最小整理再說明，但不要脫離原意。
+8. 直接輸出改寫內容，不要任何開場白、對話語氣或像「好的/以下是改寫」這類前綴。
 
 章節標題：
 {section_title}
@@ -662,7 +694,38 @@ def _call_local_llm(*, prompt: str, model: str, ollama_base_url: str, timeout: i
 
 
 def _strip_thinking_block(text: str) -> str:
-    return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
+    return _strip_conversational_chatter(cleaned)
+
+
+def _strip_conversational_chatter(text: str) -> str:
+    lines = text.splitlines()
+    chatter_patterns = (
+        r"^(?:好的|好|沒問題|當然可以|當然|可以|以下(?:是|為)|以下提供|我將|我會|讓我們|先來|改寫如下|重寫如下|答案如下|說明如下|內容如下)\b",
+        r"^(?:sure|certainly|absolutely|of course|here(?:'s| is)|below(?: is| are)|let'?s)\b",
+    )
+    leading_prefix = re.compile("|".join(f"(?:{pattern})" for pattern in chatter_patterns), flags=re.IGNORECASE)
+
+    idx = 0
+    while idx < len(lines):
+        candidate = lines[idx].strip(" \t`#>*-")
+        if not candidate:
+            idx += 1
+            continue
+        if leading_prefix.match(candidate):
+            idx += 1
+            continue
+        break
+
+    cleaned = "\n".join(lines[idx:]).strip()
+    cleaned = re.sub(
+        r"^\s*(?:好的|好|沒問題|當然可以|當然|可以|以下(?:是|為)|以下提供|改寫如下|重寫如下|答案如下|說明如下|內容如下|sure|certainly|absolutely|of course|here(?:'s| is)|below(?: is| are))\s*[：:，,。\-\s]*",
+        "",
+        cleaned,
+        count=1,
+        flags=re.IGNORECASE,
+    )
+    return cleaned.strip()
 
 
 def _extract_latex_expressions(text: str) -> List[str]:
@@ -863,20 +926,35 @@ def _build_story_html_document(
 
 def _text_to_html_blocks(text: str) -> str:
     protected, formulas = _protect_latex(text)
-    blocks = [block.strip() for block in re.split(r"\n\s*\n+", protected) if block.strip()]
+    markdown_input = _inject_display_formula_blocks(protected, formulas)
+    rendered = markdown.markdown(
+        markdown_input,
+        extensions=["tables", "fenced_code", "nl2br"],
+    )
+    restored = _restore_formula_placeholders(rendered, formulas)
+    restored = re.sub(
+        r"<p>\s*(<div class=\"formula\">.*?</div>)\s*</p>",
+        r"\1",
+        restored,
+        flags=re.DOTALL,
+    )
+    return "\n".join(f"            {line}" for line in restored.splitlines())
 
-    html_blocks: List[str] = []
-    for block in blocks:
-        escaped = html.escape(block).replace("\n", "<br>")
-        restored = _restore_formula_placeholders(escaped, formulas)
-        compact = re.sub(r"\s+", "", restored)
+
+def _inject_display_formula_blocks(text: str, formulas: List[str]) -> str:
+    injected = text
+    for idx, formula in enumerate(formulas):
+        compact = re.sub(r"\s+", "", formula)
         if (compact.startswith("$$") and compact.endswith("$$")) or (
             compact.startswith("\\[") and compact.endswith("\\]")
         ):
-            html_blocks.append(f'            <div class="formula">{restored}</div>')
-        else:
-            html_blocks.append(f"            <p>{restored}</p>")
-    return "\n".join(html_blocks)
+            placeholder = f"{LATEX_PLACEHOLDER}{idx}X"
+            injected = re.sub(
+                rf"(?m)^[ \t]*{re.escape(placeholder)}[ \t]*$",
+                f"\n<div class=\"formula\">{placeholder}</div>\n",
+                injected,
+            )
+    return injected
 
 
 def _protect_latex(text: str) -> Tuple[str, List[str]]:
