@@ -18,6 +18,7 @@ STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 DEFAULT_MODEL = "deepseek-r1:8b"
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_MAX_SECTIONS = 10
+DEFAULT_STYLE = "storyteller"
 LATEX_PLACEHOLDER = "LATEXPH"
 HEADING_HINTS = (
     "abstract",
@@ -36,6 +37,36 @@ HEADING_HINTS = (
     "references",
     "acknowledgement",
 )
+
+STYLE_PROMPTS: Dict[str, str] = {
+    "storyteller": """說書人（生活化類比，重點在「為什麼」）
+- 用生活化類比解釋觀念，優先回答「為什麼這樣設計」與「為什麼有效」。
+- 讓讀者先理解核心動機，再補充方法細節與影響。""",
+    "blog": """科普部落格（鉤子句 + 段落標題 + 結尾留問題）
+- 第一段先用一句有吸引力的鉤子句開場。
+- 內文用 2-3 個短標題分段（例如【問題背景】、【方法重點】）。
+- 最後留下一個延伸思考問題。""",
+    "podcast": """Podcast（口語化、對話感）
+- 用口語自然的語氣，像主持人在向聽眾說明。
+- 允許適度使用「你可以想像」「我們來看」等對話引導句。
+- 內容要順暢、有節奏，但不能偏離原文技術重點。""",
+    "fairy": """童話故事（擬人化、主角/挑戰/勝利結構）
+- 把方法中的關鍵元件擬人化為角色。
+- 結構採「主角 → 挑戰 → 解法/勝利」。
+- 保留技術正確性，不把數學內容改寫成錯誤寓言。""",
+    "lazy": """懶人包（bullet points、圖像化、快速抓重點）
+- 以 4-6 個條列點整理重點，每點一句到兩句。
+- 先講結論，再補充必要背景。
+- 用具象比喻幫助快速理解，但不要發明不存在的結果。""",
+    "question": """問題驅動（先問問題、再逐層解釋）
+- 先提出 1-2 個核心問題引導讀者。
+- 依序回答：問題是什麼 → 為什麼難 → 作者怎麼解。
+- 結尾收斂到實驗結果或限制。""",
+    "log": """實驗日誌（研究過程記錄、工程師視角）
+- 用工程師觀點描述研究流程與決策取捨。
+- 強調「觀察到什麼問題、做了什麼調整、得到什麼結果」。
+- 語氣客觀，像可追蹤的實驗紀錄。""",
+}
 
 
 def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
@@ -62,6 +93,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
     max_sections = _safe_positive_int(payload.get("max_sections"), DEFAULT_MAX_SECTIONS)
     model = str(payload.get("model") or DEFAULT_MODEL)
     ollama_base_url = str(payload.get("ollama_base_url") or DEFAULT_OLLAMA_BASE_URL).rstrip("/")
+    style = _normalize_style(payload.get("style"))
 
     rendered_sections: List[Dict[str, Any]] = []
     llm_failures: List[str] = []
@@ -72,6 +104,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
             source_text=section["source_text"],
             model=model,
             ollama_base_url=ollama_base_url,
+            style=style,
         )
         if failure:
             llm_failures.append(f"section {index}: {failure}")
@@ -105,6 +138,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         "pdf_path": str(pdf_path),
         "output_path": str(output_path),
         "model": model,
+        "style": style,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "sections_generated": len(rendered_sections),
         "steps": [
@@ -123,7 +157,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         "artifacts": [
             {
                 "type": "html",
-                "style": "storyteller",
+                "style": style,
                 "path": str(output_path),
                 "filename": output_path.name,
             }
@@ -326,6 +360,7 @@ def _rewrite_section(
     source_text: str,
     model: str,
     ollama_base_url: str,
+    style: str,
 ) -> Tuple[str, bool, Optional[str]]:
     text = source_text.strip()
     if not text:
@@ -333,7 +368,7 @@ def _rewrite_section(
     if len(text) < 80:
         return text, False, None
 
-    prompt = _build_story_prompt(section_title=section_title, source_text=text)
+    prompt = _build_story_prompt(section_title=section_title, source_text=text, style=style)
     formulas = _extract_latex_expressions(text)
 
     try:
@@ -354,9 +389,14 @@ def _rewrite_section(
     return cleaned, True, None
 
 
-def _build_story_prompt(*, section_title: str, source_text: str) -> str:
+def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> str:
     clipped = source_text[:3000]
+    style_key = _normalize_style(style)
+    style_hint = STYLE_PROMPTS.get(style_key, STYLE_PROMPTS[DEFAULT_STYLE])
     return f"""你是專業論文說書人，請把論文段落改寫成易懂的繁體中文敘事說明。
+
+改寫風格：
+{style_hint}
 
 規則：
 1. 保留原文技術重點，不要發明新實驗數據。
@@ -371,6 +411,13 @@ def _build_story_prompt(*, section_title: str, source_text: str) -> str:
 {clipped}
 
 請直接輸出改寫結果："""
+
+
+def _normalize_style(style: Any) -> str:
+    normalized = str(style or "").strip().lower()
+    if normalized in STYLE_PROMPTS:
+        return normalized
+    return DEFAULT_STYLE
 
 
 def _call_local_llm(*, prompt: str, model: str, ollama_base_url: str, timeout: int = 240) -> str:

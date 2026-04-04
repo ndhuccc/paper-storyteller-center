@@ -31,6 +31,16 @@ from paper_repository import PAPER_STATUS_READY
 from paper_repository import PAPER_STATUS_UNAVAILABLE
 from qa_render import answer_to_mathjax_html
 
+STYLE_LABELS: Dict[str, str] = {
+    "storyteller": "說書人（生活化類比，重點在「為什麼」）",
+    "blog": "科普部落格（鉤子句 + 段落標題 + 結尾留問題）",
+    "podcast": "Podcast（口語化、對話感）",
+    "fairy": "童話故事（擬人化、主角/挑戰/勝利結構）",
+    "lazy": "懶人包（bullet points、圖像化、快速抓重點）",
+    "question": "問題驅動（先問問題、再逐層解釋）",
+    "log": "實驗日誌（研究過程記錄、工程師視角）",
+}
+
 # ==================== 頁面設定 ====================
 st.set_page_config(
     page_title="📚 論文說書人中心",
@@ -640,7 +650,12 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
         placeholder="例如：/home/user/Documents/paper.pdf",
         key="gen_pdf_path",
     )
-    style = st.selectbox("風格", options=["storyteller"], key="gen_style")
+    style = st.selectbox(
+        "風格",
+        options=list(STYLE_LABELS.keys()),
+        format_func=lambda key: f"{key} - {STYLE_LABELS.get(key, key)}",
+        key="gen_style",
+    )
     auto_index = st.checkbox("完成後自動重建索引", value=True, key="gen_auto_index")
 
     if st.button("🚀 提交生成任務", key="gen_submit_btn", use_container_width=True):
