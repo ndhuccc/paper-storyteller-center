@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-"""Repository helpers for Paper Storyteller Center."""
+"""Repository helpers for Paper Storyteller Center.
+
+設計原則：
+1. repository 層不依賴 Streamlit runtime。
+2. 可在 GUI / CLI / background service 中重複使用。
+3. 僅負責 paper metadata 與 paper list 讀取，不承擔 UI 邏輯。
+"""
 
 import re
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, List, Optional, Union
-
-import streamlit as st
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
 
 
-@st.cache_resource
+@lru_cache(maxsize=1)
 def _get_lance_db():
     """Create and cache LanceDB connection for repository queries."""
     try:
