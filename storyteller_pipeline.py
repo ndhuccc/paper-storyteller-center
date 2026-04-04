@@ -122,7 +122,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         llm_failures.append(extraction_warning)
 
     for index, section in enumerate(sections[:max_sections], start=1):
-        rewritten_text, used_llm, failure = _rewrite_section(
+        rewritten_text, terms, formula_explanations, used_llm, failure = _rewrite_section(
             section_title=section["title"],
             source_text=section["source_text"],
             model=model,
@@ -137,6 +137,8 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
                 "title": section["title"],
                 "source_text": section["source_text"],
                 "story_text": rewritten_text,
+                "terms": terms,
+                "formula_explanations": formula_explanations,
                 "used_llm": used_llm,
             }
         )
@@ -853,12 +855,16 @@ def _rewrite_section(
     model: str,
     ollama_base_url: str,
     style: str,
-) -> Tuple[str, bool, Optional[str]]:
+) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str]]:
+    """Rewrite a section into storyteller style.
+    
+    Returns: (story_text, terms, formula_explanations, success, error)
+    """
     text = source_text.strip()
     if not text:
-        return "", False, None
+        return "", [], [], False, None
     if len(text) < 80:
-        return text, False, None
+        return text, [], [], False, None
 
     prompt = _build_story_prompt(section_title=section_title, source_text=text, style=style)
     formulas = _extract_latex_expressions(text)
@@ -870,15 +876,35 @@ def _rewrite_section(
             ollama_base_url=ollama_base_url,
         )
     except Exception as exc:
-        return text, False, f"{type(exc).__name__}: {exc}"
+        return text, [], [], False, f"{type(exc).__name__}: {exc}"
 
-    cleaned = _strip_thinking_block(rewritten).strip() or text
+    # Parse JSON response
+    story_text = text
+    terms: List[Dict[str, str]] = []
+    formula_explanations: List[Dict[str, str]] = []
+
+    try:
+        # Try to find JSON in the response
+        json_match = re.search(r"\{[\s\S]*\}", rewritten)
+        if json_match:
+            parsed = json.loads(json_match.group(0))
+            story_text = parsed.get("story_text", text).strip()
+            terms = parsed.get("terms", [])
+            formula_explanations = parsed.get("formula_explanations", [])
+        else:
+            # Fallback: treat entire response as story text
+            story_text = _strip_thinking_block(rewritten).strip() or text
+    except json.JSONDecodeError:
+        # If JSON parsing fails, use the raw text
+        story_text = _strip_thinking_block(rewritten).strip() or text
+
+    # Check for missing formulas
     if formulas:
-        missing = [formula for formula in formulas if formula not in cleaned]
+        missing = [formula for formula in formulas if formula not in story_text]
         if missing:
-            cleaned = cleaned.rstrip() + "\n\n公式保留：\n" + "\n".join(missing)
+            story_text = story_text.rstrip() + "\n\n公式保留：\n" + "\n".join(missing)
 
-    return cleaned, True, None
+    return story_text, terms, formula_explanations, True, None
 
 
 def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> str:
@@ -909,7 +935,24 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> 
 原文段落：
 {clipped}
 
-請直接輸出改寫結果："""
+請用以下 JSON 格式輸出（務必嚴格遵守 JSON 語法）：
+{{
+    "story_text": "改寫後的說書內容（Markdown 格式）",
+    "terms": [
+        {{"term": "術語1", "explanation": "白話解釋"}},
+        {{"term": "術語2", "explanation": "白話解釋"}}
+    ],
+    "formula_explanations": [
+        {{
+            "formula": "原始 LaTeX 公式",
+            "explanation": "白話解釋（變數代表什麼）",
+            "numerical_example": "數值範例演示（帶入數字、計算過程、意義解讀）"
+        }}
+    ]
+}}
+
+請直接輸出 JSON："""
+
 
 
 def _normalize_style(style: Any) -> str:
@@ -1040,14 +1083,58 @@ def _build_story_html_document(
         safe_title = html.escape(str(section["title"]))
         toc_items.append(f'<li><a href="#{section_id}">Section {idx} - {safe_title}</a></li>')
 
-        story_html = _text_to_html_blocks(str(section["story_text"]))
+        story_html = _text_to_html_blocks(str(section.get("story_text", "")))
+        
+        # Build terms table
+        terms = section.get("terms", [])
+        terms_html = ""
+        if terms:
+            term_rows = []
+            for t in terms:
+                term = html.escape(t.get("term", ""))
+                explanation = html.escape(t.get("explanation", ""))
+                term_rows.append(f"<tr><td><strong>{term}</strong></td><td>{explanation}</td></tr>")
+            terms_html = f"""
+        <div class="terms-box">
+            <h3>📚 技術術語表</h3>
+            <table class="term-table">
+                <tr><th>術語</th><th>白話解釋</th></tr>
+                {''.join(term_rows)}
+            </table>
+        </div>"""
+        
+        # Build formula explanations
+        formula_expls = section.get("formula_explanations", [])
+        formula_html = ""
+        if formula_expls:
+            formula_blocks = []
+            for f in formula_expls:
+                formula = html.escape(f.get("formula", ""))
+                explanation = html.escape(f.get("explanation", ""))
+                example = html.escape(f.get("numerical_example", ""))
+                formula_blocks.append(f"""
+            <div class="formula-box">
+                <div class="formula-content">$${formula}$$</div>
+                <div class="formula-explanation">
+                    <strong>白話解釋：</strong>{explanation}
+                </div>
+                <div class="example-box">
+                    <strong>📊 數值範例演示：</strong><br>
+                    {example}
+                </div>
+            </div>""")
+            formula_html = ''.join(formula_blocks)
+        
         section_items.append(
             f"""
     <section id="{section_id}">
         <h2>Section {idx} - {safe_title}</h2>
         <div class="story-block">
+            <h3>📖 故事化改寫</h3>
 {story_html}
         </div>
+        {formula_html}
+        {terms_html}
     </section>"""
         )
 
@@ -1088,11 +1175,11 @@ def _build_story_html_document(
             max-width: 940px;
             margin: 0 auto;
             padding: 24px;
-            background: #f8fafc;
+            background: #fafafa;
             color: #1e293b;
         }}
         h1 {{
-            color: #1e3a8a;
+            color: #1a1a2e;
             border-bottom: 4px solid #3b82f6;
             padding-bottom: 12px;
             margin-bottom: 8px;
@@ -1126,39 +1213,86 @@ def _build_story_html_document(
         }}
         h2 {{
             color: #1d4ed8;
-            margin-top: 36px;
+            margin-top: 40px;
             font-size: 22px;
             border-left: 5px solid #3b82f6;
             padding-left: 12px;
         }}
+        h3 {{
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }}
         .story-block {{
             background: #ffffff;
             border-radius: 12px;
-            padding: 18px;
+            padding: 20px;
             box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
         }}
         p {{
             margin: 14px 0;
             text-align: justify;
         }}
-        .formula {{
-            overflow-x: auto;
+        .formula-box {{
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            border-left: 4px solid #3b82f6;
             border-radius: 8px;
-            padding: 12px;
-            margin: 12px 0;
-            text-align: center;
+            padding: 16px;
+            margin: 16px 0;
         }}
-        .math.inline {{
-            display: inline-block;
+        .formula-content {{
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }}
+        .formula-explanation {{
+            margin: 12px 0;
+            line-height: 1.6;
+        }}
+        .example-box {{
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }}
+        .terms-box {{
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }}
+        .terms-box h3 {{
+            margin-top: 0;
+            color: #0c4a6e;
+        }}
+        .term-table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }}
+        .term-table th, .term-table td {{
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }}
+        .term-table th {{
+            background: #f1f5f9;
+            color: #1e293b;
+        }}
+        .term-table tr:nth-child(even) {{
+            background: #fafafa;
         }}
     </style>
 </head>
 <body>
     <h1>📚 {safe_title}</h1>
     <div class="meta">
-        <strong>說書人版本（Patch 6A MVP）</strong><br>
+        <strong>說書人版本（v1.5 - 術語表 + 公式詳解）</strong><br>
         Source PDF: {safe_pdf}<br>
         Model: {safe_model}<br>
         Generated at (UTC): {html.escape(generated_at)}

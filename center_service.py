@@ -24,7 +24,7 @@ from retrieval_service import search_papers as service_search_papers
 
 
 OLLAMA_BASE_URL = "http://localhost:11434"
-LLM_MODEL = "deepseek-r1:8b"
+LLM_MODEL = "models/gemini-3.1-flash-lite-preview"
 
 QAResult = Tuple[str, List[Dict]]
 

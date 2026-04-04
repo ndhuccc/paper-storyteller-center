@@ -152,8 +152,15 @@ def create_table(db):
         pa.field("embedding", pa.list_(pa.float32(), list_size=4096)),
     ])
 
+    # Prefer overwrite mode to keep rebuild idempotent across LanceDB versions.
     try:
-        return db.create_table("papers", schema=schema)
+        return db.create_table("papers", schema=schema, mode="overwrite")
+    except TypeError:
+        try:
+            return db.create_table("papers", schema=schema)
+        except Exception as e:
+            print(f"建立表時出錯: {e}")
+            return None
     except Exception as e:
         print(f"建立表時出錯: {e}")
         return None
