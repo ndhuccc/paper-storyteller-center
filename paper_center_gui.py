@@ -9,7 +9,7 @@
 """
 
 import streamlit as st
-from typing import List, Dict
+from typing import Any, Dict, List
 
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from center_service import answer as service_answer
@@ -252,23 +252,177 @@ def render_qa_input_section():
     st.rerun()
 
 
-def _build_generation_rows(jobs: List[Dict]) -> List[Dict]:
+def _as_dict(value: Any) -> Dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    return {}
+
+
+def _as_bool(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on", "y"}
+    return False
+
+
+def _short_text(text: Any, max_len: int = 80) -> str:
+    value = str(text or "").strip()
+    if not value:
+        return "-"
+    if len(value) <= max_len:
+        return value
+    return f"{value[: max_len - 3]}..."
+
+
+def _extract_warnings(result: Dict[str, Any]) -> List[str]:
+    raw = result.get("warnings")
+    if isinstance(raw, list):
+        return [str(item).strip() for item in raw if str(item).strip()]
+    if raw is None:
+        return []
+    warning = str(raw).strip()
+    return [warning] if warning else []
+
+
+def _error_to_text(item: Any) -> str:
+    if isinstance(item, dict):
+        stage = str(item.get("stage", "")).strip()
+        err_type = str(item.get("type", "")).strip()
+        message = str(item.get("message", "")).strip()
+        prefix_parts = [part for part in [stage, err_type] if part]
+        prefix = ":".join(prefix_parts)
+        if prefix and message:
+            return f"{prefix} - {message}"
+        if prefix:
+            return prefix
+        return message
+    return str(item).strip()
+
+
+def _extract_errors(result: Dict[str, Any]) -> List[str]:
+    raw = result.get("errors")
+    if isinstance(raw, list):
+        return [text for text in (_error_to_text(item) for item in raw) if text]
+    if raw is None:
+        return []
+    text = _error_to_text(raw)
+    return [text] if text else []
+
+
+def _step_to_text(step: Any) -> str:
+    if isinstance(step, dict):
+        name = str(step.get("name", step.get("step", step.get("stage", "step")))).strip() or "step"
+        status = str(step.get("status", "")).strip()
+        note = str(step.get("note", "")).strip()
+        if status and note:
+            return f"{name} ({status}) - {note}"
+        if status:
+            return f"{name} ({status})"
+        if note:
+            return f"{name} - {note}"
+        return name
+    return str(step).strip()
+
+
+def _extract_steps(result: Dict[str, Any]) -> List[str]:
+    steps = result.get("steps")
+    if not isinstance(steps, list):
+        steps = _as_dict(result.get("metadata")).get("steps", [])
+    if not isinstance(steps, list):
+        return []
+    return [text for text in (_step_to_text(step) for step in steps) if text]
+
+
+def _summarize_items(items: List[str], max_items: int = 2, max_len: int = 96) -> str:
+    if not items:
+        return "-"
+    preview = items[:max_items]
+    summary = "; ".join(_short_text(item, max_len=max_len) for item in preview)
+    extra = len(items) - len(preview)
+    if extra > 0:
+        return f"{summary}; +{extra} more"
+    return summary
+
+
+def _auto_index_summary(result: Dict[str, Any], payload: Dict[str, Any]) -> str:
+    metadata = _as_dict(result.get("metadata"))
+    auto_index = _as_dict(metadata.get("auto_index"))
+    requested = auto_index.get("requested")
+    if requested is None:
+        requested = _as_bool(payload.get("auto_index"))
+    if not requested:
+        return "not requested"
+
+    attempted = auto_index.get("attempted")
+    ok = auto_index.get("ok")
+    message = str(auto_index.get("message", "")).strip()
+
+    if ok is True:
+        state = "ok"
+    elif ok is False:
+        state = "failed"
+    elif attempted is False:
+        state = "pending"
+    else:
+        state = "requested"
+
+    if message:
+        return f"{state}: {message}"
+    return state
+
+
+def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
+    payload = _as_dict(job.get("payload"))
+    result = _as_dict(job.get("result"))
+    output = _as_dict(result.get("output"))
+
+    warnings = _extract_warnings(result)
+    errors = _extract_errors(result)
+    steps = _extract_steps(result)
+
+    sections_generated = result.get("sections_generated")
+    if sections_generated is None:
+        sections_generated = _as_dict(result.get("metadata")).get("sections_generated")
+
+    output_path = result.get("output_path") or output.get("output_path")
+
+    return {
+        "job_id": str(job.get("job_id", ""))[:8],
+        "status": str(job.get("status", "-")),
+        "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
+        "output_path": str(output_path or "-"),
+        "sections_generated": sections_generated if sections_generated is not None else "-",
+        "warnings": warnings,
+        "warnings_count": len(warnings),
+        "warnings_summary": _summarize_items(warnings),
+        "errors": errors,
+        "errors_count": len(errors),
+        "errors_summary": _summarize_items(errors),
+        "auto_index_summary": _auto_index_summary(result=result, payload=payload),
+        "steps": steps,
+        "steps_summary": _summarize_items(steps, max_items=3),
+        "updated_at": str(job.get("updated_at", "-")),
+    }
+
+
+def _build_generation_rows(job_summaries: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """把 generation jobs 轉成簡單表格列。"""
-    rows: List[Dict] = []
-    for job in jobs:
-        payload = job.get("payload", {})
-        if not isinstance(payload, dict):
-            payload = {}
-        result = job.get("result", {})
-        if not isinstance(result, dict):
-            result = {}
+    rows: List[Dict[str, Any]] = []
+    for info in job_summaries:
         rows.append(
             {
-                "job_id": str(job.get("job_id", ""))[:8],
-                "status": str(job.get("status", "-")),
-                "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
-                "output_path": str(result.get("output_path", "-")),
-                "updated_at": str(job.get("updated_at", "-")),
+                "job_id": info["job_id"],
+                "status": info["status"],
+                "output_path": _short_text(info["output_path"], max_len=70),
+                "sections_generated": info["sections_generated"],
+                "warnings": f'{info["warnings_count"]} | {_short_text(info["warnings_summary"], max_len=72)}',
+                "errors": f'{info["errors_count"]} | {_short_text(info["errors_summary"], max_len=72)}',
+                "auto_index": _short_text(info["auto_index_summary"], max_len=72),
+                "recent_steps": _short_text(info["steps_summary"], max_len=90),
+                "updated_at": info["updated_at"],
             }
         )
     return rows
@@ -330,7 +484,44 @@ def render_generation_panel():
         status_counts[status] = status_counts.get(status, 0) + 1
     summary = " | ".join([f"{k}: {v}" for k, v in status_counts.items()])
     st.caption(f"狀態統計：{summary}")
-    st.dataframe(_build_generation_rows(recent_jobs), use_container_width=True)
+    job_summaries = [_build_generation_job_summary(job) for job in recent_jobs]
+    st.dataframe(_build_generation_rows(job_summaries), use_container_width=True)
+
+    st.caption("點開可查看每筆任務細節")
+    for info in job_summaries:
+        expander_label = (
+            f"{info['job_id']} | {info['status']} | "
+            f"sections {info['sections_generated']} | "
+            f"warn {info['warnings_count']} | err {info['errors_count']}"
+        )
+        with st.expander(expander_label, expanded=False):
+            st.write(f"status: {info['status']}")
+            st.write(f"pdf_path: {info['pdf_path']}")
+            st.write(f"output_path: {info['output_path']}")
+            st.write(f"sections_generated: {info['sections_generated']}")
+            st.write(f"auto_index: {info['auto_index_summary']}")
+            st.write(f"updated_at: {info['updated_at']}")
+
+            if info["warnings"]:
+                st.write(f"warnings ({info['warnings_count']}):")
+                for warning in info["warnings"]:
+                    st.write(f"- {warning}")
+            else:
+                st.write("warnings: 0")
+
+            if info["errors"]:
+                st.write(f"errors ({info['errors_count']}):")
+                for error in info["errors"]:
+                    st.write(f"- {error}")
+            else:
+                st.write("errors: 0")
+
+            if info["steps"]:
+                st.write("recent_steps:")
+                for step in info["steps"][-5:]:
+                    st.write(f"- {step}")
+            else:
+                st.write("recent_steps: -")
 
     last_job_id = st.session_state.last_generation_job_id
     if last_job_id:
