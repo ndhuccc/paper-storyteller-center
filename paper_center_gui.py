@@ -211,11 +211,31 @@ def _paper_status_line(paper: Dict[str, Any]) -> str:
     return f"{icon} {label} ({status})"
 
 
+def render_user_manual():
+    """渲染側欄使用說明（精簡版）。"""
+    with st.expander("❓ 使用說明", expanded=False):
+        st.markdown(
+            "**1) 產生新說書 HTML**\n"
+            "在右欄「🛠️ 生成說書」填入 PDF 路徑、選風格後按「🚀 提交生成任務」。\n"
+            "成功後可用「📖 開啟生成結果 / 🔍 搜尋這篇 / 💬 詢問這篇」快速回流。\n\n"
+            "**2) 論文狀態代表什麼**\n"
+            "- `✅ 就緒 (ready)`：可直接搜尋與 Q&A\n"
+            "- `🟡 待索引 (generated_not_indexed)`：已有 HTML，尚未完成索引\n"
+            "- `🟠 僅索引 (index_only)`：可檢索但缺少 HTML 閱覽檔\n"
+            "- `⚪ 不可用 (unavailable)`：資料不足，需先生成或重建索引\n\n"
+            "**3) 搜尋與 Q&A**\n"
+            "左欄先用關鍵字搜尋；可勾選論文縮小 Q&A 範圍。未勾選時，Q&A 會自動搜尋最相關內容。\n\n"
+            "**4) 管理與刪除**\n"
+            "側欄「🗂️ 管理（刪除論文）」可移除論文，會同時刪掉索引與本地 HTML，且不可復原。"
+        )
+
+
 def render_sidebar(all_papers: List[Dict]):
     """渲染側邊欄：統計、重建索引、論文列表。"""
     with st.sidebar:
         st.header("📊 統計")
         st.metric("論文數量", len(all_papers))
+        st.caption("首次使用可先展開下方「❓ 使用說明」。")
         st.divider()
 
         if st.button("🔄 重建索引", use_container_width=True):
@@ -224,6 +244,8 @@ def render_sidebar(all_papers: List[Dict]):
 
         st.divider()
         st.header("📚 所有論文")
+        if not all_papers:
+            st.caption("目前沒有論文，可在右欄「🛠️ 生成說書」先提交 PDF。")
         for paper in all_papers:
             normalized = normalize_paper(paper)
             paper_id = str(normalized.get("paper_id", normalized.get("id", ""))).strip()
@@ -298,6 +320,9 @@ def render_sidebar(all_papers: List[Dict]):
                         _cleanup_deleted_paper_state(selected_paper_id)
                         st.cache_resource.clear()
                         st.rerun()
+
+        st.divider()
+        render_user_manual()
 
 
 def render_search_result_item(index: int, result: Dict):

@@ -5,13 +5,15 @@
 
 ## 目前狀態
 
-目前系統已完成 v0.9 核心功能：
+目前系統已完成 v1.0 核心功能：
 
 1. **PDF → 說書人 HTML**（非同步背景執行，支援 7 種風格）
 2. **HTML → 向量索引**（auto-index 支援 runtime fallback）
 3. **搜尋 / Q&A / 閱覽**
 4. **Paper manifest**（merged HTML + index，具備 canonical status）
-5. **Generation job 管理**（submit / run / status / handoff）
+5. **Generation job 管理**（submit / run / status / retry / cancel / handoff）
+6. **Paper 刪除與歷史管理**（刪除時同步移除索引與 HTML）
+7. **GUI 使用說明**（側欄內建 Help / User Manual）
 
 ---
 
@@ -21,6 +23,12 @@
   - 從單篇 PDF 產生 storyteller 風格 HTML
   - 非同步背景執行，不阻塞 GUI
   - 可選 auto-index（生成後自動重建索引）
+- 🧰 **Generation job 管理**
+  - 任務列表、狀態追蹤、失敗重試（retry）、進行中取消（cancel）
+  - 成功後可直接 handoff 到閱覽 / 搜尋 / Q&A
+- 🗂️ **論文管理（刪除）**
+  - 側欄管理區可刪除指定論文
+  - 會同步清除 LanceDB 索引與本地 HTML（不可復原）
 - 🔍 **語意搜尋**
   - 以 chunk 為檢索單位，依 `paper_id` 去重成論文結果
 - 💬 **Q&A 對話**
@@ -33,6 +41,8 @@
 - 📊 **Paper manifest / status**
   - 每篇論文有明確狀態：`ready` / `generated_not_indexed` / `index_only` / `unavailable`
   - sidebar 顯示狀態 badge
+- ❓ **使用說明（User Manual）**
+  - 側欄內建精簡操作指南（生成、狀態、搜尋/Q&A、刪除管理）
 
 ---
 
@@ -194,7 +204,7 @@ print(select_preferred_python(required_modules=('lancedb',)))
 | v0.7 | Generation UX | 非同步 job + 狀態顯示 + 回流入口 + repository 純化 |
 | v0.8 | Index 聯動 | Merged manifest + canonical status + handoff 穩定化 + auto-index 細化 + runtime fallback |
 | v0.9 | 風格與品質 | 7 種改寫風格 + section parsing 改良 + Q&A citation 強化 |
-| v0.9 | 風格與品質 | 7 種改寫風格 + section parsing 改良 + Q&A citation 強化 |
+| v1.0 | Product Polish | retry/cancel job + 論文刪除管理 + GUI 使用說明 + 文件收斂 |
 
 ---
 
@@ -202,7 +212,6 @@ print(select_preferred_python(required_modules=('lancedb',)))
 
 - generation 支援 7 種風格（storyteller / blog / podcast / fairy / lazy / question / log）
 - GUI generation 採非同步 job，但無即時輪詢刷新
-- 無 retry / cancel 機制
 - `auto_index` 目前仍是 full rebuild
 - section parsing 採保守 heuristic
 - `paper_id` 主要由 output filename stem 推算
