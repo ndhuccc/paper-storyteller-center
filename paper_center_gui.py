@@ -281,6 +281,58 @@ def render_selected_papers_section():
         st.caption("💡 未指定論文，Q&A 將自動搜尋最相關的論文")
 
 
+def _citation_section_label(src: Dict[str, Any], citation: Dict[str, Any]) -> str:
+    for key in ("section", "section_title", "section_name", "heading"):
+        value = str(citation.get(key, src.get(key, ""))).strip()
+        if value:
+            return value
+    return ""
+
+
+def _citation_chunk_index(src: Dict[str, Any], citation: Dict[str, Any]) -> Any:
+    value = citation.get("chunk_index", src.get("chunk_index"))
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        if text.isdigit():
+            return int(text)
+    return None
+
+
+def _render_qa_citations(sources: List[Dict[str, Any]]):
+    with st.expander("🔎 本輪引用來源", expanded=False):
+        for ci, src in enumerate(sources, start=1):
+            citation = src.get("citation") if isinstance(src.get("citation"), dict) else {}
+            title = str(src.get("title", citation.get("title", "未知"))).strip() or "未知"
+            paper_id = str(citation.get("paper_id", src.get("paper_id", src.get("id", "")))).strip()
+            section = _citation_section_label(src, citation)
+            chunk_index = _citation_chunk_index(src, citation)
+            snippet = _short_text(
+                citation.get("chunk_snippet", src.get("chunk_text", "")),
+                max_len=120,
+            )
+            similarity = citation.get("similarity")
+
+            meta_parts = []
+            if paper_id:
+                meta_parts.append(f"paper_id={paper_id}")
+            if chunk_index is not None:
+                meta_parts.append(f"chunk={chunk_index}")
+            if section:
+                meta_parts.append(f"section={_short_text(section, max_len=48)}")
+            if isinstance(similarity, (int, float)):
+                meta_parts.append(f"sim={float(similarity):.2f}")
+
+            st.markdown(f"{ci}. **{_short_text(title, max_len=72)}**")
+            if meta_parts:
+                st.caption(" | ".join(meta_parts))
+            if snippet != "-":
+                st.caption(f"片段：{snippet}")
+
+
 def render_qa_history():
     """渲染 Q&A 歷史與每輪來源按鈕。"""
     for qa_idx, qa in enumerate(st.session_state.qa_history):
@@ -294,6 +346,7 @@ def render_qa_history():
                     if st.button(f"📄 {src.get('title', '?')[:20]}...", key=f"qa_src_{qa_idx}_{ci}_{src.get('id', ci)}"):
                         st.session_state.open_paper = src
                         st.rerun()
+            _render_qa_citations(qa["sources"])
         st.divider()
 
 
