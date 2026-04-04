@@ -761,7 +761,7 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
         "output_path": str(output_path or "-"),
         "output_filename": output_filename,
         "output_paper_id": output_paper_id,
-        "sections_generated": sections_generated if sections_generated is not None else "-",
+        "sections_generated": str(sections_generated) if sections_generated is not None else "-",
         "warnings": warnings,
         "warnings_count": len(warnings),
         "warnings_summary": _summarize_items(warnings),
