@@ -10,7 +10,7 @@
 import re
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
@@ -43,7 +43,11 @@ def parse_paper_metadata(html_path: Union[str, Path]) -> Optional[Dict]:
     if not filepath.exists() or filepath.suffix.lower() != ".html":
         return None
 
-    html_content = filepath.read_text(encoding="utf-8")
+    try:
+        html_content = filepath.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
     plain_text = _extract_text_from_html(html_content)
 
     title_match = re.search(r"<title>([^<]+)</title>", html_content)
@@ -57,17 +61,55 @@ def parse_paper_metadata(html_path: Union[str, Path]) -> Optional[Dict]:
 
     return {
         "paper_id": filepath.stem,
+        "id": filepath.stem,
         "filename": filepath.name,
         "filepath": str(filepath),
         "title": title,
         "authors": authors,
         "date": date,
         "content": plain_text,
+        "has_html": True,
+        "is_indexed": False,
+        "manifest_source": "html_only",
     }
 
 
-def get_all_papers() -> List[Dict]:
-    """Get all papers from LanceDB, deduplicated by paper_id."""
+def _normalize_paper_id(raw_paper_id: Any) -> str:
+    """Normalize paper id for manifest joins (row id may contain chunk suffix)."""
+    paper_id = str(raw_paper_id or "").strip()
+    if not paper_id:
+        return ""
+
+    m = re.match(r"^(.*)_chunk_\d+$", paper_id)
+    if m:
+        return m.group(1)
+    return paper_id
+
+
+def _is_meaningful(value: Any) -> bool:
+    text = str(value or "").strip()
+    return bool(text and text != "未知")
+
+
+def _prefer(indexed_value: Any, html_value: Any) -> Any:
+    """Prefer indexed metadata; fallback to HTML scan when indexed is empty."""
+    if _is_meaningful(indexed_value):
+        return indexed_value
+    return html_value
+
+
+def scan_html_papers() -> List[Dict]:
+    """Scan HTML papers from STORYTELLERS_DIR and parse basic metadata."""
+    papers: List[Dict] = []
+    for html_file in sorted(STORYTELLERS_DIR.glob("*.html")):
+        parsed = parse_paper_metadata(html_file)
+        if parsed:
+            papers.append(parsed)
+    return papers
+
+
+def get_indexed_papers() -> List[Dict]:
+    """Get deduplicated papers from LanceDB table by paper_id."""
     db = _get_lance_db()
     if db is None:
         return []
@@ -76,12 +118,97 @@ def get_all_papers() -> List[Dict]:
         tbl = db.open_table("papers")
         all_rows = tbl.to_pandas().to_dict("records")
 
-        # dedupe by paper_id and keep first row
-        seen = {}
+        # Dedupe by normalized paper_id and keep first row.
+        seen: Dict[str, Dict] = {}
         for row in all_rows:
-            pid = row.get("paper_id", row.get("id", ""))
-            if pid not in seen:
-                seen[pid] = row
+            pid = _normalize_paper_id(row.get("paper_id") or row.get("id"))
+            if not pid or pid in seen:
+                continue
+
+            filename = str(row.get("filename", "")).strip() or f"{pid}.html"
+            filepath = STORYTELLERS_DIR / filename
+
+            seen[pid] = {
+                "paper_id": pid,
+                "id": row.get("id") or pid,
+                "filename": filename,
+                "filepath": str(filepath),
+                "title": row.get("title") or pid,
+                "authors": row.get("authors") or "未知",
+                "date": row.get("date") or "未知",
+                "content": row.get("content") or "",
+                "has_html": filepath.exists(),
+                "is_indexed": True,
+                "manifest_source": "index_only",
+            }
+
         return list(seen.values())
     except Exception:
         return []
+
+
+def merge_paper_sources(html_papers: List[Dict], indexed_papers: List[Dict]) -> List[Dict]:
+    """Merge indexed papers and scanned HTML metadata into one manifest."""
+    html_by_id = {
+        str(p.get("paper_id", "")).strip(): p
+        for p in html_papers
+        if str(p.get("paper_id", "")).strip()
+    }
+
+    merged: List[Dict] = []
+
+    # Keep indexed order stable, then append html-only papers.
+    for indexed in indexed_papers:
+        pid = str(indexed.get("paper_id", "")).strip()
+        if not pid:
+            continue
+
+        html = html_by_id.pop(pid, None)
+        if html:
+            filename = str(html.get("filename") or indexed.get("filename") or f"{pid}.html")
+            filepath = str(html.get("filepath") or (STORYTELLERS_DIR / filename))
+            merged.append(
+                {
+                    "paper_id": pid,
+                    "id": indexed.get("id") or html.get("id") or pid,
+                    "filename": filename,
+                    "filepath": filepath,
+                    "title": _prefer(indexed.get("title"), html.get("title")) or pid,
+                    "authors": _prefer(indexed.get("authors"), html.get("authors")) or "未知",
+                    "date": _prefer(indexed.get("date"), html.get("date")) or "未知",
+                    "content": _prefer(indexed.get("content"), html.get("content")) or "",
+                    "has_html": True,
+                    "is_indexed": True,
+                    "manifest_source": "index_and_html",
+                }
+            )
+        else:
+            item = dict(indexed)
+            item["paper_id"] = pid
+            item["is_indexed"] = True
+            item["manifest_source"] = "index_only"
+            item["has_html"] = bool(item.get("has_html"))
+            merged.append(item)
+
+    for pid in sorted(html_by_id.keys()):
+        html = dict(html_by_id[pid])
+        html["paper_id"] = pid
+        html["id"] = html.get("id") or pid
+        html["has_html"] = True
+        html["is_indexed"] = False
+        html["manifest_source"] = "html_only"
+        merged.append(html)
+
+    return merged
+
+
+def build_paper_manifest() -> List[Dict]:
+    """Build combined paper manifest from HTML files and indexed LanceDB rows."""
+    html_papers = scan_html_papers()
+    indexed_papers = get_indexed_papers()
+    return merge_paper_sources(html_papers=html_papers, indexed_papers=indexed_papers)
+
+
+def get_all_papers() -> List[Dict]:
+    """Backward-compatible paper list; now returns merged manifest."""
+    return build_paper_manifest()

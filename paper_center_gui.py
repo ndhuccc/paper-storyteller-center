@@ -551,7 +551,8 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
     indexed_papers_by_id: Dict[str, Dict[str, Any]] = {}
     for paper in all_papers:
         paper_id = str(paper.get("paper_id", paper.get("id", ""))).strip()
-        if paper_id and paper_id not in indexed_papers_by_id:
+        is_indexed = bool(paper.get("is_indexed", True))
+        if paper_id and is_indexed and paper_id not in indexed_papers_by_id:
             indexed_papers_by_id[paper_id] = paper
 
     st.caption("點開可查看每筆任務細節")

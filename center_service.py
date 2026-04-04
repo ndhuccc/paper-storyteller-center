@@ -24,7 +24,7 @@ QAResult = Tuple[str, List[Dict]]
 
 
 def list_papers() -> List[Dict]:
-    """List all indexed papers."""
+    """List repository paper manifest (indexed and/or html-available)."""
     return repository_get_all_papers()
 
 
