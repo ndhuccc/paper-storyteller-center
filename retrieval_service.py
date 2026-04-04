@@ -52,12 +52,25 @@ def _lancedb_string_literal(value: str) -> str:
 
 
 def _resolve_storytellers_html_path(paper_id: str) -> Path:
-    filename = Path(f"{paper_id}.html").name
+    # Search for HTML file matching the paper_id (case-insensitive exact match)
+    normalized = _normalize_paper_id(paper_id)
     storytellers_root = STORYTELLERS_DIR.expanduser().resolve(strict=False)
-    candidate = (STORYTELLERS_DIR / filename).expanduser().resolve(strict=False)
-    if candidate.parent != storytellers_root or candidate.suffix.lower() != ".html":
-        raise ValueError("unsafe HTML path")
-    return candidate
+    
+    # Try exact match first (case-insensitive)
+    for html_file in storytellers_root.glob("*.html"):
+        if html_file.stem.lower() == normalized.lower():
+            return html_file
+    
+    # Try with -storyteller suffix
+    for html_file in storytellers_root.glob("*.html"):
+        stem = html_file.stem
+        if stem.lower() == normalized.lower():
+            return html_file
+        # Also check if it ends with -storyteller
+        if stem.lower().replace("-storyteller", "") == normalized.lower():
+            return html_file
+    
+    raise FileNotFoundError(f"No HTML file found for paper_id: {paper_id}")
 
 
 def delete_paper(paper_id: str) -> Dict[str, Any]:
