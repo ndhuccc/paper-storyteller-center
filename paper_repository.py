@@ -138,19 +138,21 @@ def parse_paper_metadata(html_path: Union[str, Path]) -> Optional[Dict]:
     date_match = re.search(r"(\d{4}[-/]\d{1,2}[-/]\d{1,2})", plain_text)
     date = date_match.group(1) if date_match else "未知"
 
-    return {
-        "paper_id": filepath.stem,
-        "id": filepath.stem,
-        "filename": filepath.name,
-        "filepath": str(filepath),
-        "title": title,
-        "authors": authors,
-        "date": date,
-        "content": plain_text,
-        "has_html": True,
-        "is_indexed": False,
-        "manifest_source": MANIFEST_SOURCE_HTML_ONLY,
-    }
+    return normalize_manifest_paper(
+        {
+            "paper_id": filepath.stem,
+            "id": filepath.stem,
+            "filename": filepath.name,
+            "filepath": str(filepath),
+            "title": title,
+            "authors": authors,
+            "date": date,
+            "content": plain_text,
+            "has_html": True,
+            "is_indexed": False,
+            "manifest_source": MANIFEST_SOURCE_HTML_ONLY,
+        }
+    )
 
 
 def _normalize_paper_id(raw_paper_id: Any) -> str:

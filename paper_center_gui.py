@@ -24,6 +24,10 @@ from center_service import normalize_paper
 from center_service import rebuild_index as service_rebuild_index
 from center_service import search as service_search
 from center_service import submit_generation_job
+from paper_repository import PAPER_STATUS_GENERATED_NOT_INDEXED
+from paper_repository import PAPER_STATUS_INDEX_ONLY
+from paper_repository import PAPER_STATUS_READY
+from paper_repository import PAPER_STATUS_UNAVAILABLE
 from qa_render import answer_to_mathjax_html
 
 # ==================== 頁面設定 ====================
@@ -152,17 +156,27 @@ def similarity_badge(result: Dict) -> str:
     )
 
 
+def _paper_status_style(status: str) -> tuple[str, str]:
+    normalized = str(status or "").strip() or PAPER_STATUS_UNAVAILABLE
+    if normalized == PAPER_STATUS_READY:
+        return "✅", "就緒"
+    if normalized == PAPER_STATUS_GENERATED_NOT_INDEXED:
+        return "🟡", "待索引"
+    if normalized == PAPER_STATUS_INDEX_ONLY:
+        return "🟠", "僅索引"
+    return "⚪", "不可用"
+
+
 def _paper_status_badge_text(paper: Dict[str, Any]) -> str:
-    status = str(paper.get("paper_status", "")).strip()
-    if status == "ready":
-        return "[ready]"
-    if status == "generated_not_indexed":
-        return "[generated_not_indexed]"
-    if status == "index_only":
-        return "[index_only]"
-    if status:
-        return f"[{status}]"
-    return "[unavailable]"
+    status = str(paper.get("paper_status", "")).strip() or PAPER_STATUS_UNAVAILABLE
+    icon, label = _paper_status_style(status)
+    return f"[{icon} {label}]"
+
+
+def _paper_status_line(paper: Dict[str, Any]) -> str:
+    status = str(paper.get("paper_status", "")).strip() or PAPER_STATUS_UNAVAILABLE
+    icon, label = _paper_status_style(status)
+    return f"{icon} {label} ({status})"
 
 
 def render_sidebar(all_papers: List[Dict]):
@@ -184,7 +198,7 @@ def render_sidebar(all_papers: List[Dict]):
             button_title = str(normalized.get("title", "?"))[:24]
             badge = _paper_status_badge_text(normalized)
             if st.button(
-                f"📄 {badge} {button_title}...",
+                f"📄 {badge} {button_title}",
                 key=f"sidebar_{paper_id or normalized.get('id')}",
             ):
                 st.session_state.open_paper = normalized
@@ -622,7 +636,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             auto_index_ok = auto_index_state.get("ok") is True
 
             if auto_index_ok:
-                st.success("✅ 自動重建索引已完成，可直接搜尋與提問這篇內容。")
+                st.success("✅ 自動重建索引流程已完成。")
             elif auto_index_requested:
                 st.warning("⚠️ 說書已生成，但自動重建索引失敗。若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。")
             else:
@@ -635,14 +649,15 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                 output_exists = Path(output_path).expanduser().exists()
 
             manifest_paper = papers_by_id.get(paper_id)
-            paper_status = str((manifest_paper or {}).get("paper_status", "unavailable")).strip() or "unavailable"
+            paper_status = str((manifest_paper or {}).get("paper_status", PAPER_STATUS_UNAVAILABLE)).strip() or PAPER_STATUS_UNAVAILABLE
             title_fallback = paper_id or "這篇論文"
             display_title = _sanitize_title_for_prefill(
                 manifest_paper.get("title") if manifest_paper else "",
                 fallback=title_fallback,
             )
-            can_handoff_to_search_qa = auto_index_ok and bool(manifest_paper) and is_paper_ready(manifest_paper)
-            st.write(f"paper_status: {paper_status}")
+            paper_ready = bool(manifest_paper) and is_paper_ready(manifest_paper)
+            can_handoff_to_search_qa = paper_ready
+            st.write(f"paper_status: {_paper_status_line(manifest_paper or {'paper_status': paper_status})}")
 
             col_open, col_search, col_ask = st.columns([1, 1, 1])
             with col_open:
@@ -682,14 +697,16 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                     )
                     st.rerun()
 
-            if not output_exists:
+            if paper_ready:
+                st.success("✅ 這篇內容在 manifest 中已是「就緒」狀態，可直接用於搜尋/Q&A。")
+            elif not output_exists:
                 st.caption("找不到輸出 HTML，請先確認 output_path 是否存在。")
-            elif not can_handoff_to_search_qa:
+            else:
                 if manifest_paper is None:
                     st.caption("尚未在 paper manifest 找到這篇輸出內容，請稍後刷新或重建索引。")
                 else:
                     st.caption(
-                        f"目前 paper_status={paper_status}，尚未可用於搜尋/Q&A。請先重建索引後再使用「搜尋這篇 / 詢問這篇」。"
+                        f"目前狀態為 {_paper_status_line(manifest_paper)}，尚未可用於搜尋/Q&A。請先重建索引後再使用「搜尋這篇 / 詢問這篇」。"
                     )
 
     last_job_id = st.session_state.last_generation_job_id
