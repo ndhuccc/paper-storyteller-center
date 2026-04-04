@@ -141,11 +141,61 @@ def generate_answer(
     model: str,
     ollama_base_url: str,
     timeout: int = 180,
+    fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> str:
-    """依模型提供者呼叫 Ollama 或 Gemini 生成回答。"""
+    """依序嘗試主模型與備案清單，全部失敗才拋出例外。"""
+    _errors: List[str] = []
+    try:
+        return _call_single_model(
+            prompt=prompt, model=model, ollama_base_url=ollama_base_url, timeout=timeout
+        )
+    except Exception as primary_exc:
+        _errors.append(f"primary ({model}): {primary_exc}")
+
+    for spec in (fallbacks or []):
+        fb_model = spec.get("model", "")
+        fb_provider = spec.get("provider", "")
+        fb_ollama_url = spec.get("ollama_base_url") or ollama_base_url
+        fb_minimax_base = spec.get("minimax_base_url", "")
+        fb_minimax_token = spec.get("minimax_oauth_token", "")
+        try:
+            return _call_single_model(
+                prompt=prompt,
+                model=fb_model,
+                provider=fb_provider,
+                ollama_base_url=fb_ollama_url,
+                minimax_base_url=fb_minimax_base,
+                minimax_oauth_token=fb_minimax_token,
+                timeout=timeout,
+            )
+        except Exception as fb_exc:
+            _errors.append(f"{fb_provider or 'ollama'}:{fb_model}: {fb_exc}")
+
+    raise RuntimeError("; ".join(_errors))
+
+
+def _call_single_model(
+    *,
+    prompt: str,
+    model: str,
+    provider: str = "",
+    ollama_base_url: str,
+    minimax_base_url: str = "",
+    minimax_oauth_token: str = "",
+    timeout: int = 180,
+) -> str:
+    """單次呼叫一個模型（Gemini、MiniMax 或 Ollama）。"""
     if _is_gemini_model(model):
         return _generate_answer_with_gemini(prompt=prompt, model=model, timeout=timeout)
-
+    p = (provider or "").strip().lower()
+    if p in {"minimax.io", "minimax", "minimax-portal"}:
+        return _call_minimax_qa_llm(
+            prompt=prompt,
+            model=model,
+            oauth_token=minimax_oauth_token,
+            base_url=minimax_base_url or "https://api.minimax.io",
+            timeout=timeout,
+        )
     req = urllib.request.Request(
         f"{ollama_base_url}/api/generate",
         data=json.dumps({"model": model, "prompt": prompt, "stream": False}).encode(),
@@ -153,6 +203,48 @@ def generate_answer(
     )
     with urllib.request.urlopen(req, timeout=timeout) as response:
         return json.loads(response.read()).get("response", "").strip()
+
+
+def _call_minimax_qa_llm(
+    *, prompt: str, model: str, oauth_token: str, base_url: str, timeout: int = 180
+) -> str:
+    """呼叫 MiniMax Portal chatcompletion API 生成 QA 回答。"""
+    token = str(oauth_token or "").strip()
+    if not token:
+        load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
+        load_dotenv(dotenv_path=Path.home() / ".env", override=False)
+        token = str(
+            os.getenv("MINIMAX_PORTAL_OAUTH_TOKEN") or os.getenv("MINIMAX_OAUTH_TOKEN") or ""
+        ).strip()
+    if not token:
+        raise RuntimeError("missing MINIMAX_PORTAL_OAUTH_TOKEN for MiniMax QA")
+
+    normalized_base = str(base_url or "https://api.minimax.io").rstrip("/")
+    endpoint = (
+        f"{normalized_base}/text/chatcompletion_v2"
+        if normalized_base.endswith("/v1")
+        else f"{normalized_base}/v1/text/chatcompletion_v2"
+    )
+    req = urllib.request.Request(
+        endpoint,
+        data=json.dumps({
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+        }).encode(),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {token}"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        payload = json.loads(response.read())
+    try:
+        text = payload["choices"][0]["message"]["content"]
+    except (KeyError, IndexError):
+        text = payload.get("reply", "")
+    text = str(text or "").strip()
+    if not text:
+        raise RuntimeError(f"MiniMax QA returned empty content")
+    return text
 
 
 def _is_gemini_model(model: str) -> bool:
@@ -196,6 +288,7 @@ def answer_with_results(
     not_found_message: str,
     error_prefix: str,
     ollama_base_url: str,
+    fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QAResult:
     """以已取得的論文結果產生回答。"""
     if not results:
@@ -209,6 +302,7 @@ def answer_with_results(
             prompt=prompt,
             model=model,
             ollama_base_url=ollama_base_url,
+            fallbacks=fallbacks,
         )
         return answer, enriched_results
     except Exception as e:
@@ -227,6 +321,7 @@ def answer_with_search(
     error_prefix: str,
     ollama_base_url: str,
     forced_papers: Optional[List[Dict]] = None,
+    fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QAResult:
     """先搜尋（或使用指定論文），再產生回答。"""
     if forced_papers:
@@ -243,4 +338,5 @@ def answer_with_search(
         not_found_message=not_found_message,
         error_prefix=error_prefix,
         ollama_base_url=ollama_base_url,
+        fallbacks=fallbacks,
     )

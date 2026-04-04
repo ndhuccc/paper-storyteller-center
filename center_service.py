@@ -25,6 +25,11 @@ from retrieval_service import search_papers as service_search_papers
 
 OLLAMA_BASE_URL = "http://localhost:11434"
 LLM_MODEL = "models/gemini-3.1-flash-lite-preview"
+QA_FALLBACK_CHAIN: List[Dict[str, str]] = [
+    {"model": "gemma4:e2b",     "provider": "ollama",     "ollama_base_url": "http://134.208.2.42:11434"},
+    {"model": "MiniMax-M2.5",   "provider": "minimax.io"},
+    {"model": "deepseek-r1:8b", "provider": "ollama",     "ollama_base_url": "http://134.208.2.42:11434"},
+]
 
 QAResult = Tuple[str, List[Dict]]
 
@@ -84,6 +89,7 @@ def answer(question: str, forced_papers: Optional[List[Dict]] = None) -> QAResul
         error_prefix="生成錯誤：",
         ollama_base_url=OLLAMA_BASE_URL,
         forced_papers=forced_papers,
+        fallbacks=QA_FALLBACK_CHAIN,
     )
 
 

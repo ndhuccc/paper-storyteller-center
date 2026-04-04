@@ -21,11 +21,14 @@ from dotenv import load_dotenv
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 DEFAULT_REWRITE_MODEL = "models/gemini-3.1-flash-lite-preview"
-DEFAULT_REWRITE_FALLBACK_MODEL = "MiniMax-M2.5"
-DEFAULT_REWRITE_FALLBACK_PROVIDER = "minimax.io"
+DEFAULT_REWRITE_FALLBACK_CHAIN: List[Dict[str, str]] = [
+    {"model": "gemma4:e2b",     "provider": "ollama",     "ollama_base_url": "http://134.208.2.42:11434"},
+    {"model": "MiniMax-M2.5",   "provider": "minimax.io"},
+    {"model": "deepseek-r1:8b", "provider": "ollama",     "ollama_base_url": "http://134.208.2.42:11434"},
+]
 DEFAULT_PDF_EXTRACTION_MODEL = "models/gemini-3.1-flash-lite-preview"
 PDF_EXTRACTION_FALLBACK_MODEL = "gemini-2.5-flash"
-DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
+DEFAULT_OLLAMA_BASE_URL = "http://134.208.2.42:11434"
 DEFAULT_MINIMAX_PORTAL_BASE_URL = "https://api.minimax.io"
 DEFAULT_MAX_SECTIONS = 0
 DEFAULT_REWRITE_CHUNK_CHARS = 3000
@@ -134,10 +137,14 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         DEFAULT_APPEND_MISSING_FORMULAS,
     )
     primary_model = str(payload.get("model") or DEFAULT_REWRITE_MODEL)
-    fallback_model = str(payload.get("rewrite_fallback_model") or DEFAULT_REWRITE_FALLBACK_MODEL)
-    fallback_provider = str(
-        payload.get("rewrite_fallback_provider") or DEFAULT_REWRITE_FALLBACK_PROVIDER
-    ).strip().lower()
+    fallback_chain_raw = payload.get("rewrite_fallback_chain")
+    if isinstance(fallback_chain_raw, list) and fallback_chain_raw:
+        fallback_chain: List[Dict[str, str]] = [
+            {k: str(v) for k, v in spec.items() if isinstance(v, (str, int, float))}
+            for spec in fallback_chain_raw if isinstance(spec, dict)
+        ]
+    else:
+        fallback_chain = [dict(spec) for spec in DEFAULT_REWRITE_FALLBACK_CHAIN]
     ollama_base_url = str(payload.get("ollama_base_url") or DEFAULT_OLLAMA_BASE_URL).rstrip("/")
     minimax_base_url = str(
         payload.get("minimax_base_url") or os.getenv("MINIMAX_PORTAL_BASE_URL") or DEFAULT_MINIMAX_PORTAL_BASE_URL
@@ -188,8 +195,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
                 section_title=part["title"],
                 source_text=part["source_text"],
                 model=primary_model,
-                fallback_model=fallback_model,
-                fallback_provider=fallback_provider,
+                fallback_chain=fallback_chain,
                 ollama_base_url=ollama_base_url,
                 minimax_base_url=minimax_base_url,
                 minimax_oauth_token=minimax_oauth_token,
@@ -1008,8 +1014,7 @@ def _rewrite_section(
     section_title: str,
     source_text: str,
     model: str,
-    fallback_model: str,
-    fallback_provider: str,
+    fallback_chain: List[Dict[str, str]],
     ollama_base_url: str,
     minimax_base_url: str,
     minimax_oauth_token: str,
@@ -1047,27 +1052,39 @@ def _rewrite_section(
             )
     except Exception as exc:
         primary_failure = f"{type(exc).__name__}: {exc}"
-        try:
-            if fallback_provider in {"minimax.io", "minimax", "minimax-portal"}:
-                rewritten = _call_minimax_portal_llm(
-                    prompt=prompt,
-                    model=fallback_model,
-                    oauth_token=minimax_oauth_token,
-                    base_url=minimax_base_url,
+        _errors = [f"primary ({model}): {primary_failure}"]
+        _succeeded = False
+        for spec in (fallback_chain or []):
+            fb_model = spec.get("model", "")
+            fb_provider = (spec.get("provider") or "").strip().lower()
+            fb_ollama_url = spec.get("ollama_base_url") or ollama_base_url
+            fb_minimax_base = spec.get("minimax_base_url") or minimax_base_url
+            fb_minimax_token = spec.get("minimax_oauth_token") or minimax_oauth_token
+            try:
+                if fb_provider in {"minimax.io", "minimax", "minimax-portal"}:
+                    rewritten = _call_minimax_portal_llm(
+                        prompt=prompt,
+                        model=fb_model,
+                        oauth_token=fb_minimax_token,
+                        base_url=fb_minimax_base,
+                    )
+                else:
+                    rewritten = _call_local_llm(
+                        prompt=prompt,
+                        model=fb_model,
+                        ollama_base_url=fb_ollama_url,
+                    )
+                used_model = fb_model
+                fallback_note = (
+                    f"primary rewrite model failed ({primary_failure}); "
+                    f"used fallback {fb_provider}:{fb_model}"
                 )
-            else:
-                rewritten = _call_local_llm(
-                    prompt=prompt,
-                    model=fallback_model,
-                    ollama_base_url=ollama_base_url,
-                )
-            used_model = fallback_model
-            fallback_note = (
-                f"primary rewrite model failed ({primary_failure}); "
-                f"used fallback {fallback_provider}:{fallback_model}"
-            )
-        except Exception as fallback_exc:
-            return text, [], [], False, f"{primary_failure}; fallback failed: {type(fallback_exc).__name__}: {fallback_exc}", ""
+                _succeeded = True
+                break
+            except Exception as fb_exc:
+                _errors.append(f"{fb_provider or 'ollama'}:{fb_model}: {type(fb_exc).__name__}: {fb_exc}")
+        if not _succeeded:
+            return text, [], [], False, "; ".join(_errors), ""
     else:
         fallback_note = None
 

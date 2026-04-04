@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🦞 論文說書人中心</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body x-data="App()" x-init="init()" @keydown.escape.window="closeModal()">
+
+  <!-- ══════════ LOADING OVERLAY ══════════ -->
+  <div class="loading-overlay" x-show="globalLoading" x-cloak>
+    <div class="spinner-lg"></div>
+  </div>
+
+  <!-- ══════════ PAPER MODAL ══════════ -->
+  <div class="modal-backdrop" x-show="modalOpen" x-cloak @click.self="closeModal()">
+    <div class="modal-container">
+      <div class="modal-header">
+        <span class="modal-title" x-text="modalTitle">論文閱覽</span>
+        <button class="modal-close" @click="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="paper-iframe" class="paper-iframe" :src="modalSrc" x-show="modalSrc"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ TOAST ══════════ -->
+  <div class="toast-container">
+    <template x-for="(t, i) in toasts" :key="t.id">
+      <div class="toast" :class="'toast-' + t.type" x-show="t.visible"
+           x-transition:enter="toast-enter" x-transition:enter-start="toast-enter-start">
+        <span x-text="t.msg"></span>
+        <button class="toast-close" @click="removeToast(t.id)">✕</button>
+      </div>
+    </template>
+  </div>
+
+  <!-- ══════════ APP LAYOUT ══════════ -->
+  <div class="app-layout">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-icon">🦞</span>
+        <span class="brand-text">論文說書人中心</span>
+      </div>
+
+      <!-- stats -->
+      <div class="sidebar-section">
+        <div class="stat-row">
+          <span class="stat-label">📊 論文數量</span>
+          <span class="stat-value" x-text="allPapers.length"></span>
+        </div>
+      </div>
+
+      <!-- rebuild index -->
+      <div class="sidebar-section">
+        <button class="btn btn-secondary btn-full" @click="rebuildIndex()" :disabled="rebuilding">
+          <span x-show="!rebuilding">🔄 重建索引</span>
+          <span x-show="rebuilding" class="spinner-sm"></span>
+          <span x-show="rebuilding"> 重建中...</span>
+        </button>
+      </div>
+
+      <!-- paper list -->
+      <div class="sidebar-section sidebar-papers">
+        <div class="section-label">📚 所有論文</div>
+        <div x-show="allPapers.length === 0" class="muted">
+          目前沒有論文，可在「🛠️ 生成說書」先提交 PDF。
+        </div>
+        <template x-for="p in allPapers" :key="p.paper_id || p.id">
+          <button class="paper-btn" @click="openPaper(p)">
+            <span class="paper-status-badge" :class="'badge-' + p.paper_status" x-text="statusBadge(p)"></span>
+            <span class="paper-btn-title" x-text="(p.title || '?').slice(0,24)"></span>
+          </button>
+        </template>
+      </div>
+
+      <!-- manage / delete -->
+      <div class="sidebar-section">
+        <details class="sidebar-details">
+          <summary>🗂️ 管理（刪除論文）</summary>
+          <div class="manage-panel" x-show="allPapers.length > 0">
+            <select class="form-select" x-model="deletePaperId">
+              <option value="">請選擇...</option>
+              <template x-for="p in allPapers" :key="p.paper_id||p.id">
+                <option :value="p.paper_id||p.id"
+                  x-text="`${statusBadge(p)} ${(p.title||'?').slice(0,32)} (${(p.paper_id||p.id||'').slice(0,8)})`">
+                </option>
+              </template>
+            </select>
+            <label class="check-label">
+              <input type="checkbox" x-model="deleteConfirmed">
+              <span>我確認刪除此論文（無法復原）</span>
+            </label>
+            <button class="btn btn-danger btn-full"
+                    :disabled="!deletePaperId || !deleteConfirmed || deleting"
+                    @click="deletePaper()">
+              <span x-show="!deleting">🗑️ 刪除</span>
+              <span x-show="deleting">刪除中...</span>
+            </button>
+          </div>
+          <div x-show="allPapers.length === 0" class="muted">目前沒有可管理的論文</div>
+        </details>
+      </div>
+
+      <!-- user manual -->
+      <div class="sidebar-section">
+        <details class="sidebar-details">
+          <summary>❓ 使用說明</summary>
+          <div class="manual-content">
+            <p><strong>1) 產生新說書 HTML</strong><br>在「🛠️ 生成說書」上傳 PDF、選風格後提交。成功後可用「開啟 / 搜尋 / 詢問」快速回流。</p>
+            <p><strong>2) 論文狀態</strong></p>
+            <ul>
+              <li><span class="badge-ready">✅ 就緒</span>：可直接搜尋與 Q&A</li>
+              <li><span class="badge-generated_not_indexed">🟡 待索引</span>：已有 HTML，尚未完成索引</li>
+              <li><span class="badge-index_only">🟠 僅索引</span>：可檢索但缺少 HTML</li>
+              <li><span class="badge-unavailable">⚪ 不可用</span>：資料不足</li>
+            </ul>
+            <p><strong>3) 搜尋與 Q&A</strong><br>先用關鍵字搜尋；可勾選論文縮小 Q&A 範圍。未勾選時，Q&A 會自動搜尋最相關論文。</p>
+            <p><strong>4) 管理與刪除</strong><br>側欄管理區可移除論文，同時刪掉索引與 HTML，不可復原。</p>
+          </div>
+        </details>
+      </div>
+    </aside>
+
+    <!-- ── MAIN ── -->
+    <main class="main-content">
+      <div class="main-header">
+        <h1 class="page-title">🦞 論文說書人中心</h1>
+        <p class="page-subtitle">用自然語言搜尋論文、對論文內容提問</p>
+      </div>
+
+      <!-- TAB bar -->
+      <div class="tab-bar">
+        <button class="tab-btn" :class="{active: tab==='search'}" @click="tab='search'">🔍 語意搜尋</button>
+        <button class="tab-btn" :class="{active: tab==='qa'}" @click="tab='qa'">💬 Q&A 對話</button>
+        <button class="tab-btn" :class="{active: tab==='generate'}" @click="tab='generate'">🛠️ 生成說書</button>
+      </div>
+
+      <!-- ──── TAB: SEARCH ───────────────────────── -->
+      <div class="tab-panel" x-show="tab==='search'">
+        <div class="search-bar-row">
+          <input class="form-input search-input" type="text" x-model="searchQuery"
+                 placeholder="輸入關鍵字，例如：知識蒸餾、深度學習..."
+                 @keydown.enter="doSearch()">
+          <button class="btn btn-primary" @click="doSearch()" :disabled="searching || !searchQuery.trim()">
+            <span x-show="!searching">🔍 搜尋</span>
+            <span x-show="searching" class="spinner-sm"></span>
+          </button>
+        </div>
+
+        <div x-show="searchError" class="alert alert-error" x-text="searchError"></div>
+
+        <div x-show="searchResults.length > 0" class="search-hint">
+          找到 <strong x-text="searchResults.length"></strong> 篇相關論文　☑ 勾選論文加入 Q&A 範圍
+        </div>
+
+        <div x-show="searchResults.length === 0 && searchDone && !searching" class="alert alert-warning">
+          ⚠️ 沒有找到相關論文
+        </div>
+
+        <div class="results-list">
+          <template x-for="(r, idx) in searchResults" :key="r.paper_id || r.id || idx">
+            <div class="result-card">
+              <label class="result-check">
+                <input type="checkbox"
+                       :checked="isSelected(r)"
+                       @change="toggleSelected(r, $event.target.checked)">
+              </label>
+              <div class="result-info">
+                <div class="result-title" x-text="`${idx+1}. ${r.title || '未知'}`"></div>
+                <div class="result-meta">
+                  <span>📅 <span x-text="r.date || '未知'"></span></span>
+                  <span>✍️ <span x-text="(r.authors || '未知').slice(0,35)"></span></span>
+                  <span class="sim-badge" :class="simClass(r)" x-text="simText(r)"></span>
+                </div>
+              </div>
+              <button class="btn btn-sm btn-outline" @click="openPaper(r)">📖 閱覽</button>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- ──── TAB: Q&A ───────────────────────── -->
+      <div class="tab-panel" x-show="tab==='qa'">
+        <!-- selected papers chips -->
+        <div x-show="Object.keys(selectedPapers).length > 0" class="selected-chips">
+          <span class="chip-label">📌 Q&A 範圍：</span>
+          <template x-for="(p, pid) in selectedPapers" :key="pid">
+            <span class="chip">
+              <span x-text="(p.title || pid).slice(0,30)"></span>
+              <button class="chip-remove" @click="removeSelected(pid)">✕</button>
+            </span>
+          </template>
+        </div>
+        <div x-show="Object.keys(selectedPapers).length === 0" class="muted qa-hint">
+          💡 未指定論文，Q&A 將自動搜尋最相關的論文
+        </div>
+
+        <!-- Q&A history -->
+        <div class="qa-history" id="qa-history">
+          <template x-for="(item, qi) in qaHistory" :key="qi">
+            <div class="qa-item">
+              <div class="qa-question">❓ <span x-text="item.question"></span></div>
+              <div class="qa-answer" x-html="item.answerHtml"></div>
+              <template x-if="item.sources && item.sources.length > 0">
+                <div class="qa-sources">
+                  <template x-for="(src, si) in item.sources" :key="si">
+                    <button class="btn btn-sm btn-ghost"
+                            @click="openPaper(src)"
+                            x-text="`📄 ${(src.title || '?').slice(0,20)}...`">
+                    </button>
+                  </template>
+                  <details class="citations-details">
+                    <summary>🔎 本輪引用來源 (<span x-text="item.sources.length"></span>)</summary>
+                    <div class="citations-list">
+                      <template x-for="(src, si) in item.sources" :key="si">
+                        <div class="citation-item">
+                          <div class="citation-title" x-text="`${si+1}. ${(src.title||'未知').slice(0,72)}`"></div>
+                          <div class="citation-meta" x-text="citationMeta(src)"></div>
+                        </div>
+                      </template>
+                    </div>
+                  </details>
+                </div>
+              </template>
+            </div>
+          </template>
+        </div>
+
+        <!-- Q&A input -->
+        <div class="qa-input-area">
+          <textarea class="form-textarea" x-model="qaQuestion" rows="3"
+                    placeholder="例如：兩篇論文的樣本選取有何不同？"
+                    @keydown.ctrl.enter="submitQuestion()"></textarea>
+          <div class="qa-actions">
+            <button class="btn btn-primary" @click="submitQuestion()"
+                    :disabled="answering || !qaQuestion.trim()">
+              <span x-show="!answering">🚀 送出問題</span>
+              <span x-show="answering"><span class="spinner-sm"></span> 思考中...</span>
+            </button>
+            <button class="btn btn-ghost" @click="clearQA()">🗑️ 清除歷史</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ──── TAB: GENERATE ───────────────────────── -->
+      <div class="tab-panel" x-show="tab==='generate'">
+        <div class="gen-form card">
+          <h3 class="card-title">📄 提交生成任務</h3>
+
+          <!-- PDF upload -->
+          <div class="form-group">
+            <label class="form-label">上傳 PDF（建議直接上傳，上限 50MB）</label>
+            <div class="drop-zone" id="drop-zone"
+                 @dragover.prevent="dropActive=true"
+                 @dragleave.prevent="dropActive=false"
+                 @drop.prevent="onDrop($event)"
+                 :class="{active: dropActive}">
+              <input type="file" id="pdf-file-input" accept=".pdf"
+                     @change="onFileSelect($event)" style="display:none">
+              <div x-show="!selectedFile" @click="$refs.fileInput.click()">
+                <label for="pdf-file-input" style="cursor:pointer">
+                  📁 拖曳 PDF 到此，或點擊選擇檔案
+                </label>
+              </div>
+              <div x-show="selectedFile" class="file-selected">
+                📄 <span x-text="selectedFile && selectedFile.name"></span>
+                <button class="btn-icon" @click.stop="clearFile()">✕</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">風格</label>
+            <select class="form-select" x-model="genStyle">
+              <template x-for="s in styles" :key="s.key">
+                <option :value="s.key" x-text="`${s.key} - ${s.label}`"></option>
+              </template>
+            </select>
+          </div>
+
+          <label class="check-label">
+            <input type="checkbox" x-model="genAutoIndex">
+            <span>完成後自動重建索引</span>
+          </label>
+
+          <button class="btn btn-primary btn-full" style="margin-top:16px"
+                  @click="submitGenJob()" :disabled="submitting">
+            <span x-show="!submitting">🚀 提交生成任務</span>
+            <span x-show="submitting"><span class="spinner-sm"></span> 提交中...</span>
+          </button>
+        </div>
+
+        <!-- Job list -->
+        <div class="section-header">
+          <span>最近任務（最多 8 筆）</span>
+          <button class="btn btn-sm btn-ghost" @click="loadJobs()">↻ 刷新</button>
+        </div>
+
+        <div x-show="jobsLoading" class="loading-row">
+          <span class="spinner-sm"></span> 載入中...
+        </div>
+
+        <div x-show="jobs.length === 0 && !jobsLoading" class="muted">目前沒有生成任務</div>
+
+        <!-- job status summary -->
+        <div x-show="jobs.length > 0" class="job-status-summary" x-text="jobStatusSummary()"></div>
+
+        <div class="jobs-list">
+          <template x-for="job in jobs" :key="job.job_id">
+            <details class="job-card" :class="'job-' + job.status">
+              <summary class="job-summary-row">
+                <span class="job-id" x-text="job.job_id.slice(0,8)"></span>
+                <span class="job-status-chip" :class="'status-' + job.status" x-text="job.status"></span>
+                <span class="job-meta" x-text="`sections: ${job.sections_generated??'-'} | warn: ${job.warnings_count} | err: ${job.errors_count}`"></span>
+                <span class="job-time muted" x-text="job.updated_at?.slice(0,16)||'-'"></span>
+              </summary>
+
+              <div class="job-detail" x-show="true" x-data="{jobDetail: null, loadingDetail: false}"
+                   @toggle.once="loadJobDetail(job.job_id).then(d => jobDetail = d)">
+
+                <template x-if="!jobDetail">
+                  <button class="btn btn-sm btn-ghost" @click="loadJobDetail(job.job_id).then(d => jobDetail = d)">
+                    載入詳情
+                  </button>
+                </template>
+
+                <template x-if="jobDetail">
+                  <div>
+                    <div class="detail-row"><label>pdf_path</label><span x-text="jobDetail.pdf_path||'-'"></span></div>
+                    <div class="detail-row"><label>output_path</label><span x-text="jobDetail.output_path||'-'"></span></div>
+                    <div class="detail-row"><label>rewrite_model</label><span x-text="jobDetail.rewrite_model||'-'"></span></div>
+                    <div class="detail-row"><label>auto_index</label><span x-text="jobDetail.auto_index_state_name||'-'"></span></div>
+                    <div class="detail-row"><label>updated_at</label><span x-text="jobDetail.updated_at||'-'"></span></div>
+
+                    <template x-if="jobDetail.warnings_count > 0">
+                      <div class="detail-warnings">
+                        <div class="detail-subhead">warnings (<span x-text="jobDetail.warnings_count"></span>):</div>
+                        <template x-for="w in jobDetail.warnings" :key="w">
+                          <div class="detail-item muted" x-text="'• ' + w"></div>
+                        </template>
+                      </div>
+                    </template>
+
+                    <template x-if="jobDetail.errors_count > 0">
+                      <div class="detail-errors">
+                        <div class="detail-subhead">errors (<span x-text="jobDetail.errors_count"></span>):</div>
+                        <template x-for="e in jobDetail.errors" :key="e">
+                          <div class="detail-item error-text" x-text="'• ' + e"></div>
+                        </template>
+                      </div>
+                    </template>
+
+                    <template x-if="jobDetail.steps && jobDetail.steps.length > 0">
+                      <div class="detail-steps">
+                        <div class="detail-subhead">recent steps:</div>
+                        <template x-for="s in jobDetail.steps.slice(-5)" :key="s">
+                          <div class="detail-item muted" x-text="'• ' + s"></div>
+                        </template>
+                      </div>
+                    </template>
+
+                    <!-- Actions: retry / cancel -->
+                    <div class="job-actions">
+                      <template x-if="['failed','succeeded','canceled'].includes(jobDetail.status)">
+                        <button class="btn btn-sm btn-secondary"
+                                @click="retryJob(jobDetail.job_id); jobDetail = null">🔄 重試</button>
+                      </template>
+                      <template x-if="['pending','running'].includes(jobDetail.status)">
+                        <button class="btn btn-sm btn-danger"
+                                @click="cancelJob(jobDetail.job_id); jobDetail = null">🛑 取消</button>
+                      </template>
+                    </div>
+
+                    <!-- Handoff (succeeded only) -->
+                    <template x-if="jobDetail.status === 'succeeded'">
+                      <div class="handoff-area">
+                        <div class="detail-subhead">paper_status:
+                          <span x-text="statusBadge(jobDetail.manifest_paper || {paper_status:'unavailable'})"></span>
+                          <span x-text="(jobDetail.manifest_paper?.paper_status)||'unavailable'"></span>
+                        </div>
+                        <div class="handoff-btns">
+                          <button class="btn btn-sm btn-primary"
+                                  :disabled="!jobDetail.paper_ready && !jobDetail.output_paper_id"
+                                  @click="handoffOpen(jobDetail)">📖 開啟生成結果</button>
+                          <button class="btn btn-sm btn-primary"
+                                  :disabled="!jobDetail.paper_ready"
+                                  @click="handoffSearch(jobDetail)">🔍 搜尋這篇</button>
+                          <button class="btn btn-sm btn-primary"
+                                  :disabled="!jobDetail.paper_ready"
+                                  @click="handoffAsk(jobDetail)">💬 詢問這篇</button>
+                        </div>
+                        <template x-if="jobDetail.paper_ready">
+                          <div class="alert alert-success">✅ 此篇已就緒，可直接搜尋/Q&A</div>
+                        </template>
+                        <template x-if="!jobDetail.paper_ready">
+                          <div class="alert alert-warning">尚未就緒，請重建索引後再用搜尋/Q&A</div>
+                        </template>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </details>
+          </template>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Alpine.js CDN (自托管 fallback) -->
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <!-- marked.js for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+  <!-- KaTeX -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+          onload="renderMathInElement(document.body, {delimiters: [{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\\\(',right:'\\\\)',display:false},{left:'\\\\[',right:'\\\\]',display:true}]})"></script>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
