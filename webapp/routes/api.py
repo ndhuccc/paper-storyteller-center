@@ -17,8 +17,9 @@ from paper_repository import (
 
 bp = Blueprint("api", __name__, url_prefix="/api")
 
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent  # repo root
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
-UPLOADS_DIR = STORYTELLERS_DIR / "uploads"
+UPLOADS_DIR = PROJECT_DIR / "uploads"
 MAX_UPLOAD_SIZE_MB = 50
 UPLOAD_RETENTION_DAYS = 14
 UPLOAD_MAX_FILES = 200

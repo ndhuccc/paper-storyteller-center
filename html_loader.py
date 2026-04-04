@@ -1,10 +1,100 @@
 #!/usr/bin/env python3
 """HTML loading utilities for Paper Storyteller Center."""
 
+import re
 from pathlib import Path
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+
+# ── Markdown list repair ─────────────────────────────────────────────────────
+
+_BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
+_TAGS_RE = re.compile(r"<[^>]+>")
+_BULLET_RE = re.compile(r"^[-*]\s+")
+_P_RE = re.compile(r"<p>(.*?)</p>", re.DOTALL | re.IGNORECASE)
+
+
+def _fix_markdown_lists_in_html(content: str) -> str:
+    """Convert <p> blocks containing raw markdown bullet lines to proper <ul>/<li> HTML.
+
+    When the Python markdown library fails to detect list items (because no
+    blank line precedes them), the output is a <p> where each line starts with
+    ``* `` or ``- `` separated by ``<br />``.  This function detects that
+    pattern and replaces the paragraph with a properly nested ``<ul>``.
+    """
+
+    def _process_p(m: re.Match) -> str:
+        inner = m.group(1)
+        lines = _BR_RE.split(inner)
+
+        rows = []
+        for raw in lines:
+            # Strip tags but keep whitespace to measure indentation
+            text_no_tags = _TAGS_RE.sub("", raw)
+            text = text_no_tags.strip()
+            if not text:
+                continue
+            indent = len(text_no_tags) - len(text_no_tags.lstrip())
+            is_bullet = bool(_BULLET_RE.match(text))
+            clean_html = re.sub(r"^\s*[-*]\s+", "", raw.strip()) if is_bullet else raw.strip()
+            rows.append({"indent": indent, "html": clean_html, "bullet": is_bullet})
+
+        if not any(r["bullet"] for r in rows):
+            return m.group(0)  # nothing to convert
+
+        # Normalize indent levels relative to the minimum bullet indent.
+        # Detect the actual indent step size from the data (usually 2 or 4 spaces).
+        indent_vals = sorted({r["indent"] for r in rows if r["bullet"]})
+        min_indent = indent_vals[0]
+        if len(indent_vals) >= 2:
+            diffs = [indent_vals[i + 1] - indent_vals[i] for i in range(len(indent_vals) - 1)]
+            step = max(1, min(diffs))
+        else:
+            step = 4  # default; no nesting present
+        for r in rows:
+            r["level"] = max(0, (r["indent"] - min_indent) // step) if r["bullet"] else -1
+
+        out: list = []
+        depth = 0
+
+        for row in rows:
+            if row["level"] < 0:
+                # Non-bullet line: close any open lists, emit as <p>
+                while depth > 0:
+                    out.append("</ul>")
+                    depth -= 1
+                out.append(f'<p>{row["html"]}</p>')
+                continue
+
+            lv = row["level"]
+            if depth == 0:
+                out.append("<ul>")
+                depth = 1
+            # Open deeper levels
+            while depth - 1 < lv:
+                out.append("<ul>")
+                depth += 1
+            # Close too-deep levels
+            while depth - 1 > lv:
+                out.append("</ul>")
+                depth -= 1
+            out.append(f'<li>{row["html"]}</li>')
+
+        while depth > 0:
+            out.append("</ul>")
+            depth -= 1
+
+        return "\n".join(out)
+
+    # Only process the <body> portion to avoid touching <style>/<script> blocks
+    body_start = content.lower().find("<body")
+    if body_start == -1:
+        return _P_RE.sub(_process_p, content)
+
+    head = content[:body_start]
+    body = content[body_start:]
+    return head + _P_RE.sub(_process_p, body)
 
 
 def load_paper_html(paper_id: str) -> str:
@@ -19,6 +109,26 @@ def load_paper_html(paper_id: str) -> str:
             continue
 
         content = filepath.read_text(encoding="utf-8")
+
+        # Repair markdown-style bullet lines that were not converted to <ul>/<li>
+        # (affects files generated before the _ensure_list_blank_lines fix).
+        content = _fix_markdown_lists_in_html(content)
+
+        # Ensure <ul>/<ol>/<li> render with proper indentation and bullets.
+        # Some generated HTML files omit explicit list CSS, causing browsers to
+        # use default styles which may be overridden by a CSS reset.
+        list_css = """
+<style>
+body ul, body ol { padding-left: 1.6em; margin: 0.5em 0; }
+body ul { list-style-type: disc; }
+body ol { list-style-type: decimal; }
+body ul ul, body ul ol { list-style-type: circle; }
+body ol ol, body ol ul { list-style-type: lower-alpha; }
+body li { margin: 0.25em 0; }
+</style>
+"""
+        if "</head>" in content:
+            content = content.replace("</head>", f"{list_css}</head>")
 
         # If source HTML does not include KaTeX, inject KaTeX + auto-render.
         # This avoids unstable MathJax loading inside iframe.

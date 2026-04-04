@@ -301,7 +301,12 @@ a { color: var(--primary); text-decoration: none; }
 }
 .qa-answer h1,.qa-answer h2,.qa-answer h3,.qa-answer h4 { color: var(--info); margin: 12px 0 6px; }
 .qa-answer p { margin-bottom: 8px; }
-.qa-answer ul,.qa-answer ol { padding-left: 20px; margin-bottom: 8px; }
+.qa-answer ul,.qa-answer ol { padding-left: 20px; margin-bottom: 8px; list-style-type: initial; }
+.qa-answer ul { list-style-type: disc; }
+.qa-answer ol { list-style-type: decimal; }
+.qa-answer ul ul,.qa-answer ul ol { list-style-type: circle; padding-left: 20px; }
+.qa-answer ol ol,.qa-answer ol ul { list-style-type: lower-alpha; padding-left: 20px; }
+.qa-answer li { margin-bottom: 4px; }
 .qa-answer code { background: var(--bg3); padding: 1px 5px; border-radius: 4px; font-family: var(--font-mono); font-size: 13px; color: #be185d; }
 .qa-answer pre { background: var(--bg3); padding: 12px; border-radius: var(--radius); overflow-x: auto; margin-bottom: 8px; color: var(--text); }
 .qa-answer table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }

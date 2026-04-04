@@ -11,6 +11,9 @@ build/
 # LanceDB 資料庫（論文索引）
 papers.lance/
 
+# Uploaded PDFs
+uploads/
+
 # 暫存
 *.log
 .env

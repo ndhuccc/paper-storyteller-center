@@ -211,12 +211,35 @@ function App() {
 
     renderAnswer(text) {
       if (!text) return '';
+      const prepared = this._ensureListBlankLines(text);
       if (window.marked) {
-        return marked.parse(text);
+        return marked.parse(prepared);
       }
       // Fallback: basic HTML escape + preformatted
       return '<pre style="white-space:pre-wrap">' +
         text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
+    },
+
+    // marked.js (CommonMark) requires a blank line before a list block when it
+    // follows paragraph text; without it list items are absorbed into the
+    // paragraph and rendered as literal "- " / "* " text with <br> separators.
+    // This preprocessor inserts the missing blank line so lists always parse
+    // into proper <ul>/<ol><li> elements.
+    _ensureListBlankLines(text) {
+      const listRe = /^[ \t]*(?:[-*+]|\d+\.)[ \t]+/;
+      const lines = text.split('\n');
+      const out = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (listRe.test(line)) {
+          const prev = out.length ? out[out.length - 1] : '';
+          if (prev.trim() && !listRe.test(prev)) {
+            out.push('');
+          }
+        }
+        out.push(line);
+      }
+      return out.join('\n');
     },
 
     citationMeta(src) {

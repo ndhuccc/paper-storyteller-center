@@ -1746,9 +1746,34 @@ def _build_story_html_document(
 </html>"""
 
 
+def _ensure_list_blank_lines(text: str) -> str:
+    """Insert a blank line before markdown list items that are not already preceded by one.
+
+    The Python ``markdown`` library requires at least one blank line before a
+    list block when it is preceded by non-list text.  Without the blank line
+    the parser treats ``* item`` / ``- item`` lines as literal characters inside
+    a paragraph (made worse by the ``nl2br`` extension which turns every
+    newline into ``<br>``).  This pre-processor guarantees the blank line so
+    that nested and flat lists are rendered with proper ``<ul>/<li>`` HTML.
+    """
+    lines = text.split("\n")
+    result: List[str] = []
+    list_re = re.compile(r"^[ \t]*(?:[-*+]|\d+\.)[ \t]+")
+    for i, line in enumerate(lines):
+        if list_re.match(line):
+            # Look at the previous non-empty line.  If it's not blank and not
+            # itself a list item, inject a blank line first.
+            prev = result[-1] if result else ""
+            if prev.strip() and not list_re.match(prev):
+                result.append("")
+        result.append(line)
+    return "\n".join(result)
+
+
 def _text_to_html_blocks(text: str) -> str:
     protected, formulas = _protect_latex(text)
     markdown_input = _inject_display_formula_blocks(protected, formulas)
+    markdown_input = _ensure_list_blank_lines(markdown_input)
     rendered = markdown.markdown(
         markdown_input,
         extensions=["tables", "fenced_code", "nl2br"],
