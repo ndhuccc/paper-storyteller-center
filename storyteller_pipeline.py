@@ -6,12 +6,17 @@ from __future__ import annotations
 import html
 import json
 import markdown
+import os
 import re
+import time
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
 from typing import Any, Dict, List, Optional, Tuple
+
+import google.generativeai as genai
+from dotenv import load_dotenv
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
@@ -20,6 +25,11 @@ DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_MAX_SECTIONS = 10
 DEFAULT_STYLE = "storyteller"
 LATEX_PLACEHOLDER = "LATEXPH"
+GEMINI_EXTRACTION_PROMPT = (
+    "請完美提取這份 PDF 的純文字內容，保留原有的章節標題結構（使用 Markdown 標題如 # 或 ##），"
+    "並將所有的數學公式完美轉換為標準 LaTeX 語法（使用 $$...$$ 或 $...$ 包裝）。"
+    "請直接輸出乾淨的 Markdown 內容，不要包含任何開場白或多餘解釋。"
+)
 HEADING_HINTS = (
     "abstract",
     "introduction",
@@ -39,6 +49,9 @@ HEADING_HINTS = (
     "acknowledgements",
     "appendix",
 )
+
+load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
+load_dotenv(dotenv_path=Path.home() / ".env", override=False)
 
 STYLE_PROMPTS: Dict[str, str] = {
     "storyteller": """說書人（生活化類比 + Why-first + 公式拆解）
@@ -237,6 +250,62 @@ def _candidate_pdf_paths(raw_value: str) -> List[Path]:
 
 
 def _extract_pdf_text(pdf_path: Path) -> str:
+    gemini_api_key = _configure_gemini()
+    if not gemini_api_key:
+        return _extract_pdf_text_with_pymupdf(pdf_path)
+
+    sample_file = None
+    try:
+        sample_file = genai.upload_file(path=str(pdf_path))
+        _wait_for_gemini_file_ready(sample_file.name)
+
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        try:
+            response = model.generate_content(
+                [sample_file, GEMINI_EXTRACTION_PROMPT],
+                request_options={"timeout": 600},
+            )
+        except TypeError:
+            response = model.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT])
+
+        markdown_text = str(getattr(response, "text", "") or "").strip()
+        if markdown_text:
+            return _normalize_extracted_text(markdown_text)
+        raise RuntimeError("Gemini returned empty extraction content.")
+    except Exception:
+        return _extract_pdf_text_with_pymupdf(pdf_path)
+    finally:
+        if sample_file is not None:
+            try:
+                genai.delete_file(sample_file.name)
+            except Exception:
+                pass
+
+
+def _configure_gemini() -> str:
+    # Reload env for long-lived workers that may receive new keys at runtime.
+    load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
+    load_dotenv(dotenv_path=Path.home() / ".env", override=False)
+    gemini_api_key = str(os.getenv("GEMINI_API_KEY") or "").strip()
+    if gemini_api_key:
+        genai.configure(api_key=gemini_api_key)
+    return gemini_api_key
+
+
+def _wait_for_gemini_file_ready(file_name: str, timeout_seconds: int = 90) -> None:
+    deadline = time.time() + max(timeout_seconds, 1)
+    while time.time() < deadline:
+        uploaded = genai.get_file(file_name)
+        state_name = str(getattr(getattr(uploaded, "state", None), "name", "")).upper()
+        if not state_name or state_name == "ACTIVE":
+            return
+        if state_name == "FAILED":
+            raise RuntimeError(f"Gemini file processing failed for {file_name}")
+        time.sleep(1.5)
+    raise TimeoutError(f"Timed out waiting for Gemini file processing: {file_name}")
+
+
+def _extract_pdf_text_with_pymupdf(pdf_path: Path) -> str:
     try:
         import fitz  # PyMuPDF
     except Exception as exc:
@@ -547,6 +616,7 @@ def _split_into_sections(extracted_text: str) -> List[Dict[str, str]]:
             continue
 
         if _looks_like_heading(block):
+            normalized_heading = _normalize_heading_text(block)
             if current_paragraphs:
                 _append_or_merge_section(
                     sections=sections,
@@ -554,9 +624,9 @@ def _split_into_sections(extracted_text: str) -> List[Dict[str, str]]:
                     source_text="\n\n".join(current_paragraphs).strip(),
                 )
                 current_paragraphs = []
-            if _same_heading(block, current_title):
+            if _same_heading(normalized_heading, current_title):
                 continue
-            current_title = block
+            current_title = normalized_heading
             continue
         current_paragraphs.append(block)
 
@@ -617,6 +687,8 @@ def _split_inline_heading_block(block: str) -> Optional[Tuple[str, str]]:
 
 def _normalize_heading_text(text: str) -> str:
     heading = re.sub(r"\s+", " ", text).strip(" \t-–—:")
+    heading = re.sub(r"^#{1,6}\s+", "", heading).strip()
+    heading = re.sub(r"\s+#+\s*$", "", heading).strip()
     if not heading:
         return heading
     if heading.isupper() or heading.islower():
@@ -723,6 +795,8 @@ def _looks_like_heading(block: str) -> bool:
     text = re.sub(r"\s+", " ", block).strip()
     if not text or len(text) > 160:
         return False
+    if re.match(r"^#{1,6}\s+.+$", text):
+        return True
     if re.search(r"[.?!。？！]$", text):
         return False
     if re.match(r"(?i)^https?://", text):
