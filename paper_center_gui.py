@@ -10,19 +10,19 @@
 
 import streamlit as st
 import json
-import subprocess
-from pathlib import Path
 from typing import List, Dict
 import urllib.request
 
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from qa_render import answer_to_mathjax_html
+from html_loader import load_paper_html
+from paper_repository import get_all_papers
+from retrieval_service import clear_lance_db_cache
+from retrieval_service import rebuild_index as service_rebuild_index
+from retrieval_service import search_papers as service_search_papers
 
 # ==================== 配置 ====================
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
-LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
 OLLAMA_BASE_URL = "http://localhost:11434"
-EMBEDDING_MODEL = "qwen3-embedding:8b"
 LLM_MODEL = "deepseek-r1:8b"
 
 # ==================== 頁面設定 ====================
@@ -46,62 +46,10 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==================== 函數 ====================
-@st.cache_resource
-def get_lance_db():
-    """建立並快取 LanceDB 連線。"""
-    try:
-        import lancedb
-        return lancedb.connect(str(LANCEDB_PATH))
-    except Exception:
-        return None
-
-
-def get_embedding(text: str) -> List[float]:
-    """呼叫 Ollama embedding API，回傳查詢向量。"""
-    url = f"{OLLAMA_BASE_URL}/api/embeddings"
-    data = {"model": EMBEDDING_MODEL, "prompt": text[:3000]}
-    try:
-        req = urllib.request.Request(url, data=json.dumps(data).encode(), headers={'Content-Type': 'application/json'})
-        with urllib.request.urlopen(req, timeout=60) as response:
-            return json.loads(response.read()).get('embedding', [])
-    except Exception as e:
-        st.error(f"Embedding 錯誤: {e}")
-        return []
-
-
 def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0) -> List[Dict]:
     """純向量搜尋：以 chunk 為單位搜尋，再依論文去重。"""
-    db = get_lance_db()
-    if db is None:
-        return []
-    
-    query_embedding = get_embedding(query)
-    if not query_embedding:
-        return []
-    
     try:
-        tbl = db.open_table("papers")
-        # 多抓幾個 chunk，去重後再取前 top_k 篇論文
-        results = tbl.search(query_embedding, vector_column_name="embedding") \
-                     .limit(top_k * 5).to_pandas().to_dict("records")
-        
-        # similarity_threshold=0.0 表示全部顯示
-        results = [r for r in results if (1.0 - r.get('_distance', 9999)) >= similarity_threshold]
-        
-        # 每篇論文只保留相似度最高的 chunk
-        best_per_paper = {}
-        for r in results:
-            pid = r.get('paper_id', r.get('id', ''))
-            sim = 1.0 - r.get('_distance', 9999)
-            if pid not in best_per_paper or sim > (1.0 - best_per_paper[pid].get('_distance', 9999)):
-                best_per_paper[pid] = r
-        
-        # 依相似度排序
-        sorted_papers = sorted(best_per_paper.values(),
-                               key=lambda x: 1.0 - x.get('_distance', 9999),
-                               reverse=True)
-        return sorted_papers[:top_k]
-        
+        return service_search_papers(query, top_k=top_k, similarity_threshold=similarity_threshold)
     except Exception as e:
         st.error(f"搜尋錯誤: {e}")
         return []
@@ -143,89 +91,6 @@ def render_answer(answer: str):
     st.components.v1.html(html_content, height=height, scrolling=True)
 
 
-def load_paper_html(paper_id: str) -> str:
-    """讀取論文 HTML，並補上 iframe 內需要的 MathJax / 錨點行為。"""
-    # chunk id（如 xxx_chunk_0）要先還原成原始論文 id
-    if '_chunk_' in paper_id:
-        paper_id = paper_id.rsplit('_chunk_', 1)[0]
-    for filename in [f"{paper_id}.html"]:
-        filepath = STORYTELLERS_DIR / filename
-        if filepath.exists():
-            content = filepath.read_text(encoding='utf-8')
-            # 若原始 HTML 沒帶 KaTeX，就補上 KaTeX + auto-render，避免 iframe 內 MathJax 載入不穩
-            if 'katex.min.css' not in content and '</head>' in content:
-                katex = """
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  function renderKatexWhenReady() {
-    if (typeof renderMathInElement !== 'function') {
-      setTimeout(renderKatexWhenReady, 80);
-      return;
-    }
-    renderMathInElement(document.body, {
-      delimiters: [
-        {left: '$$', right: '$$', display: true},
-        {left: '\\[', right: '\\]', display: true},
-        {left: '$', right: '$', display: false},
-        {left: '\\(', right: '\\)', display: false}
-      ],
-      throwOnError: false
-    });
-  }
-  renderKatexWhenReady();
-});
-</script>
-"""
-                content = content.replace('</head>', f'{katex}</head>')
-            
-            # 讓 href="#xxx" 在 iframe 內也能正常滾動
-            anchor_fix = """
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // 攔截 a[href^="#"]，改為 iframe 內部滾動
-    document.querySelectorAll('a[href^="#"]').forEach(function(link) {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            var targetId = link.getAttribute('href').substring(1);
-            var target = document.getElementById(targetId);
-            if (target) {
-                target.scrollIntoView({behavior: 'smooth', block: 'start'});
-            }
-        });
-    });
-});
-</script>
-"""
-            if '</body>' in content:
-                content = content.replace('</body>', f'{anchor_fix}</body>')
-            else:
-                content += anchor_fix
-            return content
-    return "<html><body><h1>找不到論文</h1></body></html>"
-
-
-def get_all_papers() -> List[Dict]:
-    """取得所有論文，每篇只回傳一筆。"""
-    db = get_lance_db()
-    if db is None:
-        return []
-    try:
-        tbl = db.open_table("papers")
-        all_rows = tbl.to_pandas().to_dict("records")
-        # 依 paper_id 去重，只保留第一筆
-        seen = {}
-        for r in all_rows:
-            pid = r.get('paper_id', r.get('id', ''))
-            if pid not in seen:
-                seen[pid] = r
-        return list(seen.values())
-    except:
-        return []
-
-
 # ==================== Dialog ====================
 @st.dialog("📖 論文閱覽", width="large")
 def show_paper_dialog(paper: Dict):
@@ -253,18 +118,14 @@ def maybe_show_open_paper_dialog():
 
 
 def rebuild_index():
-    """呼叫 paper_center.py 重建向量索引。"""
-    result = subprocess.run(
-        ["/home/linuxbrew/.linuxbrew/bin/python3", str(STORYTELLERS_DIR / "paper_center.py"), "rebuild"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode == 0:
+    """重建向量索引。"""
+    if service_rebuild_index():
+        clear_lance_db_cache()
         st.success("✅ 完成！")
         st.cache_resource.clear()
         st.rerun()
     else:
-        st.error(f"❌ {result.stderr[:200]}")
+        st.error("❌ 重建失敗")
 
 
 def similarity_badge(result: Dict) -> str:
