@@ -4,11 +4,11 @@
 功能：論文分段索引建立、語意搜尋、Q&A 對話
 """
 
-import json
 from typing import Dict, List, Tuple
-import urllib.request
 from retrieval_service import rebuild_index as service_rebuild_index
 from retrieval_service import search_papers as service_search_papers
+from qa_service import answer_with_search as service_answer_with_search
+from qa_service import build_cli_prompt
 
 # ==================== 配置 ====================
 OLLAMA_BASE_URL = "http://localhost:11434"
@@ -25,34 +25,17 @@ def search_papers(query: str, top_k: int = 5, similarity_threshold: float = 0.0)
 # ==================== Q&A ====================
 def answer_question(question: str, context_limit: int = 3) -> Tuple[str, List[Dict]]:
     """使用 RAG 回答問題"""
-    results = search_papers(question, top_k=context_limit)
-    if not results:
-        return "抱歉，沒有找到相關的論文內容。", []
-    
-    context_parts = [f"=== {r.get('title','未知')} ===\n{r.get('content','')[:2000]}" for r in results]
-    context = "\n\n".join(context_parts)
-    
-    prompt = f"""你是一個專業的論文說書人，擅長比較和解釋學術論文的內容。
-
-根據以下論文內容，回答用戶的問題。請用繁體中文回答，並引用相關的論文標題：
-
-=== 論文內容 ===
-{context}
-
-=== 用戶問題 ===
-{question}
-
-回答："""
-    
-    try:
-        url = f"{OLLAMA_BASE_URL}/api/generate"
-        data = {"model": "qwen3:8b", "prompt": prompt, "stream": False}
-        req = urllib.request.Request(url, data=json.dumps(data).encode(), headers={'Content-Type': 'application/json'})
-        with urllib.request.urlopen(req, timeout=180) as response:
-            answer = json.loads(response.read()).get('response', '').strip()
-            return answer, results
-    except Exception as e:
-        return f"生成回答時發生錯誤：{e}", results
+    return service_answer_with_search(
+        question=question,
+        search_fn=search_papers,
+        top_k=context_limit,
+        model="qwen3:8b",
+        prompt_builder=build_cli_prompt,
+        context_content_limit=2000,
+        not_found_message="抱歉，沒有找到相關的論文內容。",
+        error_prefix="生成回答時發生錯誤：",
+        ollama_base_url=OLLAMA_BASE_URL,
+    )
 
 
 # ==================== 主程式 ====================

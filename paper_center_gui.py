@@ -9,12 +9,12 @@
 """
 
 import streamlit as st
-import json
 from typing import List, Dict
-import urllib.request
 
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from qa_render import answer_to_mathjax_html
+from qa_service import answer_with_search as service_answer_with_search
+from qa_service import build_gui_prompt
 from html_loader import load_paper_html
 from paper_repository import get_all_papers
 from retrieval_service import clear_lance_db_cache
@@ -57,32 +57,18 @@ def search_papers(query: str, top_k: int = 10, similarity_threshold: float = 0.0
 
 def answer_question(question: str, forced_papers: List[Dict] = None) -> tuple[str, List[Dict]]:
     """根據指定論文或自動搜尋結果，產生 Q&A 回答。"""
-    if forced_papers:
-        results = forced_papers
-    else:
-        results = search_papers(question, top_k=3)
-    if not results:
-        return "抱歉，沒有找到相關論文內容。", []
-    context = "\n\n".join([f"=== {r.get('title','未知')} ===\n{r.get('content','')[:3000]}" for r in results])
-    prompt = f"""你是專業論文說書人，用繁體中文回答，並引用論文標題。
-
-=== 論文內容 ===
-{context}
-
-=== 問題 ===
-{question}
-
-回答："""
-    try:
-        req = urllib.request.Request(
-            f"{OLLAMA_BASE_URL}/api/generate",
-            data=json.dumps({"model": LLM_MODEL, "prompt": prompt, "stream": False}).encode(),
-            headers={'Content-Type': 'application/json'}
-        )
-        with urllib.request.urlopen(req, timeout=180) as response:
-            return json.loads(response.read()).get('response', '').strip(), results
-    except Exception as e:
-        return f"生成錯誤：{e}", results
+    return service_answer_with_search(
+        question=question,
+        search_fn=search_papers,
+        top_k=3,
+        model=LLM_MODEL,
+        prompt_builder=build_gui_prompt,
+        context_content_limit=3000,
+        not_found_message="抱歉，沒有找到相關論文內容。",
+        error_prefix="生成錯誤：",
+        ollama_base_url=OLLAMA_BASE_URL,
+        forced_papers=forced_papers,
+    )
 
 
 def render_answer(answer: str):
