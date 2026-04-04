@@ -13,6 +13,7 @@ from job_store import JobStore
 from paper_repository import get_all_papers as repository_get_all_papers
 from paper_repository import resolve_manifest_paper_from_generation_output
 from retrieval_service import clear_lance_db_cache
+from retrieval_service import incremental_index as retrieval_incremental_index
 from retrieval_service import rebuild_index as retrieval_rebuild_index
 from runtime_support import current_interpreter_supports_modules
 from runtime_support import same_python_executable
@@ -25,6 +26,7 @@ STATUS_RUNNING = "running"
 STATUS_SUCCEEDED = "succeeded"
 STATUS_FAILED = "failed"
 STATUS_CANCELED = "canceled"
+AUTO_INDEX_MODE_INCREMENTAL = "incremental"
 AUTO_INDEX_MODE_FULL_REBUILD = "full_rebuild"
 AUTO_INDEX_REQUIRED_MODULES: Tuple[str, ...] = ("lancedb",)
 
@@ -120,13 +122,21 @@ def _trim_process_output(text: Any, max_chars: int = 600) -> str:
     return f"{content[: max_chars - 3]}..."
 
 
-def _run_rebuild_index_subprocess(python_executable: str) -> Dict[str, Any]:
+def _run_index_subprocess(python_executable: str, *, mode: str) -> Dict[str, Any]:
     module_dir = Path(__file__).resolve().parent
-    code = (
-        "from retrieval_service import rebuild_index\n"
-        "import sys\n"
-        "raise SystemExit(0 if rebuild_index() else 1)\n"
-    )
+    if mode == AUTO_INDEX_MODE_INCREMENTAL:
+        code = (
+            "from retrieval_service import incremental_index\n"
+            "import sys\n"
+            "detail = incremental_index()\n"
+            "raise SystemExit(0 if bool(detail.get('ok')) else 1)\n"
+        )
+    else:
+        code = (
+            "from retrieval_service import rebuild_index\n"
+            "import sys\n"
+            "raise SystemExit(0 if rebuild_index() else 1)\n"
+        )
     proc = subprocess.run(
         [python_executable, "-c", code],
         cwd=str(module_dir),
@@ -175,7 +185,10 @@ def _run_auto_index_full_rebuild() -> Dict[str, Any]:
     if selected_python and not same_python_executable(selected_python, current_python):
         runtime_info["used_fallback"] = True
         runtime_info["method"] = "subprocess"
-        subprocess_result = _run_rebuild_index_subprocess(selected_python)
+        subprocess_result = _run_index_subprocess(
+            selected_python,
+            mode=AUTO_INDEX_MODE_FULL_REBUILD,
+        )
         runtime_info["subprocess_returncode"] = subprocess_result.get("returncode")
         stdout = str(subprocess_result.get("stdout", "")).strip()
         stderr = str(subprocess_result.get("stderr", "")).strip()
@@ -216,6 +229,87 @@ def _run_auto_index_full_rebuild() -> Dict[str, Any]:
             )
         ),
         "runtime": runtime_info,
+    }
+
+
+def _run_auto_index_incremental() -> Dict[str, Any]:
+    current_python = str(sys.executable).strip()
+    current_supports_required = current_interpreter_supports_modules(AUTO_INDEX_REQUIRED_MODULES)
+    preferred = select_preferred_python(required_modules=AUTO_INDEX_REQUIRED_MODULES)
+    selected_python = str(preferred.get("python_executable") or current_python).strip()
+
+    runtime_info: Dict[str, Any] = {
+        "required_modules": list(AUTO_INDEX_REQUIRED_MODULES),
+        "current_python": current_python,
+        "current_supports_required_modules": current_supports_required,
+        "selected_python": selected_python,
+        "selection_source": str(preferred.get("source", "")).strip(),
+        "selection_reason": str(preferred.get("selection_reason", "")).strip(),
+        "override_env_var": str(preferred.get("override_env_var", "")).strip(),
+        "used_fallback": False,
+        "method": "in_process",
+    }
+
+    if current_supports_required:
+        detail = retrieval_incremental_index()
+        return {
+            "ok": bool(detail.get("ok")),
+            "message": str(detail.get("message") or "auto-index incremental sync finished").strip(),
+            "runtime": runtime_info,
+            "detail": detail,
+        }
+
+    if selected_python and not same_python_executable(selected_python, current_python):
+        runtime_info["used_fallback"] = True
+        runtime_info["method"] = "subprocess"
+        subprocess_result = _run_index_subprocess(
+            selected_python,
+            mode=AUTO_INDEX_MODE_INCREMENTAL,
+        )
+        runtime_info["subprocess_returncode"] = subprocess_result.get("returncode")
+        stdout = str(subprocess_result.get("stdout", "")).strip()
+        stderr = str(subprocess_result.get("stderr", "")).strip()
+
+        if subprocess_result.get("ok") is True:
+            return {
+                "ok": True,
+                "message": (
+                    "auto-index incremental sync completed via fallback runtime "
+                    f"({selected_python})"
+                ),
+                "runtime": runtime_info,
+                "detail": {},
+            }
+
+        detail = stderr or stdout
+        message = (
+            "auto-index incremental sync failed via fallback runtime "
+            f"({selected_python})"
+        )
+        if detail:
+            message = f"{message}: {detail}"
+        return {
+            "ok": False,
+            "message": message,
+            "runtime": runtime_info,
+            "detail": {},
+        }
+
+    runtime_info["method"] = "in_process_no_fallback"
+    detail = retrieval_incremental_index()
+    ok = bool(detail.get("ok"))
+    return {
+        "ok": ok,
+        "message": (
+            str(detail.get("message") or "auto-index incremental sync finished").strip()
+            if ok
+            else (
+                "auto-index incremental sync failed: current runtime lacks required modules "
+                "and no fallback runtime was available"
+            )
+        ),
+        "runtime": runtime_info,
+        "detail": detail,
     }
 
 
@@ -294,7 +388,7 @@ def _resolve_manifest_link_after_auto_index(
             return resolution
 
         resolution["ok"] = False
-        resolution["message"] = "manifest paper not uniquely resolved after full rebuild"
+        resolution["message"] = "manifest paper not uniquely resolved after auto-index sync"
         return resolution
     except Exception as exc:
         resolution["ok"] = False
@@ -319,6 +413,7 @@ def _build_success_result(
     output_html_path = pipeline_output.get("output_path")
     generated_at = pipeline_output.get("generated_at")
     model = pipeline_output.get("model")
+    pdf_extraction_model = pipeline_output.get("pdf_extraction_model")
     sections_generated = pipeline_output.get("sections_generated")
 
     result: Dict[str, Any] = {
@@ -330,6 +425,7 @@ def _build_success_result(
         "pdf_path": output_pdf_path,
         "output_path": output_html_path,
         "model": model,
+        "pdf_extraction_model": pdf_extraction_model,
         "generated_at": generated_at,
         "sections_generated": sections_generated,
         "steps": steps,
@@ -352,6 +448,7 @@ def _build_success_result(
             "completed_at": completed_at,
             "duration_ms": _elapsed_ms(started_at, completed_at),
             "model": model,
+            "pdf_extraction_model": pdf_extraction_model,
             "sections_generated": sections_generated,
             "steps": steps,
             "input_payload_keys": sorted(payload.keys()),
@@ -362,13 +459,13 @@ def _build_success_result(
     auto_index = {
         "requested": auto_index_requested,
         "attempted": False,
-        "mode": AUTO_INDEX_MODE_FULL_REBUILD,
+        "mode": AUTO_INDEX_MODE_INCREMENTAL,
         "state": "not_requested" if not auto_index_requested else "pending",
         "ok": None,
         "message": (
-            "auto-index not requested; mode=full_rebuild"
+            "auto-index not requested; mode=incremental"
             if not auto_index_requested
-            else "auto-index requested; pending full rebuild"
+            else "auto-index requested; pending incremental sync"
         ),
         "started_at": None,
         "completed_at": None,
@@ -408,9 +505,11 @@ def _build_success_result(
         auto_index["attempted"] = True
         auto_index["started_at"] = auto_index_started_at
         try:
-            rebuild_detail = _run_auto_index_full_rebuild()
+            rebuild_detail = _run_auto_index_incremental()
             rebuild_ok = bool(rebuild_detail.get("ok"))
             auto_index["runtime"] = rebuild_detail.get("runtime", auto_index.get("runtime"))
+            if isinstance(rebuild_detail.get("detail"), dict):
+                auto_index["detail"] = rebuild_detail.get("detail")
             auto_index_completed_at = _utc_now_iso()
             auto_index["completed_at"] = auto_index_completed_at
             auto_index["duration_ms"] = _elapsed_ms(auto_index_started_at, auto_index_completed_at)
@@ -419,7 +518,7 @@ def _build_success_result(
                 auto_index["ok"] = True
                 auto_index["state"] = "succeeded"
                 auto_index["message"] = str(
-                    rebuild_detail.get("message") or "auto-index full rebuild completed"
+                    rebuild_detail.get("message") or "auto-index incremental sync completed"
                 ).strip()
 
                 manifest_resolution = _resolve_manifest_link_after_auto_index(
@@ -446,17 +545,17 @@ def _build_success_result(
                 auto_index["ok"] = False
                 auto_index["state"] = "failed"
                 auto_index["message"] = str(
-                    rebuild_detail.get("message") or "auto-index full rebuild returned False"
+                    rebuild_detail.get("message") or "auto-index incremental sync returned failure"
                 ).strip()
                 auto_index["manifest_resolution"] = {
                     **auto_index["manifest_resolution"],
-                    "message": "manifest resolution skipped because full rebuild failed",
+                    "message": "manifest resolution skipped because auto-index sync failed",
                 }
-                result["warnings"].append("auto_index requested but index rebuild failed")
+                result["warnings"].append("auto_index requested but incremental index sync failed")
                 result["errors"].append(
                     {
                         "stage": "auto_index",
-                        "type": "IndexRebuildFailed",
+                        "type": "IndexSyncFailed",
                         "message": auto_index["message"],
                     }
                 )
@@ -466,12 +565,12 @@ def _build_success_result(
             auto_index["duration_ms"] = _elapsed_ms(auto_index_started_at, auto_index_completed_at)
             auto_index["ok"] = False
             auto_index["state"] = "error"
-            auto_index["message"] = f"auto-index full rebuild raised {type(exc).__name__}: {exc}"
+            auto_index["message"] = f"auto-index incremental sync raised {type(exc).__name__}: {exc}"
             auto_index["manifest_resolution"] = {
                 **auto_index["manifest_resolution"],
-                "message": "manifest resolution skipped because full rebuild raised exception",
+                "message": "manifest resolution skipped because auto-index sync raised exception",
             }
-            result["warnings"].append("auto_index requested but index rebuild raised exception")
+            result["warnings"].append("auto_index requested but incremental index sync raised exception")
             result["errors"].append(
                 {
                     "stage": "auto_index",
@@ -532,10 +631,10 @@ def _build_failed_result(
             "auto_index": {
                 "requested": _coerce_bool(payload.get("auto_index")),
                 "attempted": False,
-                "mode": AUTO_INDEX_MODE_FULL_REBUILD,
+                "mode": AUTO_INDEX_MODE_INCREMENTAL,
                 "state": "skipped_pipeline_failed",
                 "ok": None,
-                "message": "pipeline failed before auto-index full rebuild",
+                "message": "pipeline failed before auto-index incremental sync",
                 "started_at": None,
                 "completed_at": None,
                 "duration_ms": None,

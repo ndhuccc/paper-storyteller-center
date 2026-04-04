@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import time
 from pathlib import Path
 from typing import List, Optional
@@ -19,21 +20,45 @@ from typing import List, Optional
 import google.generativeai as genai
 from dotenv import load_dotenv
 
+from storyteller_pipeline import GEMINI_EXTRACTION_PROMPT
+from storyteller_pipeline import _split_into_sections
 
-DEFAULT_MODEL = "gemini-1.5-flash"
+
+DEFAULT_MODEL = "models/gemini-3.1-flash-lite-preview"
 DEFAULT_TIMEOUT = 90
 DEFAULT_RETRIES = 2
 MAX_RETRY_SLEEP_SECONDS = 30
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 
 
+def _is_key_working(api_key: str) -> bool:
+    key = str(api_key or "").strip()
+    if not key:
+        return False
+    try:
+        genai.configure(api_key=key)
+        # Quick probe to validate the key against the active API endpoint.
+        next(genai.list_models(page_size=1), None)
+        return True
+    except Exception:
+        return False
+
+
 def load_env() -> str:
     load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
     load_dotenv(dotenv_path=Path.home() / ".env", override=False)
-    api_key = str(os.getenv("GEMINI_API_KEY") or "").strip()
-    if api_key:
-        genai.configure(api_key=api_key)
-    return api_key
+    candidates = [
+        str(os.getenv("GOOGLE_API_KEY") or "").strip(),
+        str(os.getenv("GEMINI_API_KEY") or "").strip(),
+    ]
+    seen = set()
+    for key in candidates:
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        if _is_key_working(key):
+            return key
+    return ""
 
 
 def create_sample_pdf(path: Path) -> Path:
@@ -156,23 +181,47 @@ def extract_with_pymupdf(pdf_path: Path) -> str:
         doc.close()
 
 
+def count_pdf_pages(pdf_path: Path) -> int:
+    try:
+        import fitz
+    except Exception as exc:
+        raise RuntimeError("PyMuPDF not available for page counting") from exc
+
+    doc = fitz.open(str(pdf_path))
+    try:
+        return int(getattr(doc, "page_count", len(doc)))
+    finally:
+        doc.close()
+
+
+def count_sections(extracted_text: str) -> int:
+    text = str(extracted_text or "").strip()
+    if not text:
+        return 0
+
+    try:
+        return len(_split_into_sections(text))
+    except Exception:
+        headings = re.findall(r"(?m)^#{1,6}\s+.+$", text)
+        if headings:
+            return len(headings)
+        blocks = [block for block in re.split(r"\n\s*\n+", text) if block.strip()]
+        return len(blocks)
+
+
 def run_test(pdf_path: Path, model: str, timeout_sec: int, retries: int) -> str:
     sample_file = genai.upload_file(path=str(pdf_path))
     try:
         wait_for_file_active(sample_file.name, timeout_sec=timeout_sec)
-        prompt = (
-            "請提取這份 PDF 的文字內容，保留重點。"
-            "如果看到公式請原樣輸出，並簡短說明文件主題。"
-        )
         llm = genai.GenerativeModel(model)
         attempts = max(1, retries + 1)
         last_exc: Optional[Exception] = None
         for attempt in range(1, attempts + 1):
             try:
                 try:
-                    resp = llm.generate_content([sample_file, prompt], request_options={"timeout": 180})
+                    resp = llm.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT], request_options={"timeout": 180})
                 except TypeError:
-                    resp = llm.generate_content([sample_file, prompt])
+                    resp = llm.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT])
                 text = str(getattr(resp, "text", "") or "").strip()
                 if not text:
                     raise RuntimeError("Gemini returned empty extraction text")
@@ -205,6 +254,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--timeout", dest="timeout", type=int, default=DEFAULT_TIMEOUT)
     parser.add_argument("--retries", dest="retries", type=int, default=DEFAULT_RETRIES)
     parser.add_argument(
+        "--offline",
+        dest="offline",
+        action="store_true",
+        help="Skip Gemini and test only local PyMuPDF extraction/section splitting.",
+    )
+    parser.add_argument(
         "--no-fallback",
         dest="no_fallback",
         action="store_true",
@@ -216,13 +271,12 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
 
-    api_key = load_env()
-    if not api_key:
-        print("[FAIL] GEMINI_API_KEY not found in environment/.env")
-        return 2
-
-    pdf_path = Path(args.pdf).expanduser() if str(args.pdf).strip() else Path()
-    if pdf_path and pdf_path.exists() and pdf_path.is_file():
+    pdf_arg = str(args.pdf).strip()
+    pdf_path = Path(pdf_arg).expanduser() if pdf_arg else Path()
+    if pdf_arg:
+        if not pdf_path.exists() or not pdf_path.is_file():
+            print(f"[FAIL] PDF not found: {pdf_path}")
+            return 3
         target_pdf = pdf_path
     else:
         target_pdf = STORYTELLERS_DIR / "_gemini_smoke_test.pdf"
@@ -233,12 +287,42 @@ def main() -> int:
             return 3
 
     try:
+        page_count = count_pdf_pages(target_pdf)
+    except Exception as exc:
+        print(f"[WARN] Could not count PDF pages: {exc}")
+        page_count = -1
+
+    print(f"[INFO] Using PDF: {target_pdf}")
+    if page_count >= 0:
+        print(f"[INFO] PDF pages: {page_count}")
+
+    if args.offline:
+        try:
+            extracted = extract_with_pymupdf(target_pdf)
+        except Exception as exc:
+            print(f"[FAIL] Offline PyMuPDF extraction failed: {type(exc).__name__}: {exc}")
+            return 1
+
+        section_count = count_sections(extracted)
+        print("[PASS] Offline PyMuPDF extraction succeeded.")
+        print(f"[INFO] Extracted chars: {len(extracted)}")
+        print(f"[INFO] Sections detected: {section_count}")
+        print("----- preview begin -----")
+        print(extracted[:800])
+        print("----- preview end -----")
+        return 0
+
+    api_key = load_env()
+    if not api_key:
+        print("[FAIL] GOOGLE_API_KEY/GEMINI_API_KEY not found in environment/.env")
+        return 2
+
+    try:
         selected_model = pick_available_model(args.model)
     except Exception as exc:
         print(f"[FAIL] Could not select Gemini model: {exc}")
         return 4
 
-    print(f"[INFO] Using PDF: {target_pdf}")
     print(f"[INFO] Requested model: {args.model}")
     print(f"[INFO] Selected model: {selected_model}")
 
@@ -265,16 +349,21 @@ def main() -> int:
             print("[FAIL] PyMuPDF fallback produced empty text")
             return 1
 
+        local_sections = count_sections(local_text)
+
         print("[PASS] PyMuPDF fallback extraction succeeded.")
         print(f"[INFO] Fallback extracted chars: {len(local_text)}")
+        print(f"[INFO] Fallback sections detected: {local_sections}")
         print("----- fallback preview begin -----")
         print(local_text[:800])
         print("----- fallback preview end -----")
         return 1
 
     preview = extracted[:800]
+    section_count = count_sections(extracted)
     print("[PASS] Gemini extraction succeeded.")
     print(f"[INFO] Extracted chars: {len(extracted)}")
+    print(f"[INFO] Sections detected: {section_count}")
     print("----- preview begin -----")
     print(preview)
     print("----- preview end -----")

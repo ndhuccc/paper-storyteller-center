@@ -20,9 +20,18 @@ from dotenv import load_dotenv
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
-DEFAULT_MODEL = "deepseek-r1:8b"
+DEFAULT_REWRITE_MODEL = "models/gemini-3.1-flash-lite-preview"
+DEFAULT_REWRITE_FALLBACK_MODEL = "MiniMax-M2.5"
+DEFAULT_REWRITE_FALLBACK_PROVIDER = "minimax.io"
+DEFAULT_PDF_EXTRACTION_MODEL = "models/gemini-3.1-flash-lite-preview"
+PDF_EXTRACTION_FALLBACK_MODEL = "gemini-2.5-flash"
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MAX_SECTIONS = 10
+DEFAULT_MINIMAX_PORTAL_BASE_URL = "https://api.minimax.io"
+DEFAULT_MAX_SECTIONS = 0
+DEFAULT_REWRITE_CHUNK_CHARS = 3000
+DEFAULT_REWRITE_MODE = "paragraph"
+DEFAULT_APPEND_MISSING_FORMULAS = False
+DEFAULT_REWRITE_RESPONSE_FORMAT = "markdown"
 DEFAULT_STYLE = "storyteller"
 LATEX_PLACEHOLDER = "LATEXPH"
 GEMINI_EXTRACTION_PROMPT = (
@@ -103,7 +112,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
             "Supported keys include pdf_path/source_pdf_path/input_path/file_path/path/pdf."
         )
 
-    extracted_text, extraction_warning = _extract_pdf_text(pdf_path)
+    extracted_text, extraction_warning, pdf_extraction_model = _extract_pdf_text(pdf_path)
     if not extracted_text.strip():
         raise RuntimeError(f"No text extracted from PDF: {pdf_path}")
 
@@ -112,36 +121,121 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         raise RuntimeError(f"Unable to build sections from extracted text: {pdf_path}")
 
     max_sections = _safe_positive_int(payload.get("max_sections"), DEFAULT_MAX_SECTIONS)
-    model = str(payload.get("model") or DEFAULT_MODEL)
+    rewrite_chunk_chars = _safe_positive_int(
+        payload.get("rewrite_chunk_chars"),
+        DEFAULT_REWRITE_CHUNK_CHARS,
+    )
+    rewrite_mode = _normalize_rewrite_mode(payload.get("rewrite_mode"))
+    rewrite_response_format = _normalize_rewrite_response_format(
+        payload.get("rewrite_response_format")
+    )
+    append_missing_formulas = _normalize_bool(
+        payload.get("append_missing_formulas"),
+        DEFAULT_APPEND_MISSING_FORMULAS,
+    )
+    primary_model = str(payload.get("model") or DEFAULT_REWRITE_MODEL)
+    fallback_model = str(payload.get("rewrite_fallback_model") or DEFAULT_REWRITE_FALLBACK_MODEL)
+    fallback_provider = str(
+        payload.get("rewrite_fallback_provider") or DEFAULT_REWRITE_FALLBACK_PROVIDER
+    ).strip().lower()
     ollama_base_url = str(payload.get("ollama_base_url") or DEFAULT_OLLAMA_BASE_URL).rstrip("/")
+    minimax_base_url = str(
+        payload.get("minimax_base_url") or os.getenv("MINIMAX_PORTAL_BASE_URL") or DEFAULT_MINIMAX_PORTAL_BASE_URL
+    ).rstrip("/")
+    minimax_oauth_token = str(
+        payload.get("minimax_oauth_token")
+        or payload.get("minimax_token")
+        or os.getenv("MINIMAX_PORTAL_OAUTH_TOKEN")
+        or os.getenv("MINIMAX_OAUTH_TOKEN")
+        or ""
+    ).strip()
     style = _normalize_style(payload.get("style"))
 
     rendered_sections: List[Dict[str, Any]] = []
     llm_failures: List[str] = []
+    rewrite_models_used: set[str] = set()
     if extraction_warning:
         llm_failures.append(extraction_warning)
 
-    for index, section in enumerate(sections[:max_sections], start=1):
-        rewritten_text, terms, formula_explanations, used_llm, failure = _rewrite_section(
+    selected_sections = sections
+    skipped_sections = 0
+    if max_sections > 0:
+        selected_sections = sections[:max_sections]
+        skipped_sections = max(0, len(sections) - len(selected_sections))
+        if skipped_sections > 0:
+            llm_failures.append(
+                f"Skipped {skipped_sections} sections because max_sections={max_sections}."
+            )
+
+    rewrite_chunks_generated = 0
+    for index, section in enumerate(selected_sections, start=1):
+        rewrite_parts = _split_section_into_rewrite_parts(
             section_title=section["title"],
             source_text=section["source_text"],
-            model=model,
-            ollama_base_url=ollama_base_url,
-            style=style,
+            max_chunk_chars=rewrite_chunk_chars,
+            rewrite_mode=rewrite_mode,
         )
-        if failure:
-            llm_failures.append(f"section {index}: {failure}")
+        rewrite_chunks_generated += len(rewrite_parts)
+
+        section_story_parts: List[str] = []
+        section_terms: List[Dict[str, str]] = []
+        section_formula_explanations: List[Dict[str, str]] = []
+        section_used_llm = False
+        section_used_models: set[str] = set()
+
+        for part_index, part in enumerate(rewrite_parts, start=1):
+            rewritten_text, terms, formula_explanations, used_llm, failure, used_model = _rewrite_section(
+                section_title=part["title"],
+                source_text=part["source_text"],
+                model=primary_model,
+                fallback_model=fallback_model,
+                fallback_provider=fallback_provider,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style=style,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+            )
+            if failure:
+                llm_failures.append(
+                    f"section {index} part {part_index}/{len(rewrite_parts)}: {failure}"
+                )
+            if used_model:
+                section_used_models.add(used_model)
+                rewrite_models_used.add(used_model)
+            if used_llm:
+                section_used_llm = True
+            if rewritten_text.strip():
+                section_story_parts.append(rewritten_text.strip())
+            if terms:
+                section_terms.extend(terms)
+            if formula_explanations:
+                section_formula_explanations.extend(formula_explanations)
+
+        section_story_text = "\n\n".join(section_story_parts).strip()
+        if not section_story_text:
+            section_story_text = section["source_text"]
+
         rendered_sections.append(
             {
                 "index": index,
                 "title": section["title"],
                 "source_text": section["source_text"],
-                "story_text": rewritten_text,
-                "terms": terms,
-                "formula_explanations": formula_explanations,
-                "used_llm": used_llm,
+                "story_text": section_story_text,
+                "terms": section_terms,
+                "formula_explanations": section_formula_explanations,
+                "used_llm": section_used_llm,
+                "used_model": ", ".join(sorted(section_used_models)),
+                "rewrite_chunks": len(rewrite_parts),
             }
         )
+
+    rewrite_model = primary_model
+    if fallback_model in rewrite_models_used and primary_model in rewrite_models_used:
+        rewrite_model = f"{primary_model} (partial fallback: {fallback_model})"
+    elif fallback_model in rewrite_models_used and primary_model not in rewrite_models_used:
+        rewrite_model = fallback_model
 
     title = _resolve_title(payload=payload, pdf_path=pdf_path, sections=rendered_sections)
     output_path = _build_output_path(pdf_path=pdf_path, payload=payload)
@@ -149,7 +243,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         title=title,
         pdf_path=pdf_path,
         rendered_sections=rendered_sections,
-        model=model,
+        model=rewrite_model,
     )
 
     STORYTELLERS_DIR.mkdir(parents=True, exist_ok=True)
@@ -162,16 +256,32 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         "input": payload,
         "pdf_path": str(pdf_path),
         "output_path": str(output_path),
-        "model": model,
+        "model": rewrite_model,
+        "rewrite_model_primary": primary_model,
+        "rewrite_model_fallback": fallback_model,
+        "rewrite_model_fallback_provider": fallback_provider,
+        "pdf_extraction_model": pdf_extraction_model,
         "style": style,
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "sections_detected": len(sections),
+        "sections_processed": len(selected_sections),
+        "sections_skipped_by_limit": skipped_sections,
         "sections_generated": len(rendered_sections),
+        "rewrite_chunks_generated": rewrite_chunks_generated,
+        "rewrite_chunk_chars": rewrite_chunk_chars,
+        "rewrite_mode": rewrite_mode,
+        "rewrite_response_format": rewrite_response_format,
+        "append_missing_formulas": append_missing_formulas,
+        "max_sections": max_sections,
         "steps": [
             {"name": "ingest_source", "status": "done", "note": str(pdf_path)},
             {
                 "name": "pdf_to_structured_content",
                 "status": "done",
-                "note": f"{len(sections)} detected sections",
+                "note": (
+                    f"{len(sections)} detected / {len(selected_sections)} processed"
+                    f" / {skipped_sections} skipped by max_sections"
+                ),
             },
             {
                 "name": "html_story_render",
@@ -253,31 +363,47 @@ def _candidate_pdf_paths(raw_value: str) -> List[Path]:
     return paths
 
 
-def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str]]:
+def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str], str]:
     gemini_api_key = _configure_gemini()
     if not gemini_api_key:
-        return _extract_pdf_text_with_pymupdf(pdf_path), "No Gemini API Key found; fell back to PyMuPDF."
+        return (
+            _extract_pdf_text_with_pymupdf(pdf_path),
+            "No Gemini API Key found; fell back to PyMuPDF.",
+            "pymupdf (fallback)",
+        )
 
     sample_file = None
+    extraction_models = [DEFAULT_PDF_EXTRACTION_MODEL, PDF_EXTRACTION_FALLBACK_MODEL]
+    model_errors: List[str] = []
     try:
         sample_file = genai.upload_file(path=str(pdf_path))
         _wait_for_gemini_file_ready(sample_file.name)
 
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        try:
-            response = model.generate_content(
-                [sample_file, GEMINI_EXTRACTION_PROMPT],
-                request_options={"timeout": 600},
-            )
-        except TypeError:
-            response = model.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT])
+        for model_name in extraction_models:
+            model = genai.GenerativeModel(model_name)
+            try:
+                response = model.generate_content(
+                    [sample_file, GEMINI_EXTRACTION_PROMPT],
+                    request_options={"timeout": 600},
+                )
+            except TypeError:
+                response = model.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT])
+            except Exception as exc:
+                model_errors.append(f"{model_name}: {type(exc).__name__}: {exc}")
+                continue
 
-        markdown_text = str(getattr(response, "text", "") or "").strip()
-        if markdown_text:
-            return _normalize_extracted_text(markdown_text), None
-        raise RuntimeError("Gemini returned empty extraction content.")
+            markdown_text = str(getattr(response, "text", "") or "").strip()
+            if markdown_text:
+                warning = None
+                if model_name != DEFAULT_PDF_EXTRACTION_MODEL:
+                    warning = (
+                        "Primary extraction model failed; "
+                        f"used fallback {model_name}."
+                    )
+                return _normalize_extracted_text(markdown_text), warning, model_name
+            model_errors.append(f"{model_name}: empty extraction content")
     except Exception as e:
-        return _extract_pdf_text_with_pymupdf(pdf_path), f"Gemini extraction failed ({type(e).__name__}: {e}); fell back to PyMuPDF."
+        model_errors.append(f"upload/process: {type(e).__name__}: {e}")
     finally:
         if sample_file is not None:
             try:
@@ -285,15 +411,44 @@ def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str]]:
             except Exception:
                 pass
 
+    detail = "; ".join(model_errors) if model_errors else "unknown reason"
+    return (
+        _extract_pdf_text_with_pymupdf(pdf_path),
+        f"Gemini extraction failed ({detail}); fell back to PyMuPDF.",
+        "pymupdf (fallback)",
+    )
+
 
 def _configure_gemini() -> str:
     # Reload env for long-lived workers that may receive new keys at runtime.
     load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
     load_dotenv(dotenv_path=Path.home() / ".env", override=False)
-    gemini_api_key = str(os.getenv("GEMINI_API_KEY") or "").strip()
-    if gemini_api_key:
-        genai.configure(api_key=gemini_api_key)
-    return gemini_api_key
+
+    candidate_keys = [
+        str(os.getenv("GOOGLE_API_KEY") or "").strip(),
+        str(os.getenv("GEMINI_API_KEY") or "").strip(),
+    ]
+    seen: set[str] = set()
+    for api_key in candidate_keys:
+        if not api_key or api_key in seen:
+            continue
+        seen.add(api_key)
+        if _is_gemini_key_working(api_key):
+            return api_key
+    return ""
+
+
+def _is_gemini_key_working(api_key: str) -> bool:
+    key = str(api_key or "").strip()
+    if not key:
+        return False
+    try:
+        genai.configure(api_key=key)
+        # Probe one model to verify the key is accepted by this endpoint.
+        next(genai.list_models(page_size=1), None)
+        return True
+    except Exception:
+        return False
 
 
 def _wait_for_gemini_file_ready(file_name: str, timeout_seconds: int = 90) -> None:
@@ -853,65 +1008,96 @@ def _rewrite_section(
     section_title: str,
     source_text: str,
     model: str,
+    fallback_model: str,
+    fallback_provider: str,
     ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
     style: str,
-) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str]]:
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str], str]:
     """Rewrite a section into storyteller style.
     
     Returns: (story_text, terms, formula_explanations, success, error)
     """
     text = source_text.strip()
     if not text:
-        return "", [], [], False, None
+        return "", [], [], False, None, ""
     if len(text) < 80:
-        return text, [], [], False, None
+        return text, [], [], False, None, ""
 
-    prompt = _build_story_prompt(section_title=section_title, source_text=text, style=style)
+    prompt = _build_story_prompt(
+        section_title=section_title,
+        source_text=text,
+        style=style,
+        response_format=rewrite_response_format,
+    )
     formulas = _extract_latex_expressions(text)
 
+    used_model = model
     try:
-        rewritten = _call_local_llm(
-            prompt=prompt,
-            model=model,
-            ollama_base_url=ollama_base_url,
-        )
-    except Exception as exc:
-        return text, [], [], False, f"{type(exc).__name__}: {exc}"
-
-    # Parse JSON response
-    story_text = text
-    terms: List[Dict[str, str]] = []
-    formula_explanations: List[Dict[str, str]] = []
-
-    try:
-        # Try to find JSON in the response
-        json_match = re.search(r"\{[\s\S]*\}", rewritten)
-        if json_match:
-            parsed = json.loads(json_match.group(0))
-            story_text = parsed.get("story_text", text).strip()
-            terms = parsed.get("terms", [])
-            formula_explanations = parsed.get("formula_explanations", [])
+        if model.startswith("models/"):
+            rewritten = _call_gemini_llm(prompt=prompt, model=model)
         else:
-            # Fallback: treat entire response as story text
-            story_text = _strip_thinking_block(rewritten).strip() or text
-    except json.JSONDecodeError:
-        # If JSON parsing fails, use the raw text
-        story_text = _strip_thinking_block(rewritten).strip() or text
+            rewritten = _call_local_llm(
+                prompt=prompt,
+                model=model,
+                ollama_base_url=ollama_base_url,
+            )
+    except Exception as exc:
+        primary_failure = f"{type(exc).__name__}: {exc}"
+        try:
+            if fallback_provider in {"minimax.io", "minimax", "minimax-portal"}:
+                rewritten = _call_minimax_portal_llm(
+                    prompt=prompt,
+                    model=fallback_model,
+                    oauth_token=minimax_oauth_token,
+                    base_url=minimax_base_url,
+                )
+            else:
+                rewritten = _call_local_llm(
+                    prompt=prompt,
+                    model=fallback_model,
+                    ollama_base_url=ollama_base_url,
+                )
+            used_model = fallback_model
+            fallback_note = (
+                f"primary rewrite model failed ({primary_failure}); "
+                f"used fallback {fallback_provider}:{fallback_model}"
+            )
+        except Exception as fallback_exc:
+            return text, [], [], False, f"{primary_failure}; fallback failed: {type(fallback_exc).__name__}: {fallback_exc}", ""
+    else:
+        fallback_note = None
+
+    story_text, terms, formula_explanations = _parse_rewrite_response(
+        rewritten=rewritten,
+        fallback_text=text,
+    )
 
     # Check for missing formulas
+    missing_formula_note = None
     if formulas:
         missing = [formula for formula in formulas if formula not in story_text]
         if missing:
-            story_text = story_text.rstrip() + "\n\n公式保留：\n" + "\n".join(missing)
+            if append_missing_formulas:
+                story_text = story_text.rstrip() + "\n\n公式保留：\n" + "\n".join(missing)
+            else:
+                missing_formula_note = (
+                    f"detected {len(missing)} source formulas not echoed literally; "
+                    "auto-append disabled"
+                )
 
-    return story_text, terms, formula_explanations, True, None
+    return story_text, terms, formula_explanations, True, _merge_notes(fallback_note, missing_formula_note), used_model
 
 
-def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> str:
-    clipped = source_text[:3000]
+def _build_story_prompt(*, section_title: str, source_text: str, style: str, response_format: str) -> str:
+    source_text = source_text.strip()
     style_key = _normalize_style(style)
+    response_format = _normalize_rewrite_response_format(response_format)
     style_hint = STYLE_PROMPTS.get(style_key, STYLE_PROMPTS[DEFAULT_STYLE])
-    return f"""你是頂尖的論文說書人，請把論文段落改寫成「易懂、可信、具教學感」的繁體中文說明。
+    base_prompt = f"""你是頂尖的論文說書人，請把論文段落改寫成「易懂、可信、具教學感」的繁體中文說明。
 
 改寫風格：
 {style_hint}
@@ -933,7 +1119,12 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> 
 {section_title}
 
 原文段落：
-{clipped}
+{source_text}
+
+"""
+
+    if response_format == "json":
+        return base_prompt + """
 
 請用以下 JSON 格式輸出（務必嚴格遵守 JSON 語法）：
 {{
@@ -952,6 +1143,15 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str) -> 
 }}
 
 請直接輸出 JSON："""
+
+    return base_prompt + """
+請直接輸出乾淨的 Markdown 正文。
+不要輸出 JSON。
+不要輸出 code fence。
+不要輸出 ```markdown 或 ```json。
+若有公式，請直接把公式自然保留在正文中，使用原本的 LaTeX 定界符。
+若需要整理術語、變數意義、公式對照或數值示例，可直接在正文中使用 Markdown 表格呈現。
+若使用 Markdown 表格，請確保欄位名稱清楚、單格內容不要過長，並避免輸出表格以外的結構化包裝。"""
 
 
 
@@ -978,6 +1178,227 @@ def _call_local_llm(*, prompt: str, model: str, ollama_base_url: str, timeout: i
     with urllib.request.urlopen(req, timeout=timeout) as response:
         payload = json.loads(response.read())
     return str(payload.get("response", "")).strip()
+
+
+def _call_gemini_llm(*, prompt: str, model: str, timeout: int = 240) -> str:
+    gemini_api_key = _configure_gemini()
+    if not gemini_api_key:
+        raise RuntimeError("missing GOOGLE_API_KEY/GEMINI_API_KEY")
+
+    gm = genai.GenerativeModel(model)
+    try:
+        response = gm.generate_content(prompt, request_options={"timeout": timeout})
+    except TypeError:
+        response = gm.generate_content(prompt)
+    text = str(getattr(response, "text", "") or "").strip()
+    if not text:
+        raise RuntimeError("Gemini returned empty rewrite content")
+    return text
+
+
+def _call_minimax_portal_llm(*, prompt: str, model: str, oauth_token: str, base_url: str, timeout: int = 240) -> str:
+    token = str(oauth_token or "").strip()
+    if not token:
+        raise RuntimeError("missing MINIMAX_PORTAL_OAUTH_TOKEN")
+
+    normalized_base = str(base_url or DEFAULT_MINIMAX_PORTAL_BASE_URL).rstrip("/")
+    endpoint_candidates: List[str] = []
+    if normalized_base.endswith("/v1"):
+        endpoint_candidates.append(f"{normalized_base}/text/chatcompletion_v2")
+        endpoint_candidates.append(f"{normalized_base}/text/chatcompletion_pro")
+    else:
+        endpoint_candidates.append(f"{normalized_base}/v1/text/chatcompletion_v2")
+        endpoint_candidates.append(f"{normalized_base}/v1/text/chatcompletion_pro")
+
+    request_payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+    }
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {token}",
+    }
+
+    last_error: Optional[str] = None
+    for endpoint in endpoint_candidates:
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(request_payload).encode(),
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                payload = json.loads(response.read())
+        except Exception as exc:
+            last_error = f"{endpoint}: {type(exc).__name__}: {exc}"
+            continue
+
+        provider_error = _extract_provider_error(payload)
+        if provider_error:
+            last_error = f"{endpoint}: {provider_error}"
+            continue
+
+        text = _extract_text_from_chat_payload(payload)
+        if text:
+            return text
+        last_error = f"{endpoint}: empty response content"
+
+    raise RuntimeError(last_error or "minimax-portal call failed")
+
+
+def _parse_rewrite_response(
+    *,
+    rewritten: str,
+    fallback_text: str,
+) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]]]:
+    cleaned = _strip_thinking_block(rewritten).strip()
+    if not cleaned:
+        return fallback_text, [], []
+
+    parsed = _try_parse_rewrite_payload(cleaned)
+    if parsed is not None:
+        story_text = str(parsed.get("story_text") or "").strip() or fallback_text
+        terms = _normalize_dict_list(parsed.get("terms"))
+        formula_explanations = _normalize_dict_list(parsed.get("formula_explanations"))
+        return story_text, terms, formula_explanations
+
+    extracted_story = _extract_json_string_field(cleaned, "story_text")
+    if extracted_story:
+        return extracted_story, [], []
+
+    return cleaned or fallback_text, [], []
+
+
+def _try_parse_rewrite_payload(text: str) -> Optional[Dict[str, Any]]:
+    candidates = _rewrite_json_candidates(text)
+    for candidate in candidates:
+        try:
+            parsed = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return None
+
+
+def _rewrite_json_candidates(text: str) -> List[str]:
+    stripped = text.strip()
+    candidates: List[str] = []
+    seen: set[str] = set()
+
+    def _add(value: str) -> None:
+        candidate = value.strip()
+        if not candidate or candidate in seen:
+            return
+        seen.add(candidate)
+        candidates.append(candidate)
+
+    _add(stripped)
+
+    fenced_blocks = re.findall(r"```(?:json)?\s*([\s\S]*?)\s*```", stripped, flags=re.IGNORECASE)
+    for block in fenced_blocks:
+        _add(block)
+
+    decoder = json.JSONDecoder()
+    for start_index, char in enumerate(stripped):
+        if char != "{":
+            continue
+        try:
+            parsed, end_index = decoder.raw_decode(stripped[start_index:])
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            _add(stripped[start_index : start_index + end_index])
+
+    return candidates
+
+
+def _extract_json_string_field(text: str, field_name: str) -> str:
+    pattern = rf'"{re.escape(field_name)}"\s*:\s*"((?:\\.|[^"\\])*)"'
+    match = re.search(pattern, text, flags=re.DOTALL)
+    if not match:
+        return ""
+
+    raw_value = match.group(1)
+    try:
+        decoded = json.loads(f'"{raw_value}"')
+    except json.JSONDecodeError:
+        decoded = raw_value.encode("utf-8", errors="ignore").decode("unicode_escape", errors="ignore")
+    return str(decoded).strip()
+
+
+def _normalize_dict_list(value: Any) -> List[Dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+
+    normalized: List[Dict[str, str]] = []
+    for item in value:
+        if not isinstance(item, dict):
+            continue
+        normalized.append({str(key): str(val) for key, val in item.items()})
+    return normalized
+
+
+def _extract_text_from_chat_payload(payload: Dict[str, Any]) -> str:
+    if not isinstance(payload, dict):
+        return ""
+
+    choices = payload.get("choices")
+    if isinstance(choices, list) and choices:
+        first = choices[0]
+        if isinstance(first, dict):
+            message = first.get("message")
+            if isinstance(message, dict):
+                content = message.get("content")
+                if isinstance(content, str) and content.strip():
+                    return content.strip()
+                if isinstance(content, list):
+                    parts = [
+                        str(item.get("text", "")).strip()
+                        for item in content
+                        if isinstance(item, dict) and str(item.get("text", "")).strip()
+                    ]
+                    merged = "\n".join(parts).strip()
+                    if merged:
+                        return merged
+            text = first.get("text")
+            if isinstance(text, str) and text.strip():
+                return text.strip()
+
+    for key in ("reply", "output_text", "text", "content"):
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    return ""
+
+
+def _extract_provider_error(payload: Dict[str, Any]) -> str:
+    if not isinstance(payload, dict):
+        return ""
+
+    base_resp = payload.get("base_resp")
+    if isinstance(base_resp, dict):
+        status_code = base_resp.get("status_code")
+        status_msg = str(base_resp.get("status_msg") or "").strip()
+        if status_code not in (None, 0, "0"):
+            code_text = str(status_code)
+            if status_msg:
+                return f"provider error code={code_text}: {status_msg}"
+            return f"provider error code={code_text}"
+
+    error = payload.get("error")
+    if isinstance(error, dict):
+        message = str(error.get("message") or "").strip()
+        code = str(error.get("code") or "").strip()
+        if code and message:
+            return f"provider error {code}: {message}"
+        if message:
+            return f"provider error: {message}"
+
+    return ""
 
 
 def _strip_thinking_block(text: str) -> str:
@@ -1383,3 +1804,178 @@ def _safe_positive_int(value: Any, default: int) -> int:
     if parsed <= 0:
         return default
     return parsed
+
+
+def _normalize_bool(value: Any, default: bool) -> bool:
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in {"1", "true", "yes", "on", "y"}:
+        return True
+    if text in {"0", "false", "no", "off", "n"}:
+        return False
+    return default
+
+
+def _normalize_rewrite_response_format(value: Any) -> str:
+    normalized = str(value or "").strip().lower()
+    if normalized in {"markdown", "json"}:
+        return normalized
+    return DEFAULT_REWRITE_RESPONSE_FORMAT
+
+
+def _merge_notes(first: Optional[str], second: Optional[str]) -> Optional[str]:
+    left = str(first or "").strip()
+    right = str(second or "").strip()
+    if left and right:
+        return f"{left}; {right}"
+    if left:
+        return left
+    if right:
+        return right
+    return None
+
+
+def _normalize_rewrite_mode(value: Any) -> str:
+    mode = str(value or "").strip().lower()
+    if mode in {"paragraph", "chunk"}:
+        return mode
+    return DEFAULT_REWRITE_MODE
+
+
+def _split_section_into_rewrite_parts(
+    *,
+    section_title: str,
+    source_text: str,
+    max_chunk_chars: int,
+    rewrite_mode: str,
+) -> List[Dict[str, str]]:
+    normalized_mode = _normalize_rewrite_mode(rewrite_mode)
+    if normalized_mode == "paragraph":
+        chunks = _paragraph_parts_for_rewrite(source_text, max_chunk_chars)
+    else:
+        chunks = _chunk_text_for_rewrite(source_text, max_chunk_chars)
+
+    if not chunks:
+        return [{"title": section_title, "source_text": source_text.strip()}]
+
+    if len(chunks) == 1:
+        return [{"title": section_title, "source_text": chunks[0]}]
+
+    total = len(chunks)
+    part_label = "paragraph" if normalized_mode == "paragraph" else "part"
+    parts: List[Dict[str, str]] = []
+    for idx, chunk in enumerate(chunks, start=1):
+        parts.append(
+            {
+                "title": f"{section_title} ({part_label} {idx}/{total})",
+                "source_text": chunk,
+            }
+        )
+    return parts
+
+
+def _paragraph_parts_for_rewrite(source_text: str, max_chunk_chars: int) -> List[str]:
+    text = str(source_text or "").strip()
+    if not text:
+        return []
+
+    max_chars = max(int(max_chunk_chars or DEFAULT_REWRITE_CHUNK_CHARS), 400)
+    raw_paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", text) if p.strip()]
+    if not raw_paragraphs:
+        raw_paragraphs = [text]
+
+    parts: List[str] = []
+    for paragraph in raw_paragraphs:
+        if len(paragraph) <= max_chars:
+            parts.append(paragraph)
+            continue
+        parts.extend(_split_long_text(paragraph, max_chars))
+    return [part for part in parts if part.strip()]
+
+
+def _chunk_text_for_rewrite(source_text: str, max_chunk_chars: int) -> List[str]:
+    text = str(source_text or "").strip()
+    if not text:
+        return []
+
+    max_chars = max(int(max_chunk_chars or DEFAULT_REWRITE_CHUNK_CHARS), 400)
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n+", text) if p.strip()]
+    if not paragraphs:
+        paragraphs = [text]
+
+    chunks: List[str] = []
+    current = ""
+
+    def _append_piece(piece: str) -> None:
+        nonlocal current
+        candidate = piece.strip()
+        if not candidate:
+            return
+        if not current:
+            current = candidate
+            return
+        joined = f"{current}\n\n{candidate}"
+        if len(joined) <= max_chars:
+            current = joined
+            return
+        chunks.append(current)
+        current = candidate
+
+    for paragraph in paragraphs:
+        if len(paragraph) <= max_chars:
+            _append_piece(paragraph)
+            continue
+        for piece in _split_long_text(paragraph, max_chars):
+            _append_piece(piece)
+
+    if current:
+        chunks.append(current)
+    return chunks
+
+
+def _split_long_text(text: str, max_chars: int) -> List[str]:
+    normalized = str(text or "").strip()
+    if not normalized:
+        return []
+    if len(normalized) <= max_chars:
+        return [normalized]
+
+    sentence_candidates = re.split(r"(?<=[。！？.!?])\s+", normalized)
+    sentences = [s.strip() for s in sentence_candidates if s.strip()]
+    if len(sentences) <= 1:
+        sentences = [normalized]
+
+    pieces: List[str] = []
+    current = ""
+    for sentence in sentences:
+        if len(sentence) > max_chars:
+            if current:
+                pieces.append(current)
+                current = ""
+            start = 0
+            while start < len(sentence):
+                part = sentence[start : start + max_chars].strip()
+                if part:
+                    pieces.append(part)
+                start += max_chars
+            continue
+
+        if not current:
+            current = sentence
+            continue
+
+        candidate = f"{current} {sentence}"
+        if len(candidate) <= max_chars:
+            current = candidate
+        else:
+            pieces.append(current)
+            current = sentence
+
+    if current:
+        pieces.append(current)
+    return pieces

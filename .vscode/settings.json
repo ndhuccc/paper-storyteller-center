@@ -1,4 +1,10 @@
 {
     "python-envs.defaultEnvManager": "ms-python.python:system",
-    "python-envs.defaultPackageManager": "ms-python.python:pip"
+    "python-envs.defaultPackageManager": "ms-python.python:pip",
+    "chat.tools.terminal.autoApprove": {
+        "/^python3 -m py_compile retrieval_service\\.py generation_service\\.py center_service\\.py paper_center\\.py$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
 }

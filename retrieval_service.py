@@ -3,10 +3,11 @@
 
 import json
 import re
+import tempfile
 import urllib.request
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
@@ -15,6 +16,9 @@ OLLAMA_BASE_URL = "http://localhost:11434"
 EMBEDDING_MODEL = "qwen3-embedding:8b"
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
+INDEX_METADATA_FILE = STORYTELLERS_DIR / ".papers_index_meta.json"
+INDEX_METADATA_VERSION = 1
+INDEX_SCHEMA_VERSION = 1
 
 
 @lru_cache(maxsize=1)
@@ -35,6 +39,80 @@ def get_lance_db():
 def clear_lance_db_cache() -> None:
     """Clear cached LanceDB connection."""
     get_lance_db.cache_clear()
+
+
+def _list_table_names(db: Any) -> Set[str]:
+    try:
+        listed = db.list_tables()
+        values = listed.tables if hasattr(listed, "tables") else listed
+    except Exception:
+        return set()
+    names: Set[str] = set()
+    for value in values or []:
+        name = str(value or "").strip()
+        if name:
+            names.add(name)
+    return names
+
+
+def _index_config() -> Dict[str, Any]:
+    return {
+        "metadata_version": INDEX_METADATA_VERSION,
+        "schema_version": INDEX_SCHEMA_VERSION,
+        "embedding_model": EMBEDDING_MODEL,
+        "chunk_size": CHUNK_SIZE,
+        "chunk_overlap": CHUNK_OVERLAP,
+    }
+
+
+def _paper_signature(html_path: Path) -> str:
+    stat = html_path.stat()
+    return f"{stat.st_mtime_ns}:{stat.st_size}"
+
+
+def _load_index_metadata() -> Dict[str, Any]:
+    if not INDEX_METADATA_FILE.exists():
+        return {"index_config": _index_config(), "papers": {}}
+    try:
+        payload = json.loads(INDEX_METADATA_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"index_config": _index_config(), "papers": {}}
+
+    papers = payload.get("papers")
+    if not isinstance(papers, dict):
+        papers = {}
+
+    config = payload.get("index_config")
+    if not isinstance(config, dict):
+        config = _index_config()
+
+    return {"index_config": config, "papers": papers}
+
+
+def _save_index_metadata(metadata: Dict[str, Any]) -> None:
+    STORYTELLERS_DIR.mkdir(parents=True, exist_ok=True)
+    INDEX_METADATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    serialized = json.dumps(metadata, ensure_ascii=False, indent=2)
+    tmp_file = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            "w",
+            encoding="utf-8",
+            delete=False,
+            dir=str(INDEX_METADATA_FILE.parent),
+            prefix=".papers_index_meta.",
+            suffix=".tmp",
+        ) as handle:
+            handle.write(serialized)
+            tmp_file = Path(handle.name)
+        if tmp_file is not None:
+            tmp_file.replace(INDEX_METADATA_FILE)
+    finally:
+        if tmp_file is not None and tmp_file.exists():
+            try:
+                tmp_file.unlink()
+            except Exception:
+                pass
 
 
 def _normalize_paper_id(raw_paper_id: Any) -> str:
@@ -148,7 +226,7 @@ def delete_paper(paper_id: str) -> Dict[str, Any]:
     }
 
 
-def create_table(db):
+def create_table(db, overwrite: bool = True):
     """Create papers chunk table schema."""
     import pyarrow as pa
 
@@ -165,9 +243,9 @@ def create_table(db):
         pa.field("embedding", pa.list_(pa.float32(), list_size=4096)),
     ])
 
-    # Prefer overwrite mode to keep rebuild idempotent across LanceDB versions.
+    mode = "overwrite" if overwrite else "create"
     try:
-        return db.create_table("papers", schema=schema, mode="overwrite")
+        return db.create_table("papers", schema=schema, mode=mode)
     except TypeError:
         try:
             return db.create_table("papers", schema=schema)
@@ -177,6 +255,17 @@ def create_table(db):
     except Exception as e:
         print(f"建立表時出錯: {e}")
         return None
+
+
+def _open_or_create_papers_table(db: Any):
+    tables = _list_table_names(db)
+    if "papers" in tables:
+        try:
+            return db.open_table("papers")
+        except Exception as e:
+            print(f"開啟 papers table 出錯: {e}")
+            return None
+    return create_table(db, overwrite=False)
 
 
 def get_embedding(text: str) -> List[float]:
@@ -249,6 +338,163 @@ def parse_paper_metadata(filename: str) -> Optional[Dict]:
     }
 
 
+def _build_rows_for_html_file(html_file: Path) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    paper = parse_paper_metadata(html_file.name)
+    if not paper:
+        return [], {"paper_id": html_file.stem, "error": "metadata_parse_failed"}
+
+    title_prefix = f"論文：{paper['title']}\n\n"
+    chunks = split_into_chunks(paper["content"])
+    rows: List[Dict[str, Any]] = []
+    embedding_failures = 0
+
+    for i, chunk_text in enumerate(chunks):
+        embedding_text = title_prefix + chunk_text
+        embedding = get_embedding(embedding_text)
+        if not embedding:
+            embedding_failures += 1
+            continue
+
+        rows.append(
+            {
+                "id": f"{paper['paper_id']}_chunk_{i}",
+                "paper_id": paper["paper_id"],
+                "filename": paper["filename"],
+                "title": paper["title"],
+                "authors": paper["authors"],
+                "date": paper["date"],
+                "chunk_index": i,
+                "chunk_text": chunk_text,
+                "content": paper["content"],
+                "embedding": embedding,
+            }
+        )
+
+    summary = {
+        "paper_id": paper["paper_id"],
+        "filename": paper["filename"],
+        "title": paper["title"],
+        "chunks_total": len(chunks),
+        "chunks_indexed": len(rows),
+        "embedding_failures": embedding_failures,
+    }
+    if not rows:
+        summary["error"] = "all_embeddings_failed"
+    return rows, summary
+
+
+def incremental_index() -> Dict[str, Any]:
+    """Incrementally sync HTML papers to LanceDB index with resumable progress."""
+    db = get_lance_db()
+    if db is None:
+        return {"ok": False, "message": "無法連接 LanceDB", "mode": "incremental"}
+
+    STORYTELLERS_DIR.mkdir(parents=True, exist_ok=True)
+    html_files = sorted(STORYTELLERS_DIR.glob("*.html"), key=lambda path: path.name.lower())
+    html_map = {html_file.stem: html_file for html_file in html_files}
+
+    metadata = _load_index_metadata()
+    metadata_papers = metadata.get("papers") if isinstance(metadata.get("papers"), dict) else {}
+    current_config = _index_config()
+    config_mismatch = metadata.get("index_config") != current_config
+
+    if config_mismatch:
+        try:
+            if "papers" in _list_table_names(db):
+                db.drop_table("papers")
+        except Exception as e:
+            return {
+                "ok": False,
+                "message": f"index config changed but failed to reset table: {e}",
+                "mode": "incremental",
+            }
+        metadata = {"index_config": current_config, "papers": {}}
+        metadata_papers = {}
+
+    tbl = _open_or_create_papers_table(db)
+    if tbl is None:
+        return {"ok": False, "message": "無法建立或開啟 papers table", "mode": "incremental"}
+
+    removed_ids = sorted(pid for pid in metadata_papers.keys() if pid not in html_map)
+    for paper_id in removed_ids:
+        try:
+            tbl.delete(f"paper_id = {_lancedb_string_literal(paper_id)}")
+        except Exception as e:
+            return {
+                "ok": False,
+                "message": f"刪除舊索引失敗 ({paper_id}): {e}",
+                "mode": "incremental",
+            }
+        metadata_papers.pop(paper_id, None)
+
+    if config_mismatch or removed_ids:
+        metadata["papers"] = metadata_papers
+        metadata["index_config"] = current_config
+        _save_index_metadata(metadata)
+
+    changed_ids: List[str] = []
+    for paper_id, html_file in html_map.items():
+        current_signature = _paper_signature(html_file)
+        previous = metadata_papers.get(paper_id, {})
+        previous_signature = str(previous.get("signature", "")).strip() if isinstance(previous, dict) else ""
+        if config_mismatch or current_signature != previous_signature:
+            changed_ids.append(paper_id)
+
+    processed = 0
+    indexed_papers = 0
+    indexed_chunks = 0
+    failures: List[Dict[str, str]] = []
+
+    for paper_id in changed_ids:
+        html_file = html_map[paper_id]
+        processed += 1
+        rows, summary = _build_rows_for_html_file(html_file)
+        if not rows:
+            failures.append(
+                {
+                    "paper_id": paper_id,
+                    "reason": str(summary.get("error", "index_rows_empty")),
+                }
+            )
+            continue
+
+        try:
+            tbl.delete(f"paper_id = {_lancedb_string_literal(paper_id)}")
+            tbl.add(rows)
+        except Exception as e:
+            failures.append({"paper_id": paper_id, "reason": f"table_write_failed: {e}"})
+            continue
+
+        indexed_papers += 1
+        indexed_chunks += len(rows)
+        metadata_papers[paper_id] = {
+            "signature": _paper_signature(html_file),
+            "filename": html_file.name,
+            "chunks": len(rows),
+        }
+        metadata["papers"] = metadata_papers
+        metadata["index_config"] = current_config
+        _save_index_metadata(metadata)
+
+    ok = len(failures) == 0
+    message = (
+        f"incremental sync done: changed={len(changed_ids)}, indexed={indexed_papers}, "
+        f"removed={len(removed_ids)}, failures={len(failures)}"
+    )
+    return {
+        "ok": ok,
+        "mode": "incremental",
+        "message": message,
+        "processed": processed,
+        "changed": len(changed_ids),
+        "removed": len(removed_ids),
+        "indexed_papers": indexed_papers,
+        "indexed_chunks": indexed_chunks,
+        "failures": failures,
+        "config_mismatch": config_mismatch,
+    }
+
+
 def rebuild_index() -> bool:
     """Rebuild chunk embedding index."""
     db = get_lance_db()
@@ -257,10 +503,10 @@ def rebuild_index() -> bool:
         return False
 
     try:
-        tables = set(db.list_tables().tables)
+        tables = _list_table_names(db)
         if "papers" in tables:
             db.drop_table("papers")
-        tbl = create_table(db)
+        tbl = create_table(db, overwrite=True)
         if tbl is None:
             return False
     except Exception as e:
@@ -308,6 +554,17 @@ def rebuild_index() -> bool:
         tbl.add(all_rows)
         papers_count = len(set(r["paper_id"] for r in all_rows))
         print(f"✅ 已建立索引: {papers_count} 篇論文，共 {len(all_rows)} 個 chunks")
+        metadata = {
+            "index_config": _index_config(),
+            "papers": {
+                html_file.stem: {
+                    "signature": _paper_signature(html_file),
+                    "filename": html_file.name,
+                }
+                for html_file in html_files
+            },
+        }
+        _save_index_metadata(metadata)
         return True
 
     return False

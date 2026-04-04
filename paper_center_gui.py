@@ -9,8 +9,11 @@
 """
 
 import streamlit as st
+import re
+import time
 from pathlib import Path
 from typing import Any, Dict, List
+from uuid import uuid4
 
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from center_service import answer as service_answer
@@ -43,6 +46,12 @@ STYLE_LABELS: Dict[str, str] = {
     "question": "問題驅動（先問問題、再逐層解釋）",
     "log": "實驗日誌（研究過程記錄、工程師視角）",
 }
+
+STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+UPLOADS_DIR = STORYTELLERS_DIR / "uploads"
+MAX_UPLOAD_SIZE_MB = 50
+UPLOAD_RETENTION_DAYS = 14
+UPLOAD_MAX_FILES = 200
 
 # ==================== 頁面設定 ====================
 st.set_page_config(
@@ -168,6 +177,80 @@ def rebuild_index():
         st.error("❌ 重建失敗")
 
 
+def _sanitize_upload_filename(filename: str) -> str:
+    name = str(filename or "").strip() or "uploaded.pdf"
+    name = Path(name).name
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+    if not name.lower().endswith(".pdf"):
+        name = f"{name}.pdf"
+    return name
+
+
+def _save_uploaded_pdf(uploaded_file: Any) -> Path:
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    safe_name = _sanitize_upload_filename(getattr(uploaded_file, "name", "uploaded.pdf"))
+    target = UPLOADS_DIR / f"{uuid4().hex[:12]}_{safe_name}"
+    target.write_bytes(uploaded_file.getbuffer())
+    return target.resolve()
+
+
+def _get_uploaded_file_size(uploaded_file: Any) -> int:
+    size = getattr(uploaded_file, "size", None)
+    if isinstance(size, int) and size >= 0:
+        return size
+    try:
+        return len(uploaded_file.getbuffer())
+    except Exception:
+        return -1
+
+
+def _cleanup_old_uploaded_pdfs(*, keep: List[Path] | None = None) -> Dict[str, int]:
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    keep_set = {path.resolve() for path in (keep or [])}
+    removed = 0
+    failed = 0
+    now = time.time()
+    cutoff = now - (UPLOAD_RETENTION_DAYS * 24 * 60 * 60)
+
+    files: List[Path] = []
+    for file_path in UPLOADS_DIR.glob("*.pdf"):
+        if file_path.resolve() in keep_set:
+            continue
+        files.append(file_path)
+
+    # Remove old files first.
+    for file_path in files:
+        try:
+            if file_path.stat().st_mtime < cutoff:
+                file_path.unlink()
+                removed += 1
+        except Exception:
+            failed += 1
+
+    # Enforce max file count by deleting oldest files.
+    remaining: List[Path] = []
+    for file_path in UPLOADS_DIR.glob("*.pdf"):
+        if file_path.resolve() in keep_set:
+            continue
+        remaining.append(file_path)
+
+    remaining.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    overflow = max(0, len(remaining) - UPLOAD_MAX_FILES)
+    for file_path in remaining[-overflow:]:
+        try:
+            file_path.unlink()
+            removed += 1
+        except Exception:
+            failed += 1
+
+    return {
+        "removed": removed,
+        "failed": failed,
+        "retention_days": UPLOAD_RETENTION_DAYS,
+        "max_files": UPLOAD_MAX_FILES,
+    }
+
+
 def similarity_badge(result: Dict) -> str:
     """把 _distance 轉成對使用者顯示的 similarity badge。"""
     dist = result.get("_distance")
@@ -216,7 +299,7 @@ def render_user_manual():
     with st.expander("❓ 使用說明", expanded=False):
         st.markdown(
             "**1) 產生新說書 HTML**\n"
-            "在右欄「🛠️ 生成說書」填入 PDF 路徑、選風格後按「🚀 提交生成任務」。\n"
+            "在右欄「🛠️ 生成說書」可直接上傳 PDF（或填路徑）、選風格後按「🚀 提交生成任務」。\n"
             "成功後可用「📖 開啟生成結果 / 🔍 搜尋這篇 / 💬 詢問這篇」快速回流。\n\n"
             "**2) 論文狀態代表什麼**\n"
             "- `✅ 就緒 (ready)`：可直接搜尋與 Q&A\n"
@@ -749,6 +832,13 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
     if sections_generated is None:
         sections_generated = _as_dict(result.get("metadata")).get("sections_generated")
 
+    rewrite_model = result.get("model") or _as_dict(result.get("metadata")).get("model") or "-"
+    pdf_extraction_model = (
+        result.get("pdf_extraction_model")
+        or _as_dict(result.get("metadata")).get("pdf_extraction_model")
+        or "-"
+    )
+
     output_path = result.get("output_path") or output.get("output_path")
     output_filename = _extract_generation_output_filename(result=result, output=output)
     output_paper_id = _extract_generation_output_paper_id(payload=payload, result=result, output=output)
@@ -762,6 +852,8 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
         "output_filename": output_filename,
         "output_paper_id": output_paper_id,
         "sections_generated": str(sections_generated) if sections_generated is not None else "-",
+        "rewrite_model": rewrite_model,
+        "pdf_extraction_model": pdf_extraction_model,
         "warnings": warnings,
         "warnings_count": len(warnings),
         "warnings_summary": _summarize_items(warnings),
@@ -807,8 +899,14 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
     st.divider()
     st.header("🛠️ 生成說書")
 
+    uploaded_pdf = st.file_uploader(
+        "上傳 PDF",
+        type=["pdf"],
+        key="gen_pdf_upload",
+        help=f"建議直接上傳（上限 {MAX_UPLOAD_SIZE_MB}MB）；若未上傳，才會使用下方 PDF 路徑。",
+    )
     pdf_path = st.text_input(
-        "PDF 路徑",
+        "PDF 路徑（可選）",
         placeholder="例如：/home/user/Documents/paper.pdf",
         key="gen_pdf_path",
     )
@@ -821,11 +919,33 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
     auto_index = st.checkbox("完成後自動重建索引", value=True, key="gen_auto_index")
 
     if st.button("🚀 提交生成任務", key="gen_submit_btn", use_container_width=True):
-        if not pdf_path.strip():
-            st.warning("請先輸入 PDF 路徑")
+        resolved_pdf_path = ""
+        cleanup_result: Dict[str, int] | None = None
+        try:
+            if uploaded_pdf is not None:
+                size_bytes = _get_uploaded_file_size(uploaded_pdf)
+                max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
+                if size_bytes < 0:
+                    raise RuntimeError("無法判斷上傳檔案大小")
+                if size_bytes > max_bytes:
+                    raise ValueError(
+                        f"檔案過大（{size_bytes / (1024 * 1024):.1f}MB），"
+                        f"目前上限為 {MAX_UPLOAD_SIZE_MB}MB"
+                    )
+                saved_path = _save_uploaded_pdf(uploaded_pdf)
+                resolved_pdf_path = str(saved_path)
+                cleanup_result = _cleanup_old_uploaded_pdfs(keep=[saved_path])
+            else:
+                resolved_pdf_path = pdf_path.strip()
+        except Exception as exc:
+            st.error(f"PDF 上傳失敗: {exc}")
+            return
+
+        if not resolved_pdf_path:
+            st.warning("請先上傳 PDF，或輸入有效的 PDF 路徑")
         else:
             payload = {
-                "pdf_path": pdf_path.strip(),
+                "pdf_path": resolved_pdf_path,
                 "style": style,
                 "auto_index": auto_index,
             }
@@ -842,6 +962,16 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                 st.error(f"生成任務失敗: {e}")
             else:
                 st.session_state.last_generation_job_id = job_id
+                if uploaded_pdf is not None:
+                    st.caption(f"已保存上傳檔案：{resolved_pdf_path}")
+                if cleanup_result is not None:
+                    st.caption(
+                        "uploads 清理："
+                        f"removed={cleanup_result.get('removed', 0)}, "
+                        f"failed={cleanup_result.get('failed', 0)}, "
+                        f"retention_days={cleanup_result.get('retention_days', UPLOAD_RETENTION_DAYS)}, "
+                        f"max_files={cleanup_result.get('max_files', UPLOAD_MAX_FILES)}"
+                    )
                 st.success(f"✅ 任務已提交：{job_id[:8]}（背景執行中）")
                 st.caption("請在下方任務列表追蹤狀態。")
                 st.rerun()
@@ -878,6 +1008,8 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             st.write(f"pdf_path: {info['pdf_path']}")
             st.write(f"output_path: {info['output_path']}")
             st.write(f"sections_generated: {info['sections_generated']}")
+            st.write(f"pdf_extraction_model: {info['pdf_extraction_model']}")
+            st.write(f"rewrite_model: {info['rewrite_model']}")
             st.write(f"auto_index: {info['auto_index_summary']}")
             st.write(f"auto_index_mode: {info['auto_index_mode']}")
             st.write(f"auto_index_state: {info['auto_index_state_name']}")
