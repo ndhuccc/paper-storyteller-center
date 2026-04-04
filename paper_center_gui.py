@@ -22,6 +22,7 @@ from center_service import load_html as load_paper_html
 from center_service import list_generation_jobs
 from center_service import normalize_paper
 from center_service import rebuild_index as service_rebuild_index
+from center_service import resolve_generation_manifest_paper
 from center_service import search as service_search
 from center_service import submit_generation_job
 from paper_repository import PAPER_STATUS_GENERATED_NOT_INDEXED
@@ -452,11 +453,57 @@ def _auto_index_state(result: Dict[str, Any], payload: Dict[str, Any]) -> Dict[s
     }
 
 
-def _paper_id_from_output_path(output_path: Any) -> str:
+def _first_non_empty_text(*values: Any) -> str:
+    for value in values:
+        text = str(value or "").strip()
+        if text:
+            return text
+    return ""
+
+
+def _extract_generation_output_filename(result: Dict[str, Any], output: Dict[str, Any]) -> str:
+    direct = _first_non_empty_text(output.get("filename"), result.get("filename"))
+    if direct:
+        return Path(direct).name
+
+    artifacts = result.get("artifacts")
+    if isinstance(artifacts, list):
+        for artifact in artifacts:
+            if not isinstance(artifact, dict):
+                continue
+            if str(artifact.get("type", "")).strip().lower() != "html":
+                continue
+            filename = _first_non_empty_text(artifact.get("filename"))
+            if filename:
+                return Path(filename).name
+            artifact_path = _first_non_empty_text(artifact.get("path"))
+            if artifact_path:
+                return Path(artifact_path).name
+    return ""
+
+
+def _extract_generation_output_paper_id(
+    payload: Dict[str, Any],
+    result: Dict[str, Any],
+    output: Dict[str, Any],
+) -> str:
+    metadata = _as_dict(result.get("metadata"))
+    return _first_non_empty_text(
+        result.get("paper_id"),
+        output.get("paper_id"),
+        metadata.get("paper_id"),
+        payload.get("paper_id"),
+    )
+
+
+def _output_path_exists(output_path: Any) -> bool:
     raw = str(output_path or "").strip()
     if not raw or raw == "-":
-        return ""
-    return Path(raw).expanduser().stem
+        return False
+    try:
+        return Path(raw).expanduser().exists()
+    except Exception:
+        return False
 
 
 def _sanitize_title_for_prefill(title: Any, fallback: str) -> str:
@@ -483,6 +530,8 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
         sections_generated = _as_dict(result.get("metadata")).get("sections_generated")
 
     output_path = result.get("output_path") or output.get("output_path")
+    output_filename = _extract_generation_output_filename(result=result, output=output)
+    output_paper_id = _extract_generation_output_paper_id(payload=payload, result=result, output=output)
 
     return {
         "job_id_full": str(job.get("job_id", "")).strip(),
@@ -490,6 +539,8 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
         "status": str(job.get("status", "-")),
         "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
         "output_path": str(output_path or "-"),
+        "output_filename": output_filename,
+        "output_paper_id": output_paper_id,
         "sections_generated": sections_generated if sections_generated is not None else "-",
         "warnings": warnings,
         "warnings_count": len(warnings),
@@ -584,13 +635,6 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
     job_summaries = [_build_generation_job_summary(job) for job in recent_jobs]
     st.dataframe(_build_generation_rows(job_summaries), use_container_width=True)
 
-    papers_by_id: Dict[str, Dict[str, Any]] = {}
-    for paper in all_papers:
-        normalized = normalize_paper(paper)
-        paper_id = str(normalized.get("paper_id", normalized.get("id", ""))).strip()
-        if paper_id and paper_id not in papers_by_id:
-            papers_by_id[paper_id] = normalized
-
     st.caption("點開可查看每筆任務細節")
     for info in job_summaries:
         expander_label = (
@@ -643,20 +687,29 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                 st.info("ℹ️ 說書已生成，但這次未自動重建索引。若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。")
 
             output_path = str(info.get("output_path", "")).strip()
-            paper_id = _paper_id_from_output_path(output_path)
-            output_exists = bool(paper_id)
-            if output_exists:
-                output_exists = Path(output_path).expanduser().exists()
-
-            manifest_paper = papers_by_id.get(paper_id)
+            output_exists = _output_path_exists(output_path)
+            resolution = resolve_generation_manifest_paper(
+                output_path=output_path,
+                filename=info.get("output_filename", ""),
+                paper_id=info.get("output_paper_id", ""),
+                manifest_papers=all_papers,
+            )
+            manifest_paper = resolution.get("paper") if isinstance(resolution, dict) else None
+            if isinstance(manifest_paper, dict):
+                manifest_paper = normalize_paper(manifest_paper)
+            resolved_paper_id = str((resolution or {}).get("resolved_paper_id", "")).strip()
+            open_target_paper_id = str(
+                (manifest_paper or {}).get("paper_id", (manifest_paper or {}).get("id", ""))
+            ).strip() or resolved_paper_id
             paper_status = str((manifest_paper or {}).get("paper_status", PAPER_STATUS_UNAVAILABLE)).strip() or PAPER_STATUS_UNAVAILABLE
-            title_fallback = paper_id or "這篇論文"
+            title_fallback = open_target_paper_id or "這篇論文"
             display_title = _sanitize_title_for_prefill(
                 manifest_paper.get("title") if manifest_paper else "",
                 fallback=title_fallback,
             )
             paper_ready = bool(manifest_paper) and is_paper_ready(manifest_paper)
             can_handoff_to_search_qa = paper_ready
+            can_open_output = bool(open_target_paper_id) and (output_exists or bool(manifest_paper and manifest_paper.get("has_html")))
             st.write(f"paper_status: {_paper_status_line(manifest_paper or {'paper_status': paper_status})}")
 
             col_open, col_search, col_ask = st.columns([1, 1, 1])
@@ -665,13 +718,16 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                     "📖 開啟生成結果",
                     key=f"handoff_open_{info['job_id_full']}",
                     use_container_width=True,
-                    disabled=not output_exists,
+                    disabled=not can_open_output,
                 ):
-                    st.session_state.open_paper = {
-                        "paper_id": paper_id,
-                        "id": paper_id,
-                        "title": display_title,
-                    }
+                    if manifest_paper:
+                        st.session_state.open_paper = manifest_paper
+                    else:
+                        st.session_state.open_paper = {
+                            "paper_id": open_target_paper_id,
+                            "id": open_target_paper_id,
+                            "title": display_title,
+                        }
                     st.rerun()
 
             with col_search:
@@ -699,7 +755,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
 
             if paper_ready:
                 st.success("✅ 這篇內容在 manifest 中已是「就緒」狀態，可直接用於搜尋/Q&A。")
-            elif not output_exists:
+            elif not output_exists and not (manifest_paper and manifest_paper.get("has_html")):
                 st.caption("找不到輸出 HTML，請先確認 output_path 是否存在。")
             else:
                 if manifest_paper is None:

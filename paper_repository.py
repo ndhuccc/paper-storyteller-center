@@ -96,6 +96,136 @@ def normalize_manifest_paper(paper: Dict[str, Any]) -> Dict[str, Any]:
     return item
 
 
+def _safe_text(value: Any) -> str:
+    return str(value or "").strip()
+
+
+def _normalize_filepath_for_match(raw_path: Any) -> str:
+    text = _safe_text(raw_path)
+    if not text or text == "-":
+        return ""
+    try:
+        return str(Path(text).expanduser().resolve(strict=False))
+    except Exception:
+        return str(Path(text).expanduser())
+
+
+def _normalize_filename_for_match(raw_filename: Any) -> str:
+    text = _safe_text(raw_filename)
+    if not text or text == "-":
+        return ""
+    return Path(text).name.strip().lower()
+
+
+def _normalize_manifest_match_rows(manifest_papers: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for paper in manifest_papers:
+        if not isinstance(paper, dict):
+            continue
+        normalized = normalize_manifest_paper(paper)
+        pid = _normalize_paper_id(normalized.get("paper_id") or normalized.get("id"))
+        filepath = _normalize_filepath_for_match(normalized.get("filepath"))
+        filename_key = _normalize_filename_for_match(normalized.get("filename"))
+        if not filename_key and filepath:
+            filename_key = _normalize_filename_for_match(Path(filepath).name)
+
+        rows.append(
+            {
+                "paper": normalized,
+                "paper_id": pid,
+                "filepath_key": filepath,
+                "filename_key": filename_key,
+            }
+        )
+    return rows
+
+
+def _unique_match(candidates: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    if not candidates:
+        return None
+    deduped: Dict[str, Dict[str, Any]] = {}
+    for row in candidates:
+        key = row.get("paper_id") or _safe_text(row.get("paper", {}).get("id"))
+        if not key:
+            key = str(id(row.get("paper")))
+        if key not in deduped:
+            deduped[key] = row
+    if len(deduped) != 1:
+        return None
+    return next(iter(deduped.values()))
+
+
+def resolve_manifest_paper_from_generation_output(
+    manifest_papers: List[Dict[str, Any]],
+    *,
+    output_path: Any = "",
+    filename: Any = "",
+    paper_id: Any = "",
+) -> Dict[str, Any]:
+    """Resolve one manifest paper from generation output metadata.
+
+    Match priority:
+    1. explicit paper_id
+    2. exact output_path vs manifest filepath
+    3. explicit filename (or output_path basename) vs manifest filename
+    4. fallback: output filename stem vs manifest paper_id (only when unique)
+    """
+    rows = _normalize_manifest_match_rows(manifest_papers)
+
+    requested_paper_id = _normalize_paper_id(paper_id)
+    requested_output_path = _normalize_filepath_for_match(output_path)
+    requested_filename = _normalize_filename_for_match(filename)
+    if not requested_filename and requested_output_path:
+        requested_filename = _normalize_filename_for_match(Path(requested_output_path).name)
+
+    requested_stem = ""
+    if requested_filename:
+        requested_stem = _normalize_paper_id(Path(requested_filename).stem)
+    elif requested_output_path:
+        requested_stem = _normalize_paper_id(Path(requested_output_path).stem)
+
+    matched_row: Optional[Dict[str, Any]] = None
+    match_rule = ""
+
+    if requested_paper_id:
+        matched_row = _unique_match([row for row in rows if row.get("paper_id") == requested_paper_id])
+        if matched_row:
+            match_rule = "paper_id"
+
+    if not matched_row and requested_output_path:
+        matched_row = _unique_match([row for row in rows if row.get("filepath_key") == requested_output_path])
+        if matched_row:
+            match_rule = "output_path"
+
+    if not matched_row and requested_filename:
+        matched_row = _unique_match([row for row in rows if row.get("filename_key") == requested_filename])
+        if matched_row:
+            match_rule = "filename"
+
+    if not matched_row and requested_stem:
+        matched_row = _unique_match([row for row in rows if row.get("paper_id") == requested_stem])
+        if matched_row:
+            match_rule = "stem_fallback"
+
+    matched_paper = matched_row.get("paper") if matched_row else None
+    resolved_paper_id = ""
+    if matched_row:
+        resolved_paper_id = str(matched_row.get("paper_id", "")).strip()
+    if not resolved_paper_id:
+        resolved_paper_id = requested_paper_id or requested_stem
+
+    return {
+        "paper": matched_paper,
+        "resolved_paper_id": resolved_paper_id,
+        "match_rule": match_rule,
+        "requested": {
+            "paper_id": requested_paper_id,
+            "output_path": requested_output_path,
+            "filename": requested_filename,
+        },
+    }
+
+
 @lru_cache(maxsize=1)
 def _get_lance_db():
     """Create and cache LanceDB connection for repository queries."""

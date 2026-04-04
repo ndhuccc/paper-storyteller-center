@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """GUI-facing coordination service for Paper Storyteller Center."""
 
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from generation_service import get_job as generation_get_job
 from generation_service import launch_job_background as generation_launch_job_background
@@ -12,6 +12,7 @@ from html_loader import load_paper_html as service_load_paper_html
 from paper_repository import PAPER_STATUS_READY
 from paper_repository import get_all_papers as repository_get_all_papers
 from paper_repository import normalize_manifest_paper
+from paper_repository import resolve_manifest_paper_from_generation_output
 from qa_service import answer_with_search as service_answer_with_search
 from qa_service import build_gui_prompt
 from retrieval_service import clear_lance_db_cache
@@ -38,6 +39,23 @@ def normalize_paper(paper: Dict) -> Dict:
 def is_paper_ready(paper: Dict) -> bool:
     """Whether paper can safely enter retrieval/Q&A flow."""
     return normalize_manifest_paper(paper).get("paper_status") == PAPER_STATUS_READY
+
+
+def resolve_generation_manifest_paper(
+    *,
+    output_path: Any = "",
+    filename: Any = "",
+    paper_id: Any = "",
+    manifest_papers: Optional[List[Dict]] = None,
+) -> Dict[str, Any]:
+    """Resolve one manifest paper from generation output metadata."""
+    papers = manifest_papers if manifest_papers is not None else list_papers()
+    return resolve_manifest_paper_from_generation_output(
+        papers,
+        output_path=output_path,
+        filename=filename,
+        paper_id=paper_id,
+    )
 
 
 def get_all_papers() -> List[Dict]:
