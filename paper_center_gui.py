@@ -889,7 +889,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
 
             job_id_full = info["job_id_full"]
             status = str(info["status"]).strip().lower()
-            if status == "failed":
+            if status in {"failed", "succeeded", "canceled"}:
                 if st.button(
                     "🔄 重試任務",
                     key=f"retry_job_{job_id_full}",
