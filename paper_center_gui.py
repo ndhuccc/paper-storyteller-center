@@ -9,6 +9,7 @@
 """
 
 import streamlit as st
+from pathlib import Path
 from typing import Any, Dict, List
 
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
@@ -83,6 +84,33 @@ def init_session_state():
         st.session_state.selected_papers = {}
     if "last_generation_job_id" not in st.session_state:
         st.session_state.last_generation_job_id = None
+    if "handoff_prefill_search" not in st.session_state:
+        st.session_state.handoff_prefill_search = None
+    if "handoff_prefill_question" not in st.session_state:
+        st.session_state.handoff_prefill_question = None
+    if "handoff_prefill_selected_paper" not in st.session_state:
+        st.session_state.handoff_prefill_selected_paper = None
+
+
+def apply_handoff_prefill_if_any():
+    """在 widget 建立前套用 handoff 預填內容。"""
+    prefill_search = st.session_state.handoff_prefill_search
+    if isinstance(prefill_search, str) and prefill_search.strip():
+        st.session_state.search_input = prefill_search.strip()
+
+    prefill_question = st.session_state.handoff_prefill_question
+    if isinstance(prefill_question, str) and prefill_question.strip():
+        st.session_state.qa_input = prefill_question.strip()
+
+    selected_paper = st.session_state.handoff_prefill_selected_paper
+    if isinstance(selected_paper, dict):
+        paper_id = str(selected_paper.get("paper_id", selected_paper.get("id", ""))).strip()
+        if paper_id:
+            st.session_state.selected_papers = {paper_id: selected_paper}
+
+    st.session_state.handoff_prefill_search = None
+    st.session_state.handoff_prefill_question = None
+    st.session_state.handoff_prefill_selected_paper = None
 
 
 def maybe_show_open_paper_dialog():
@@ -348,30 +376,61 @@ def _summarize_items(items: List[str], max_items: int = 2, max_len: int = 96) ->
 
 
 def _auto_index_summary(result: Dict[str, Any], payload: Dict[str, Any]) -> str:
+    state = _auto_index_state(result=result, payload=payload)
+    requested = state["requested"]
+    if not requested:
+        return "not requested"
+
+    ok = state["ok"]
+    attempted = state["attempted"]
+    message = state["message"]
+
+    if ok is True:
+        label = "ok"
+    elif ok is False:
+        label = "failed"
+    elif attempted is False:
+        label = "pending"
+    else:
+        label = "requested"
+
+    if message:
+        return f"{label}: {message}"
+    return label
+
+
+def _auto_index_state(result: Dict[str, Any], payload: Dict[str, Any]) -> Dict[str, Any]:
     metadata = _as_dict(result.get("metadata"))
     auto_index = _as_dict(metadata.get("auto_index"))
     requested = auto_index.get("requested")
     if requested is None:
         requested = _as_bool(payload.get("auto_index"))
-    if not requested:
-        return "not requested"
-
     attempted = auto_index.get("attempted")
     ok = auto_index.get("ok")
     message = str(auto_index.get("message", "")).strip()
+    return {
+        "requested": _as_bool(requested),
+        "attempted": attempted,
+        "ok": ok,
+        "message": message,
+    }
 
-    if ok is True:
-        state = "ok"
-    elif ok is False:
-        state = "failed"
-    elif attempted is False:
-        state = "pending"
-    else:
-        state = "requested"
 
-    if message:
-        return f"{state}: {message}"
-    return state
+def _paper_id_from_output_path(output_path: Any) -> str:
+    raw = str(output_path or "").strip()
+    if not raw or raw == "-":
+        return ""
+    return Path(raw).expanduser().stem
+
+
+def _sanitize_title_for_prefill(title: Any, fallback: str) -> str:
+    value = str(title or "").strip()
+    if not value:
+        value = fallback
+    suffix = " - 說書人版"
+    if value.endswith(suffix):
+        return value[: -len(suffix)].strip() or fallback
+    return value
 
 
 def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
@@ -390,6 +449,7 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
     output_path = result.get("output_path") or output.get("output_path")
 
     return {
+        "job_id_full": str(job.get("job_id", "")).strip(),
         "job_id": str(job.get("job_id", ""))[:8],
         "status": str(job.get("status", "-")),
         "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
@@ -401,6 +461,7 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
         "errors": errors,
         "errors_count": len(errors),
         "errors_summary": _summarize_items(errors),
+        "auto_index_state": _auto_index_state(result=result, payload=payload),
         "auto_index_summary": _auto_index_summary(result=result, payload=payload),
         "steps": steps,
         "steps_summary": _summarize_items(steps, max_items=3),
@@ -428,7 +489,7 @@ def _build_generation_rows(job_summaries: List[Dict[str, Any]]) -> List[Dict[str
     return rows
 
 
-def render_generation_panel():
+def render_generation_panel(all_papers: List[Dict[str, Any]]):
     """渲染最小可用 generation 面板。"""
     st.divider()
     st.header("🛠️ 生成說書")
@@ -487,6 +548,12 @@ def render_generation_panel():
     job_summaries = [_build_generation_job_summary(job) for job in recent_jobs]
     st.dataframe(_build_generation_rows(job_summaries), use_container_width=True)
 
+    indexed_papers_by_id: Dict[str, Dict[str, Any]] = {}
+    for paper in all_papers:
+        paper_id = str(paper.get("paper_id", paper.get("id", ""))).strip()
+        if paper_id and paper_id not in indexed_papers_by_id:
+            indexed_papers_by_id[paper_id] = paper
+
     st.caption("點開可查看每筆任務細節")
     for info in job_summaries:
         expander_label = (
@@ -523,6 +590,78 @@ def render_generation_panel():
             else:
                 st.write("recent_steps: -")
 
+            if info["status"] != "succeeded":
+                continue
+
+            st.write("next_steps:")
+            auto_index_state = info["auto_index_state"]
+            auto_index_requested = auto_index_state.get("requested") is True
+            auto_index_ok = auto_index_state.get("ok") is True
+
+            if auto_index_ok:
+                st.success("✅ 自動重建索引已完成，可直接搜尋與提問這篇內容。")
+            elif auto_index_requested:
+                st.warning("⚠️ 說書已生成，但自動重建索引失敗。若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。")
+            else:
+                st.info("ℹ️ 說書已生成，但這次未自動重建索引。若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。")
+
+            output_path = str(info.get("output_path", "")).strip()
+            paper_id = _paper_id_from_output_path(output_path)
+            output_exists = bool(paper_id)
+            if output_exists:
+                output_exists = Path(output_path).expanduser().exists()
+
+            indexed_paper = indexed_papers_by_id.get(paper_id)
+            title_fallback = paper_id or "這篇論文"
+            display_title = _sanitize_title_for_prefill(
+                indexed_paper.get("title") if indexed_paper else "",
+                fallback=title_fallback,
+            )
+            can_handoff_to_search_qa = auto_index_ok and indexed_paper is not None
+
+            col_open, col_search, col_ask = st.columns([1, 1, 1])
+            with col_open:
+                if st.button(
+                    "📖 開啟生成結果",
+                    key=f"handoff_open_{info['job_id_full']}",
+                    use_container_width=True,
+                    disabled=not output_exists,
+                ):
+                    st.session_state.open_paper = {
+                        "paper_id": paper_id,
+                        "id": paper_id,
+                        "title": display_title,
+                    }
+                    st.rerun()
+
+            with col_search:
+                if st.button(
+                    "🔍 搜尋這篇",
+                    key=f"handoff_search_{info['job_id_full']}",
+                    use_container_width=True,
+                    disabled=not can_handoff_to_search_qa,
+                ):
+                    st.session_state.handoff_prefill_search = display_title
+                    st.rerun()
+
+            with col_ask:
+                if st.button(
+                    "💬 詢問這篇",
+                    key=f"handoff_ask_{info['job_id_full']}",
+                    use_container_width=True,
+                    disabled=not can_handoff_to_search_qa,
+                ):
+                    st.session_state.handoff_prefill_selected_paper = indexed_paper
+                    st.session_state.handoff_prefill_question = (
+                        f"請幫我整理《{display_title}》的核心貢獻、方法、實驗結果與限制。"
+                    )
+                    st.rerun()
+
+            if not output_exists:
+                st.caption("找不到輸出 HTML，請先確認 output_path 是否存在。")
+            elif not can_handoff_to_search_qa:
+                st.caption("尚未完成可用索引，請先重建索引後再使用「搜尋這篇 / 詢問這篇」。")
+
     last_job_id = st.session_state.last_generation_job_id
     if last_job_id:
         latest = get_generation_job(last_job_id)
@@ -530,19 +669,20 @@ def render_generation_panel():
             st.caption(f"最近提交任務：{str(last_job_id)[:8]}（{latest.get('status', 'unknown')}）")
 
 
-def render_qa_panel():
+def render_qa_panel(all_papers: List[Dict[str, Any]]):
     """渲染右欄 Q&A 面板。"""
     st.header("💬 Q&A 對話")
     render_selected_papers_section()
     render_qa_history()
     render_qa_input_section()
-    render_generation_panel()
+    render_generation_panel(all_papers)
 
 
 # ==================== 主介面 ====================
 def main():
     """頁面主流程：初始化 → dialog → 標題 → sidebar → 左右兩欄。"""
     init_session_state()
+    apply_handoff_prefill_if_any()
     maybe_show_open_paper_dialog()
 
     st.title("🦞 論文說書人中心")
@@ -555,7 +695,7 @@ def main():
     with col1:
         render_search_panel()
     with col2:
-        render_qa_panel()
+        render_qa_panel(all_papers)
 
 
 if __name__ == "__main__":
