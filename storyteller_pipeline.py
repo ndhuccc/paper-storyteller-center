@@ -36,6 +36,8 @@ HEADING_HINTS = (
     "conclusions",
     "references",
     "acknowledgement",
+    "acknowledgements",
+    "appendix",
 )
 
 STYLE_PROMPTS: Dict[str, str] = {
@@ -268,9 +270,78 @@ def _normalize_extracted_text(text: str) -> str:
             continue
         cleaned_lines.append(striped)
 
+    cleaned_lines = _drop_repeated_page_artifacts(cleaned_lines)
     compact = "\n".join(cleaned_lines)
     compact = re.sub(r"\n{3,}", "\n\n", compact)
     return compact.strip()
+
+
+def _drop_repeated_page_artifacts(lines: List[str]) -> List[str]:
+    if not lines:
+        return []
+
+    counts: Dict[str, int] = {}
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        key = _artifact_signature(stripped)
+        if key:
+            counts[key] = counts.get(key, 0) + 1
+
+    repeated = {key for key, count in counts.items() if count >= 3}
+    if not repeated:
+        return list(lines)
+
+    filtered: List[str] = []
+    for line in lines:
+        stripped = line.strip()
+        key = _artifact_signature(stripped) if stripped else None
+        if key and key in repeated:
+            continue
+        filtered.append(line)
+    return filtered
+
+
+def _artifact_signature(line: str) -> Optional[str]:
+    text = re.sub(r"\s+", " ", line).strip()
+    if not text or len(text) > 90:
+        return None
+    if len(text.split()) > 12:
+        return None
+    if re.search(r"[.?!。？！]$", text):
+        return None
+    if re.fullmatch(r"[\W_]+", text):
+        return None
+    if _looks_like_heading(text):
+        return None
+
+    lowered = text.lower()
+    has_metadata_term = bool(
+        re.search(
+            r"\b(arxiv|preprint|proceedings|conference|journal|copyright|doi|accepted|manuscript)\b",
+            lowered,
+        )
+    )
+    if not has_metadata_term and not _is_mostly_title_or_upper(text):
+        return None
+
+    normalized = re.sub(r"\d+", "0", lowered)
+    normalized = re.sub(r"[^a-z0-9\u4e00-\u9fff ]+", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    if len(normalized) < 4:
+        return None
+    return normalized
+
+
+def _is_mostly_title_or_upper(text: str) -> bool:
+    words = re.findall(r"[A-Za-z][A-Za-z0-9'/-]*", text)
+    if not words:
+        return False
+    if text == text.upper():
+        return True
+    titled = sum(1 for word in words if word[0].isupper())
+    return titled / len(words) >= 0.7
 
 
 def _split_into_sections(extracted_text: str) -> List[Dict[str, str]]:
@@ -283,6 +354,22 @@ def _split_into_sections(extracted_text: str) -> List[Dict[str, str]]:
     current_paragraphs: List[str] = []
 
     for block in blocks:
+        inline_heading = _split_inline_heading_block(block)
+        if inline_heading is not None:
+            heading, body = inline_heading
+            if current_paragraphs:
+                sections.append(
+                    {
+                        "title": current_title,
+                        "source_text": "\n\n".join(current_paragraphs).strip(),
+                    }
+                )
+                current_paragraphs = []
+            current_title = heading
+            if body:
+                current_paragraphs.append(body)
+            continue
+
         if _looks_like_heading(block):
             if current_paragraphs:
                 sections.append(
@@ -309,49 +396,185 @@ def _split_into_sections(extracted_text: str) -> List[Dict[str, str]]:
     return sections
 
 
+def _split_inline_heading_block(block: str) -> Optional[Tuple[str, str]]:
+    text = re.sub(r"\s+", " ", block).strip()
+    if not text:
+        return None
+
+    hints_pattern = "|".join(re.escape(hint) for hint in HEADING_HINTS)
+    match = re.match(
+        rf"^(?P<head>{hints_pattern})\s*(?:[-–—:]\s+|\s{{2,}})(?P<body>.+)$",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if match:
+        heading = _normalize_heading_text(match.group("head"))
+        body = match.group("body").strip()
+        if len(body) >= 30:
+            return heading, body
+
+    abstract_inline = re.match(r"^(abstract)\s+(?P<body>.+)$", text, flags=re.IGNORECASE)
+    if abstract_inline:
+        body = abstract_inline.group("body").strip()
+        if len(body) >= 40 and re.search(r"[.?!。？！]", body):
+            return "Abstract", body
+
+    return None
+
+
+def _normalize_heading_text(text: str) -> str:
+    heading = re.sub(r"\s+", " ", text).strip(" \t-–—:")
+    if not heading:
+        return heading
+    if heading.isupper() or heading.islower():
+        return heading.title()
+    return heading
+
+
 def _split_blocks(extracted_text: str) -> List[str]:
+    lines = _drop_repeated_page_artifacts(extracted_text.splitlines())
+    normalized_text = "\n".join(lines)
     blocks: List[str] = []
-    for raw_block in re.split(r"\n\s*\n+", extracted_text):
+    for raw_block in re.split(r"\n\s*\n+", normalized_text):
         lines = [line.strip() for line in raw_block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        lines = [line for line in lines if not _is_simple_page_artifact_line(line)]
         if not lines:
             continue
         merged = _merge_wrapped_lines(lines)
         if merged:
             blocks.append(merged)
-    return blocks
+    return _merge_block_continuations(blocks)
+
+
+def _is_simple_page_artifact_line(line: str) -> bool:
+    text = line.strip()
+    if not text:
+        return True
+    if re.fullmatch(r"\d{1,4}\s*[/\-]\s*\d{1,4}", text):
+        return True
+    if re.fullmatch(r"[-–—]?\s*\d{1,4}\s*[-–—]?", text):
+        return True
+    if re.fullmatch(r"(?i)page\s+\d+(\s+of\s+\d+)?", text):
+        return True
+    return False
+
+
+def _merge_block_continuations(blocks: List[str]) -> List[str]:
+    if not blocks:
+        return []
+
+    merged_blocks: List[str] = [blocks[0]]
+    for block in blocks[1:]:
+        previous = merged_blocks[-1]
+        if _should_merge_blocks(previous, block):
+            merged_blocks[-1] = _merge_text_fragments(previous, block)
+        else:
+            merged_blocks.append(block)
+    return merged_blocks
+
+
+def _should_merge_blocks(previous: str, current: str) -> bool:
+    left = previous.strip()
+    right = current.strip()
+    if not left or not right:
+        return False
+    if _looks_like_heading(right):
+        return False
+    if re.match(r"(?i)^(figure|fig\.|table)\s+\d+[:.]", right):
+        return False
+    if left.endswith("-"):
+        return True
+    if re.search(r"[.?!:;。？！：；]$", left):
+        return False
+    if re.match(r"^[a-z0-9(\[\"'“‘]", right):
+        return True
+    if re.match(r"(?i)^(and|or|but|because|which|that|where|when|with|for|to|of|in|on|by|as)\b", right):
+        return True
+    return False
 
 
 def _merge_wrapped_lines(lines: List[str]) -> str:
     if not lines:
         return ""
-    merged = lines[0]
+    merged_lines: List[str] = [lines[0].strip()]
     for line in lines[1:]:
-        if merged.endswith("-") and line and line[0].islower():
-            merged = merged[:-1] + line
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _is_list_item_start(stripped):
+            merged_lines.append(stripped)
         else:
-            merged = merged + " " + line
-    return merged.strip()
+            merged_lines[-1] = _merge_text_fragments(merged_lines[-1], stripped)
+    return "\n".join(merged_lines).strip()
+
+
+def _is_list_item_start(line: str) -> bool:
+    return bool(re.match(r"^([\-*•]\s+|\d{1,2}[.)]\s+)", line))
+
+
+def _merge_text_fragments(left: str, right: str) -> str:
+    if not left:
+        return right
+    if not right:
+        return left
+    if left.endswith("-") and re.match(r"^[A-Za-z\u4e00-\u9fff]", right):
+        return left[:-1] + right
+    if right[0] in ",.;:!?)]}%":
+        return left + right
+    return left + " " + right
 
 
 def _looks_like_heading(block: str) -> bool:
     text = re.sub(r"\s+", " ", block).strip()
-    if not text or len(text) > 120:
+    if not text or len(text) > 160:
         return False
-    if re.search(r"[.?!:;。？！：；]$", text):
+    if re.search(r"[.?!。？！]$", text):
         return False
-    if re.match(r"^\d+(\.\d+){0,3}\s+[A-Za-z0-9\u4e00-\u9fff]", text):
+    if re.match(r"(?i)^https?://", text):
+        return False
+    if re.match(r"(?i)^(figure|fig\.|table)\s+\d+[:.]", text):
+        return False
+    if re.match(r"^\(?\d+(\.\d+){0,4}\)?[.)]?\s+[A-Za-z0-9\u4e00-\u9fff]", text):
         return True
-    if re.match(r"^(section|chapter)\s+[0-9ivx]+", text, flags=re.IGNORECASE):
+    if re.match(r"(?i)^[ivxlcdm]{1,8}(?:-[A-Z])?[.)]?\s+[A-Za-z0-9\u4e00-\u9fff]", text):
+        return True
+    if re.match(r"(?i)^appendix\s+[a-z0-9ivxlcdm]+([.:)\s]|$)", text):
+        return True
+    if re.match(r"(?i)^(section|chapter|part)\s+[0-9a-zivxlcdm]+(?:\.\d+)*([.:)\s]|$)", text):
         return True
 
-    lowered = text.lower()
-    if any(lowered.startswith(hint) for hint in HEADING_HINTS):
+    lowered = text.lower().rstrip(":")
+    if any(
+        lowered == hint or lowered.startswith(f"{hint} ") or lowered.startswith(f"{hint}:")
+        for hint in HEADING_HINTS
+    ):
         return True
 
-    words = text.split()
-    if words and len(words) <= 12 and text == text.upper():
+    words = re.findall(r"[A-Za-z][A-Za-z0-9'/-]*|[\u4e00-\u9fff]+|\d+(?:\.\d+)*", text)
+    if not words or len(words) > 14:
+        return False
+
+    alpha_words = [word for word in words if re.search(r"[A-Za-z\u4e00-\u9fff]", word)]
+    if not alpha_words:
+        return False
+    if text == text.upper() and len(words) <= 12:
+        return True
+
+    titled = sum(1 for word in alpha_words if _is_title_like_word(word))
+    lowercase = sum(1 for word in alpha_words if word[:1].islower())
+    if titled >= max(2, int(len(alpha_words) * 0.6)) and lowercase <= max(1, len(alpha_words) // 3):
         return True
     return False
+
+
+def _is_title_like_word(word: str) -> bool:
+    if re.search(r"[\u4e00-\u9fff]", word):
+        return True
+    if word.isupper():
+        return True
+    return word[:1].isupper()
 
 
 def _rewrite_section(
