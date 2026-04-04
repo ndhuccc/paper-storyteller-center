@@ -5,9 +5,9 @@
 
 ## 目前狀態
 
-目前系統已完成 v0.8 核心功能：
+目前系統已完成 v0.9 核心功能：
 
-1. **PDF → 說書人 HTML**（非同步背景執行）
+1. **PDF → 說書人 HTML**（非同步背景執行，支援 7 種風格）
 2. **HTML → 向量索引**（auto-index 支援 runtime fallback）
 3. **搜尋 / Q&A / 閱覽**
 4. **Paper manifest**（merged HTML + index，具備 canonical status）
@@ -44,7 +44,7 @@
 
 ### 生成規則
 - 預設順序式處理
-- MVP 只做單篇 PDF → 單篇 HTML
+- 支援 storyteller / blog / podcast / fairy / lazy / question / log 風格
 - 目前只正式支援 `storyteller` 風格
 
 ### Runtime 規則
@@ -193,12 +193,14 @@ print(select_preferred_python(required_modules=('lancedb',)))
 | v0.6 | Hybrid MVP | 架構分層 + 最小 generation pipeline + GUI 入口 |
 | v0.7 | Generation UX | 非同步 job + 狀態顯示 + 回流入口 + repository 純化 |
 | v0.8 | Index 聯動 | Merged manifest + canonical status + handoff 穩定化 + auto-index 細化 + runtime fallback |
+| v0.9 | 風格與品質 | 7 種改寫風格 + section parsing 改良 + Q&A citation 強化 |
+| v0.9 | 風格與品質 | 7 種改寫風格 + section parsing 改良 + Q&A citation 強化 |
 
 ---
 
 ## 已知限制
 
-- generation 目前只正式支援 `storyteller` 風格
+- generation 支援 7 種風格（storyteller / blog / podcast / fairy / lazy / question / log）
 - GUI generation 採非同步 job，但無即時輪詢刷新
 - 無 retry / cancel 機制
 - `auto_index` 目前仍是 full rebuild
