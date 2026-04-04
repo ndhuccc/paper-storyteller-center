@@ -14,9 +14,13 @@ from typing import List, Dict
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from center_service import answer as service_answer
 from center_service import get_all_papers
+from center_service import get_generation_job
 from center_service import load_html as load_paper_html
+from center_service import list_generation_jobs
 from center_service import rebuild_index as service_rebuild_index
+from center_service import run_generation_job
 from center_service import search as service_search
+from center_service import submit_generation_job
 from qa_render import answer_to_mathjax_html
 
 # ==================== 頁面設定 ====================
@@ -77,6 +81,8 @@ def init_session_state():
         st.session_state.open_paper = None
     if "selected_papers" not in st.session_state:
         st.session_state.selected_papers = {}
+    if "last_generation_job_id" not in st.session_state:
+        st.session_state.last_generation_job_id = None
 
 
 def maybe_show_open_paper_dialog():
@@ -246,12 +252,113 @@ def render_qa_input_section():
     st.rerun()
 
 
+def _build_generation_rows(jobs: List[Dict]) -> List[Dict]:
+    """把 generation jobs 轉成簡單表格列。"""
+    rows: List[Dict] = []
+    for job in jobs:
+        payload = job.get("payload", {})
+        if not isinstance(payload, dict):
+            payload = {}
+        result = job.get("result", {})
+        if not isinstance(result, dict):
+            result = {}
+        rows.append(
+            {
+                "job_id": str(job.get("job_id", ""))[:8],
+                "status": str(job.get("status", "-")),
+                "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
+                "output_path": str(result.get("output_path", "-")),
+                "updated_at": str(job.get("updated_at", "-")),
+            }
+        )
+    return rows
+
+
+def render_generation_panel():
+    """渲染最小可用 generation 面板。"""
+    st.divider()
+    st.header("🛠️ 生成說書")
+
+    pdf_path = st.text_input(
+        "PDF 路徑",
+        placeholder="例如：/home/user/Documents/paper.pdf",
+        key="gen_pdf_path",
+    )
+    style = st.selectbox("風格", options=["storyteller"], key="gen_style")
+    auto_index = st.checkbox("完成後自動重建索引", value=True, key="gen_auto_index")
+
+    if st.button("🚀 提交生成任務", key="gen_submit_btn", use_container_width=True):
+        if not pdf_path.strip():
+            st.warning("請先輸入 PDF 路徑")
+        else:
+            payload = {
+                "pdf_path": pdf_path.strip(),
+                "style": style,
+                "auto_index": auto_index,
+            }
+            try:
+                with st.spinner("提交並執行生成任務中..."):
+                    job = submit_generation_job(payload=payload)
+                    job_id = str(job.get("job_id", "")).strip()
+                    if not job_id:
+                        raise RuntimeError("job_id is missing in submit response")
+                    executed = run_generation_job(job_id)
+                    latest = get_generation_job(job_id)
+                    final_job = latest or executed or job
+            except Exception as e:
+                st.error(f"生成任務失敗: {e}")
+            else:
+                st.session_state.last_generation_job_id = str(final_job.get("job_id", ""))
+                status = str(final_job.get("status", "unknown"))
+                if status == "succeeded":
+                    output_path = (
+                        (final_job.get("result") or {}).get("output_path")
+                        if isinstance(final_job.get("result"), dict)
+                        else None
+                    )
+                    if output_path:
+                        st.success(f"✅ 任務完成，輸出：{output_path}")
+                    else:
+                        st.success("✅ 任務完成")
+                elif status == "failed":
+                    st.error(f"❌ 任務失敗：{final_job.get('error', 'unknown error')}")
+                else:
+                    st.info(f"任務狀態：{status}")
+                st.rerun()
+
+    st.caption("最近任務（最多 8 筆）")
+    try:
+        recent_jobs = list_generation_jobs(limit=8)
+    except Exception as e:
+        st.error(f"讀取任務列表失敗: {e}")
+        return
+
+    if not recent_jobs:
+        st.caption("目前沒有生成任務")
+        return
+
+    status_counts: Dict[str, int] = {}
+    for job in recent_jobs:
+        status = str(job.get("status", "unknown"))
+        status_counts[status] = status_counts.get(status, 0) + 1
+    summary = " | ".join([f"{k}: {v}" for k, v in status_counts.items()])
+    st.caption(f"狀態統計：{summary}")
+    st.dataframe(_build_generation_rows(recent_jobs), use_container_width=True)
+
+    last_job_id = st.session_state.last_generation_job_id
+    if last_job_id:
+        latest = get_generation_job(last_job_id)
+        if latest:
+            st.caption(f"最近提交任務：{str(last_job_id)[:8]}（{latest.get('status', 'unknown')}）")
+
+
 def render_qa_panel():
     """渲染右欄 Q&A 面板。"""
     st.header("💬 Q&A 對話")
     render_selected_papers_section()
     render_qa_history()
     render_qa_input_section()
+    render_generation_panel()
 
 
 # ==================== 主介面 ====================
