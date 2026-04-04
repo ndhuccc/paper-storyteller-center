@@ -415,25 +415,18 @@ def _summarize_items(items: List[str], max_items: int = 2, max_len: int = 96) ->
 def _auto_index_summary(result: Dict[str, Any], payload: Dict[str, Any]) -> str:
     state = _auto_index_state(result=result, payload=payload)
     requested = state["requested"]
+    mode = str(state.get("mode", "")).strip() or "full_rebuild"
+    state_name = str(state.get("state", "")).strip()
+    if not state_name:
+        state_name = "not_requested" if not requested else "requested"
     if not requested:
-        return "not requested"
+        return f"{mode}/{state_name}"
 
-    ok = state["ok"]
-    attempted = state["attempted"]
-    message = state["message"]
-
-    if ok is True:
-        label = "ok"
-    elif ok is False:
-        label = "failed"
-    elif attempted is False:
-        label = "pending"
-    else:
-        label = "requested"
-
+    message = str(state.get("message", "")).strip()
+    summary = f"{mode}/{state_name}"
     if message:
-        return f"{label}: {message}"
-    return label
+        return f"{summary}: {message}"
+    return summary
 
 
 def _auto_index_state(result: Dict[str, Any], payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -445,11 +438,38 @@ def _auto_index_state(result: Dict[str, Any], payload: Dict[str, Any]) -> Dict[s
     attempted = auto_index.get("attempted")
     ok = auto_index.get("ok")
     message = str(auto_index.get("message", "")).strip()
+    mode = str(auto_index.get("mode", "")).strip() or "full_rebuild"
+    state_name = str(auto_index.get("state", "")).strip()
+    started_at = str(auto_index.get("started_at", "")).strip()
+    completed_at = str(auto_index.get("completed_at", "")).strip()
+    duration_ms = auto_index.get("duration_ms")
+    manifest_resolution = _as_dict(auto_index.get("manifest_resolution"))
+    manifest_requested = _as_dict(manifest_resolution.get("requested"))
+    manifest_paper = _as_dict(manifest_resolution.get("paper"))
+
     return {
         "requested": _as_bool(requested),
-        "attempted": attempted,
+        "attempted": _as_bool(attempted),
         "ok": ok,
         "message": message,
+        "mode": mode,
+        "state": state_name,
+        "started_at": started_at,
+        "completed_at": completed_at,
+        "duration_ms": duration_ms,
+        "manifest_resolution": {
+            "attempted": _as_bool(manifest_resolution.get("attempted")),
+            "ok": manifest_resolution.get("ok"),
+            "message": str(manifest_resolution.get("message", "")).strip(),
+            "resolved_paper_id": str(manifest_resolution.get("resolved_paper_id", "")).strip(),
+            "match_rule": str(manifest_resolution.get("match_rule", "")).strip(),
+            "requested": {
+                "paper_id": str(manifest_requested.get("paper_id", "")).strip(),
+                "output_path": str(manifest_requested.get("output_path", "")).strip(),
+                "filename": str(manifest_requested.get("filename", "")).strip(),
+            },
+            "paper": manifest_paper,
+        },
     }
 
 
@@ -488,9 +508,14 @@ def _extract_generation_output_paper_id(
     output: Dict[str, Any],
 ) -> str:
     metadata = _as_dict(result.get("metadata"))
+    auto_index = _as_dict(metadata.get("auto_index"))
+    manifest_resolution = _as_dict(auto_index.get("manifest_resolution"))
+    manifest_paper = _as_dict(manifest_resolution.get("paper"))
     return _first_non_empty_text(
         result.get("paper_id"),
         output.get("paper_id"),
+        manifest_resolution.get("resolved_paper_id"),
+        manifest_paper.get("paper_id"),
         metadata.get("paper_id"),
         payload.get("paper_id"),
     )
@@ -516,10 +541,33 @@ def _sanitize_title_for_prefill(title: Any, fallback: str) -> str:
     return value
 
 
+def _auto_index_manifest_summary(auto_index_state: Dict[str, Any]) -> str:
+    resolution = _as_dict(auto_index_state.get("manifest_resolution"))
+    attempted = _as_bool(resolution.get("attempted"))
+    ok = resolution.get("ok")
+    message = str(resolution.get("message", "")).strip()
+    resolved_paper_id = str(resolution.get("resolved_paper_id", "")).strip()
+    match_rule = str(resolution.get("match_rule", "")).strip()
+    paper = _as_dict(resolution.get("paper"))
+    paper_status = str(paper.get("paper_status", "")).strip()
+
+    if not attempted:
+        return message or "not attempted"
+    if ok is True:
+        detail = resolved_paper_id or "-"
+        if paper_status:
+            detail = f"{detail} ({paper_status})"
+        if match_rule:
+            return f"resolved by {match_rule}: {detail}"
+        return f"resolved: {detail}"
+    return message or "not resolved"
+
+
 def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
     payload = _as_dict(job.get("payload"))
     result = _as_dict(job.get("result"))
     output = _as_dict(result.get("output"))
+    auto_index_state = _auto_index_state(result=result, payload=payload)
 
     warnings = _extract_warnings(result)
     errors = _extract_errors(result)
@@ -548,7 +596,13 @@ def _build_generation_job_summary(job: Dict[str, Any]) -> Dict[str, Any]:
         "errors": errors,
         "errors_count": len(errors),
         "errors_summary": _summarize_items(errors),
-        "auto_index_state": _auto_index_state(result=result, payload=payload),
+        "auto_index_state": auto_index_state,
+        "auto_index_mode": str(auto_index_state.get("mode", "")).strip() or "full_rebuild",
+        "auto_index_state_name": str(auto_index_state.get("state", "")).strip() or "-",
+        "auto_index_started_at": str(auto_index_state.get("started_at", "")).strip() or "-",
+        "auto_index_completed_at": str(auto_index_state.get("completed_at", "")).strip() or "-",
+        "auto_index_duration_ms": auto_index_state.get("duration_ms"),
+        "auto_index_manifest_summary": _auto_index_manifest_summary(auto_index_state),
         "auto_index_summary": _auto_index_summary(result=result, payload=payload),
         "steps": steps,
         "steps_summary": _summarize_items(steps, max_items=3),
@@ -648,6 +702,12 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             st.write(f"output_path: {info['output_path']}")
             st.write(f"sections_generated: {info['sections_generated']}")
             st.write(f"auto_index: {info['auto_index_summary']}")
+            st.write(f"auto_index_mode: {info['auto_index_mode']}")
+            st.write(f"auto_index_state: {info['auto_index_state_name']}")
+            st.write(f"auto_index_started_at: {info['auto_index_started_at']}")
+            st.write(f"auto_index_completed_at: {info['auto_index_completed_at']}")
+            st.write(f"auto_index_duration_ms: {info['auto_index_duration_ms']}")
+            st.write(f"auto_index_manifest: {info['auto_index_manifest_summary']}")
             st.write(f"updated_at: {info['updated_at']}")
 
             if info["warnings"]:
@@ -678,13 +738,20 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             auto_index_state = info["auto_index_state"]
             auto_index_requested = auto_index_state.get("requested") is True
             auto_index_ok = auto_index_state.get("ok") is True
+            auto_index_mode = str(auto_index_state.get("mode", "")).strip() or "full_rebuild"
 
             if auto_index_ok:
-                st.success("✅ 自動重建索引流程已完成。")
+                st.success(f"✅ 自動索引流程已完成（mode={auto_index_mode}）。")
             elif auto_index_requested:
-                st.warning("⚠️ 說書已生成，但自動重建索引失敗。若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。")
+                st.warning(
+                    f"⚠️ 說書已生成，但自動索引失敗（mode={auto_index_mode}）。"
+                    "若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。"
+                )
             else:
-                st.info("ℹ️ 說書已生成，但這次未自動重建索引。若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。")
+                st.info(
+                    f"ℹ️ 說書已生成，但這次未執行自動索引（mode={auto_index_mode}）。"
+                    "若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。"
+                )
 
             output_path = str(info.get("output_path", "")).strip()
             output_exists = _output_path_exists(output_path)
