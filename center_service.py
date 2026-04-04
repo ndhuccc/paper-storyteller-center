@@ -12,6 +12,7 @@ from generation_service import run_job as generation_run_job
 from generation_service import submit_job as generation_submit_job
 from html_loader import load_paper_html as service_load_paper_html
 from paper_repository import PAPER_STATUS_READY
+from paper_repository import delete_paper as repository_delete_paper
 from paper_repository import get_all_papers as repository_get_all_papers
 from paper_repository import normalize_manifest_paper
 from paper_repository import resolve_manifest_paper_from_generation_output
@@ -97,6 +98,19 @@ def rebuild_index() -> bool:
     if ok:
         clear_lance_db_cache()
     return ok
+
+
+def delete_paper(paper_id: str) -> Dict[str, Any]:
+    """Delete one paper artifact and indexed rows."""
+    result = repository_delete_paper(paper_id)
+    clear_lance_db_cache()
+    if isinstance(result, dict):
+        return result
+    return {
+        "ok": False,
+        "paper_id": str(paper_id or "").strip(),
+        "message": "delete_paper 回傳格式錯誤",
+    }
 
 
 def submit_generation_job(payload: Optional[Dict] = None) -> Dict:

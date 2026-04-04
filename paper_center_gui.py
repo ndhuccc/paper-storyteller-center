@@ -15,6 +15,7 @@ from typing import Any, Dict, List
 # Q&A 的 MathJax/Markdown 渲染集中放在獨立模組，避免 GUI 檔案再度膨脹。
 from center_service import answer as service_answer
 from center_service import cancel_generation_job
+from center_service import delete_paper as service_delete_paper
 from center_service import get_all_papers
 from center_service import get_generation_job
 from center_service import is_paper_ready
@@ -139,6 +140,24 @@ def maybe_show_open_paper_dialog():
         st.session_state.open_paper = None
 
 
+def _cleanup_deleted_paper_state(paper_id: str):
+    if not paper_id:
+        return
+    st.session_state.selected_papers.pop(paper_id, None)
+
+    open_paper = st.session_state.get("open_paper")
+    if isinstance(open_paper, dict):
+        open_paper_id = str(open_paper.get("paper_id", open_paper.get("id", ""))).strip()
+        if open_paper_id == paper_id:
+            st.session_state.open_paper = None
+
+    handoff_paper = st.session_state.get("handoff_prefill_selected_paper")
+    if isinstance(handoff_paper, dict):
+        handoff_paper_id = str(handoff_paper.get("paper_id", handoff_paper.get("id", ""))).strip()
+        if handoff_paper_id == paper_id:
+            st.session_state.handoff_prefill_selected_paper = None
+
+
 def rebuild_index():
     """重建向量索引。"""
     if service_rebuild_index():
@@ -216,6 +235,69 @@ def render_sidebar(all_papers: List[Dict]):
             ):
                 st.session_state.open_paper = normalized
                 st.rerun()
+
+        st.divider()
+        with st.expander("🗂️ 管理（刪除論文）", expanded=False):
+            if not all_papers:
+                st.caption("目前沒有可管理的論文")
+            else:
+                normalized_papers = [normalize_paper(paper) for paper in all_papers]
+                options: List[str] = []
+                label_to_paper: Dict[str, Dict[str, Any]] = {}
+                for paper in normalized_papers:
+                    paper_id = str(paper.get("paper_id", paper.get("id", ""))).strip()
+                    if not paper_id:
+                        continue
+                    title = str(paper.get("title", "未知標題")).strip() or "未知標題"
+                    status_label = _paper_status_badge_text(paper)
+                    option_label = f"{status_label} {title[:32]} ({paper_id})"
+                    options.append(option_label)
+                    label_to_paper[option_label] = paper
+
+                if not options:
+                    st.caption("沒有可刪除的論文資料")
+                else:
+                    selected_label = st.selectbox(
+                        "選擇要刪除的論文",
+                        options=options,
+                        key="manage_delete_paper_select",
+                    )
+                    selected_paper = label_to_paper.get(selected_label, {})
+                    selected_paper_id = str(
+                        selected_paper.get("paper_id", selected_paper.get("id", ""))
+                    ).strip()
+                    selected_title = str(selected_paper.get("title", "未知標題")).strip() or "未知標題"
+
+                    st.warning("刪除後會同時移除 LanceDB 索引與 Storytellers 目錄下的 HTML，且無法復原。")
+                    confirm = st.checkbox(
+                        f"我確認刪除《{selected_title[:48]}》",
+                        key=f"manage_delete_confirm_{selected_paper_id}",
+                    )
+
+                    if st.button(
+                        "🗑️ 刪除此論文",
+                        key=f"manage_delete_btn_{selected_paper_id}",
+                        use_container_width=True,
+                        disabled=not (selected_paper_id and confirm),
+                    ):
+                        with st.spinner("刪除中..."):
+                            result = service_delete_paper(selected_paper_id)
+
+                        if result.get("ok"):
+                            st.success(str(result.get("message", "刪除完成")))
+                        else:
+                            st.error(str(result.get("message", "刪除失敗")))
+
+                        index_error = str(result.get("index_error", "")).strip()
+                        html_error = str(result.get("html_error", "")).strip()
+                        if index_error:
+                            st.caption(f"index_error: {index_error}")
+                        if html_error:
+                            st.caption(f"html_error: {html_error}")
+
+                        _cleanup_deleted_paper_state(selected_paper_id)
+                        st.cache_resource.clear()
+                        st.rerun()
 
 
 def render_search_result_item(index: int, result: Dict):

@@ -12,6 +12,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from retrieval_service import delete_paper as retrieval_delete_paper
+
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
@@ -237,6 +239,11 @@ def _get_lance_db():
         return None
 
 
+def clear_lance_db_cache() -> None:
+    """Clear cached repository LanceDB connection."""
+    _get_lance_db.cache_clear()
+
+
 def _extract_text_from_html(html_content: str) -> str:
     """Extract plain text from HTML content."""
     text = re.sub(r"<script[^>]*>.*?</script>", "", html_content, flags=re.DOTALL | re.IGNORECASE)
@@ -423,3 +430,31 @@ def build_paper_manifest() -> List[Dict]:
 def get_all_papers() -> List[Dict]:
     """Backward-compatible paper list; now returns merged manifest."""
     return build_paper_manifest()
+
+
+def delete_paper(paper_id: Any) -> Dict[str, Any]:
+    """Delete paper artifact + index rows via retrieval service and clear repo cache."""
+    normalized_paper_id = _normalize_paper_id(paper_id)
+    if not normalized_paper_id:
+        clear_lance_db_cache()
+        return {
+            "ok": False,
+            "paper_id": "",
+            "message": "paper_id 不可為空",
+            "repository_cache_cleared": True,
+        }
+
+    result = retrieval_delete_paper(normalized_paper_id)
+    clear_lance_db_cache()
+
+    if not isinstance(result, dict):
+        return {
+            "ok": False,
+            "paper_id": normalized_paper_id,
+            "message": "delete_paper 回傳格式錯誤",
+            "repository_cache_cleared": True,
+        }
+
+    output = dict(result)
+    output["repository_cache_cleared"] = True
+    return output

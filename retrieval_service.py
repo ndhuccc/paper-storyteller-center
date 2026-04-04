@@ -6,7 +6,7 @@ import re
 import urllib.request
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
@@ -35,6 +35,104 @@ def get_lance_db():
 def clear_lance_db_cache() -> None:
     """Clear cached LanceDB connection."""
     get_lance_db.cache_clear()
+
+
+def _normalize_paper_id(raw_paper_id: Any) -> str:
+    paper_id = str(raw_paper_id or "").strip()
+    if not paper_id:
+        return ""
+    if paper_id.lower().endswith(".html"):
+        return Path(paper_id).stem.strip()
+    return paper_id
+
+
+def _lancedb_string_literal(value: str) -> str:
+    escaped = value.replace("'", "''")
+    return f"'{escaped}'"
+
+
+def _resolve_storytellers_html_path(paper_id: str) -> Path:
+    filename = Path(f"{paper_id}.html").name
+    storytellers_root = STORYTELLERS_DIR.expanduser().resolve(strict=False)
+    candidate = (STORYTELLERS_DIR / filename).expanduser().resolve(strict=False)
+    if candidate.parent != storytellers_root or candidate.suffix.lower() != ".html":
+        raise ValueError("unsafe HTML path")
+    return candidate
+
+
+def delete_paper(paper_id: str) -> Dict[str, Any]:
+    """Delete one paper from LanceDB index and STORYTELLERS_DIR HTML artifact."""
+    normalized_paper_id = _normalize_paper_id(paper_id)
+    if not normalized_paper_id:
+        return {
+            "ok": False,
+            "paper_id": "",
+            "index_deleted": False,
+            "index_error": "empty paper_id",
+            "html_deleted": False,
+            "html_path": "",
+            "html_error": "empty paper_id",
+            "cache_cleared": True,
+            "message": "paper_id 不可為空",
+        }
+
+    index_deleted = False
+    index_error = ""
+    db = get_lance_db()
+    if db is None:
+        index_error = "無法連接 LanceDB"
+    else:
+        try:
+            tables = set(db.list_tables())
+            if "papers" in tables:
+                table = db.open_table("papers")
+                table.delete(f"paper_id = {_lancedb_string_literal(normalized_paper_id)}")
+                index_deleted = True
+            else:
+                index_error = "找不到 papers table"
+        except Exception as e:
+            index_error = str(e)
+
+    html_deleted = False
+    html_path = ""
+    html_error = ""
+    try:
+        target_html = _resolve_storytellers_html_path(normalized_paper_id)
+        html_path = str(target_html)
+        if target_html.exists():
+            if target_html.is_file():
+                target_html.unlink()
+                html_deleted = True
+            else:
+                html_error = "HTML 目標不是檔案"
+        else:
+            html_error = "找不到 HTML 檔案"
+    except Exception as e:
+        html_error = str(e)
+
+    clear_lance_db_cache()
+
+    ok = index_deleted or html_deleted
+    if index_deleted and html_deleted:
+        message = "已刪除索引與 HTML"
+    elif index_deleted:
+        message = "已刪除索引，HTML 未刪除"
+    elif html_deleted:
+        message = "已刪除 HTML，索引未刪除"
+    else:
+        message = "未刪除任何資料"
+
+    return {
+        "ok": ok,
+        "paper_id": normalized_paper_id,
+        "index_deleted": index_deleted,
+        "index_error": index_error,
+        "html_deleted": html_deleted,
+        "html_path": html_path,
+        "html_error": html_error,
+        "cache_cleared": True,
+        "message": message,
+    }
 
 
 def create_table(db):
