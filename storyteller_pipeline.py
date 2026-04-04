@@ -103,7 +103,7 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
             "Supported keys include pdf_path/source_pdf_path/input_path/file_path/path/pdf."
         )
 
-    extracted_text = _extract_pdf_text(pdf_path)
+    extracted_text, extraction_warning = _extract_pdf_text(pdf_path)
     if not extracted_text.strip():
         raise RuntimeError(f"No text extracted from PDF: {pdf_path}")
 
@@ -118,6 +118,8 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
 
     rendered_sections: List[Dict[str, Any]] = []
     llm_failures: List[str] = []
+    if extraction_warning:
+        llm_failures.append(extraction_warning)
 
     for index, section in enumerate(sections[:max_sections], start=1):
         rewritten_text, used_llm, failure = _rewrite_section(
@@ -249,10 +251,10 @@ def _candidate_pdf_paths(raw_value: str) -> List[Path]:
     return paths
 
 
-def _extract_pdf_text(pdf_path: Path) -> str:
+def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str]]:
     gemini_api_key = _configure_gemini()
     if not gemini_api_key:
-        return _extract_pdf_text_with_pymupdf(pdf_path)
+        return _extract_pdf_text_with_pymupdf(pdf_path), "No Gemini API Key found; fell back to PyMuPDF."
 
     sample_file = None
     try:
@@ -270,10 +272,10 @@ def _extract_pdf_text(pdf_path: Path) -> str:
 
         markdown_text = str(getattr(response, "text", "") or "").strip()
         if markdown_text:
-            return _normalize_extracted_text(markdown_text)
+            return _normalize_extracted_text(markdown_text), None
         raise RuntimeError("Gemini returned empty extraction content.")
-    except Exception:
-        return _extract_pdf_text_with_pymupdf(pdf_path)
+    except Exception as e:
+        return _extract_pdf_text_with_pymupdf(pdf_path), f"Gemini extraction failed ({type(e).__name__}: {e}); fell back to PyMuPDF."
     finally:
         if sample_file is not None:
             try:
