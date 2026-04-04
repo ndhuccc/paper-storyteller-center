@@ -72,8 +72,8 @@
 | **Embedding** | Ollama / `qwen3-embedding:8b`（本地） |
 | **Q&A LLM** | Ollama / `deepseek-r1:8b`（本地） |
 | **Vector DB** | LanceDB（本地） |
-| **PDF 抽字** | `pdftotext` |
-| **HTML 公式** | 內嵌頁優先 KaTeX；Q&A 區使用 MathJax |
+| **PDF 抽字** | `PyMuPDF` (fitz) |
+| **HTML 公式** | 全面統一使用 KaTeX auto-render |
 
 ---
 
@@ -106,10 +106,7 @@ Storytellers/
 
 ### 1. 系統依賴
 
-```bash
-# Ubuntu / Debian
-sudo apt install poppler-utils
-```
+已不需 `poppler-utils`，改用 Python 套件 `pymupdf` 解析 PDF 結構。
 
 ### 2. Ollama 模型
 
@@ -121,7 +118,7 @@ ollama pull deepseek-r1:8b
 ### 3. Python 套件
 
 ```bash
-/home/linuxbrew/.linuxbrew/bin/pip3 install lancedb streamlit markdown
+/home/linuxbrew/.linuxbrew/bin/pip3 install lancedb streamlit markdown pymupdf
 ```
 
 ### 4. 啟動 GUI
@@ -222,6 +219,6 @@ print(select_preferred_python(required_modules=('lancedb',)))
 
 - 資料庫與 OpenClaw 記憶庫完全獨立
 - Ollama 需在背景執行
-- `pdftotext` 必須已安裝
-- 若 HTML 嵌入中心閱覽區，系統會優先補 KaTeX auto-render
+- `pymupdf` 必須已安裝
+- HTML 說書人頁面皆已統一內嵌 KaTeX 渲染引擎
 - LanceDB 需透過正確 Python runtime 執行（已有 `runtime_support.py` 處理）
