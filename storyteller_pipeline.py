@@ -7,11 +7,10 @@ import html
 import json
 import markdown
 import re
-import shutil
-import subprocess
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from statistics import median
 from typing import Any, Dict, List, Optional, Tuple
 
 
@@ -238,28 +237,197 @@ def _candidate_pdf_paths(raw_value: str) -> List[Path]:
 
 
 def _extract_pdf_text(pdf_path: Path) -> str:
-    if shutil.which("pdftotext") is None:
-        raise RuntimeError("pdftotext is required but was not found in PATH")
+    try:
+        import fitz  # PyMuPDF
+    except Exception as exc:
+        raise RuntimeError("PyMuPDF (fitz) is required for PDF extraction") from exc
 
-    commands = [
-        ["pdftotext", "-layout", "-nopgbrk", "-enc", "UTF-8", str(pdf_path), "-"],
-        ["pdftotext", "-enc", "UTF-8", str(pdf_path), "-"],
-    ]
+    try:
+        document = fitz.open(str(pdf_path))
+    except Exception as exc:
+        raise RuntimeError(f"Failed to open PDF with PyMuPDF: {pdf_path}") from exc
 
-    last_error = ""
-    for cmd in commands:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
+    try:
+        lines = _extract_structured_pdf_lines(document)
+    finally:
+        document.close()
+
+    if not lines:
+        return ""
+
+    structured_text = _compose_text_from_pdf_lines(lines)
+    return _normalize_extracted_text(structured_text)
+
+
+def _extract_structured_pdf_lines(document: Any) -> List[Dict[str, Any]]:
+    line_items: List[Dict[str, Any]] = []
+    for page_index, page in enumerate(document):
+        page_dict = page.get_text("dict")
+        blocks = [block for block in page_dict.get("blocks", []) if block.get("type") == 0]
+        blocks.sort(key=lambda block: _bbox_sort_key(block.get("bbox")))
+
+        for block in blocks:
+            for line in block.get("lines", []):
+                spans = [span for span in line.get("spans", []) if str(span.get("text", "")).strip()]
+                if not spans:
+                    continue
+                text = _join_pdf_spans(spans)
+                if not text:
+                    continue
+
+                size_values = [float(span.get("size") or 0.0) for span in spans]
+                max_size = max(size_values) if size_values else 0.0
+                is_bold = any(
+                    _is_bold_font_name(str(span.get("font", ""))) or (int(span.get("flags", 0)) & 16)
+                    for span in spans
+                )
+
+                line_bbox = line.get("bbox") or spans[0].get("bbox") or [0.0, 0.0, 0.0, 0.0]
+                x0 = float(line_bbox[0]) if len(line_bbox) > 0 else 0.0
+                y0 = float(line_bbox[1]) if len(line_bbox) > 1 else 0.0
+
+                line_items.append(
+                    {
+                        "page": page_index,
+                        "x0": x0,
+                        "y0": y0,
+                        "text": text,
+                        "font_size": max_size,
+                        "is_bold": bool(is_bold),
+                    }
+                )
+
+    line_items.sort(key=lambda item: (item["page"], item["y0"], item["x0"]))
+    body_font = _estimate_body_font_size(line_items)
+    for item in line_items:
+        item["is_heading_hint"] = _is_structural_heading_line(
+            text=item["text"],
+            font_size=float(item.get("font_size") or 0.0),
+            is_bold=bool(item.get("is_bold")),
+            body_font_size=body_font,
         )
-        output = proc.stdout or ""
-        if proc.returncode == 0 and output.strip():
-            return _normalize_extracted_text(output)
-        last_error = (proc.stderr or "").strip() or f"exit_code={proc.returncode}"
+    return line_items
 
-    raise RuntimeError(f"pdftotext extraction failed for {pdf_path}: {last_error}")
+
+def _compose_text_from_pdf_lines(lines: List[Dict[str, Any]]) -> str:
+    if not lines:
+        return ""
+
+    sections: List[str] = []
+    current_paragraph = ""
+    previous_line: Optional[Dict[str, Any]] = None
+
+    def _flush_paragraph() -> None:
+        nonlocal current_paragraph
+        paragraph = current_paragraph.strip()
+        if paragraph:
+            sections.append(paragraph)
+        current_paragraph = ""
+
+    for line in lines:
+        text = str(line.get("text", "")).strip()
+        if not text or _is_simple_page_artifact_line(text):
+            previous_line = line
+            continue
+
+        if bool(line.get("is_heading_hint")):
+            _flush_paragraph()
+            sections.append(_normalize_heading_text(text))
+            previous_line = line
+            continue
+
+        start_new_paragraph = False
+        if previous_line is None:
+            start_new_paragraph = True
+        elif line["page"] != previous_line["page"]:
+            start_new_paragraph = True
+        elif _is_list_item_start(text):
+            start_new_paragraph = True
+        else:
+            vertical_gap = float(line["y0"]) - float(previous_line.get("y0", line["y0"]))
+            previous_text = str(previous_line.get("text", "")).strip()
+            if vertical_gap > 18:
+                start_new_paragraph = True
+            elif previous_text and re.search(r"[.?!:;。？！：；]$", previous_text):
+                if vertical_gap > 10 and not re.match(r"^[a-z0-9(\[\"'“‘]", text):
+                    start_new_paragraph = True
+
+        if start_new_paragraph:
+            _flush_paragraph()
+            current_paragraph = text
+        else:
+            current_paragraph = _merge_text_fragments(current_paragraph, text)
+
+        previous_line = line
+
+    _flush_paragraph()
+    return "\n\n".join(section for section in sections if section.strip())
+
+
+def _bbox_sort_key(bbox: Any) -> Tuple[float, float]:
+    if not isinstance(bbox, (list, tuple)) or len(bbox) < 2:
+        return (0.0, 0.0)
+    try:
+        return (float(bbox[1]), float(bbox[0]))
+    except (TypeError, ValueError):
+        return (0.0, 0.0)
+
+
+def _join_pdf_spans(spans: List[Dict[str, Any]]) -> str:
+    text = "".join(str(span.get("text", "")) for span in spans)
+    text = re.sub(r"[ \t]+", " ", text)
+    return text.strip()
+
+
+def _is_bold_font_name(font_name: str) -> bool:
+    lowered = font_name.lower()
+    return any(token in lowered for token in ("bold", "black", "heavy", "demi"))
+
+
+def _estimate_body_font_size(lines: List[Dict[str, Any]]) -> float:
+    if not lines:
+        return 11.0
+
+    candidates: List[float] = []
+    for line in lines:
+        text = str(line.get("text", "")).strip()
+        size = float(line.get("font_size") or 0.0)
+        if size <= 0:
+            continue
+        if len(text) < 25:
+            continue
+        if _looks_like_heading(text):
+            continue
+        candidates.append(size)
+
+    if not candidates:
+        candidates = [float(line.get("font_size") or 0.0) for line in lines if float(line.get("font_size") or 0.0) > 0]
+    if not candidates:
+        return 11.0
+    return float(median(candidates))
+
+
+def _is_structural_heading_line(*, text: str, font_size: float, is_bold: bool, body_font_size: float) -> bool:
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if not cleaned or len(cleaned) > 160:
+        return False
+
+    if _looks_like_heading(cleaned):
+        return True
+
+    if re.search(r"[.?!。？！]$", cleaned):
+        return False
+
+    words = re.findall(r"[A-Za-z][A-Za-z0-9'/-]*|[\u4e00-\u9fff]+|\d+(?:\.\d+)*", cleaned)
+    if not words or len(words) > 16:
+        return False
+
+    size_ratio = font_size / max(body_font_size, 1.0)
+    if size_ratio >= 1.18:
+        return True
+    if is_bold and size_ratio >= 1.05 and len(words) <= 12:
+        return True
+    return False
 
 
 def _normalize_extracted_text(text: str) -> str:
@@ -820,19 +988,22 @@ def _build_story_html_document(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{safe_title} - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
     <script>
-    window.MathJax = {{
-      tex: {{
-        inlineMath: [['$', '$'], ['\\\\(', '\\\\)']],
-        displayMath: [['$$', '$$'], ['\\\\[', '\\\\]']],
-        processEscapes: true
-      }},
-      options: {{
-        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
-      }}
-    }};
+    document.addEventListener("DOMContentLoaded", function() {{
+      renderMathInElement(document.body, {{
+        delimiters: [
+          {{left: "$$", right: "$$", display: true}},
+          {{left: "\\\\[", right: "\\\\]", display: true}},
+          {{left: "$", right: "$", display: false}},
+          {{left: "\\\\(", right: "\\\\)", display: false}}
+        ],
+        throwOnError: false
+      }});
+    }});
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
     <style>
         * {{ box-sizing: border-box; }}
         body {{
@@ -902,6 +1073,9 @@ def _build_story_html_document(
             padding: 12px;
             margin: 12px 0;
             text-align: center;
+        }}
+        .math.inline {{
+            display: inline-block;
         }}
     </style>
 </head>
@@ -975,8 +1149,20 @@ def _protect_latex(text: str) -> Tuple[str, List[str]]:
 def _restore_formula_placeholders(text: str, formulas: List[str]) -> str:
     restored = text
     for idx, formula in enumerate(formulas):
-        restored = restored.replace(f"{LATEX_PLACEHOLDER}{idx}X", formula)
+        escaped_formula = html.escape(formula)
+        if _is_display_formula(formula):
+            replacement = escaped_formula
+        else:
+            replacement = f"<span class=\"math inline\">{escaped_formula}</span>"
+        restored = restored.replace(f"{LATEX_PLACEHOLDER}{idx}X", replacement)
     return restored
+
+
+def _is_display_formula(formula: str) -> bool:
+    compact = re.sub(r"\s+", "", formula)
+    return (compact.startswith("$$") and compact.endswith("$$")) or (
+        compact.startswith("\\[") and compact.endswith("\\]")
+    )
 
 
 def _safe_positive_int(value: Any, default: int) -> int:
