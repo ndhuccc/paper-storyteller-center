@@ -324,7 +324,7 @@
               </summary>
 
               <div class="job-detail" x-show="true" x-data="{jobDetail: null, loadingDetail: false}"
-                   @toggle.once="loadJobDetail(job.job_id).then(d => jobDetail = d)">
+                    @toggle="if ($el.open) { loadJobDetail(job.job_id).then(d => jobDetail = d) }">
 
                 <template x-if="!jobDetail">
                   <button class="btn btn-sm btn-ghost" @click="loadJobDetail(job.job_id).then(d => jobDetail = d)">
@@ -369,18 +369,18 @@
 
                     <!-- Actions: retry / cancel -->
                     <div class="job-actions">
-                      <template x-if="['failed','succeeded','canceled'].includes(jobDetail.status)">
+                      <template x-if="['failed','succeeded','canceled'].includes(job.status)">
                         <button class="btn btn-sm btn-secondary"
-                                @click="retryJob(jobDetail.job_id); jobDetail = null">🔄 重試</button>
+                                @click="retryJob(job.job_id); jobDetail = null">🔄 重試</button>
                       </template>
-                      <template x-if="['pending','running'].includes(jobDetail.status)">
+                      <template x-if="['pending','running'].includes(job.status)">
                         <button class="btn btn-sm btn-danger"
-                                @click="cancelJob(jobDetail.job_id); jobDetail = null">🛑 取消</button>
+                                @click="cancelJob(job.job_id); jobDetail = null">🛑 取消</button>
                       </template>
                     </div>
 
                     <!-- Handoff (succeeded only) -->
-                    <template x-if="jobDetail.status === 'succeeded'">
+                    <template x-if="job.status === 'succeeded'">
                       <div class="handoff-area">
                         <div class="detail-subhead">paper_status:
                           <span x-text="statusBadge(jobDetail.manifest_paper || {paper_status:'unavailable'})"></span>

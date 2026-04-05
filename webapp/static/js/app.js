@@ -327,8 +327,36 @@ function App() {
     async loadJobs() {
       this.jobsLoading = true;
       try {
+        const previousStatuses = {};
+        for (const j of this.jobs) {
+          if (j && j.job_id) previousStatuses[j.job_id] = j.status;
+        }
         const data = await api.get('/api/jobs?limit=8');
         this.jobs = data.data || [];
+
+        // Notify once when a tracked in-flight job turns into succeeded.
+        for (const j of this.jobs) {
+          const prev = previousStatuses[j.job_id];
+          if (!prev || prev === j.status) continue;
+          if (!['pending', 'running'].includes(prev)) continue;
+          if (j.status !== 'succeeded') continue;
+
+          const outputName = (j.output_filename || '').trim()
+            || ((j.output_path || '').split('/').filter(Boolean).pop() || '').trim()
+            || j.job_id.slice(0, 8);
+          this.toast('success', `✅ 任務完成：${outputName}`);
+        }
+
+        // If any job transitions into a terminal state, refresh sidebar papers
+        // so newly generated HTML appears without a full page reload.
+        const terminalStates = new Set(['succeeded', 'failed', 'canceled']);
+        const transitionedToTerminal = this.jobs.some((j) => {
+          const prev = previousStatuses[j.job_id];
+          return Boolean(prev) && prev !== j.status && terminalStates.has(j.status);
+        });
+        if (transitionedToTerminal) {
+          await this.loadPapers();
+        }
       } catch (e) {
         this.toast('error', '載入任務列表失敗: ' + e.message);
       } finally {
@@ -426,7 +454,7 @@ function App() {
    ═══════════════════════════════════════════════ */
 const api = {
   async _request(method, url, body, isForm) {
-    const opts = { method };
+    const opts = { method, cache: 'no-store' };
     if (body !== undefined) {
       if (isForm) {
         opts.body = body;
