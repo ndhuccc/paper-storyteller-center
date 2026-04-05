@@ -1,7 +1,11 @@
-# 論文說書人中心 / Paper Storyteller Center
+# 論文說書改寫中心 / Paper Story Rewriting Center
 
 🦞 一個本地優先的 Hybrid 論文系統：
 既能把 PDF 生成「說書人版」HTML，也能對既有 HTML 做索引、搜尋、Q&A 與閱覽。
+
+## 使用手冊
+
+- 詳細中文操作手冊請見：`使用手冊.md`
 
 ## 目前狀態
 

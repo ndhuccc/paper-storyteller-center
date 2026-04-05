@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🦞 論文說書人中心</title>
+  <title>🦞 論文說書改寫中心</title>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body x-data="App()" x-init="init()" @keydown.escape.window="closeModal()">
@@ -52,7 +52,7 @@
     <aside class="sidebar">
       <div class="sidebar-brand">
         <span class="brand-icon">🦞</span>
-        <span class="brand-text">論文說書人中心</span>
+        <span class="brand-text">論文說書改寫中心</span>
       </div>
 
       <!-- stats -->
@@ -76,7 +76,7 @@
       <div class="sidebar-section sidebar-papers">
         <div class="section-label">📚 所有論文</div>
         <div x-show="allPapers.length === 0" class="muted">
-          目前沒有論文，可在「🛠️ 生成說書」先提交 PDF。
+          目前沒有論文，可在「🛠️ 說書改寫」先提交 PDF。
         </div>
         <template x-for="p in allPapers" :key="p.paper_id || p.id">
           <button class="paper-btn" @click="openPaper(p)">
@@ -177,7 +177,7 @@
         <details class="sidebar-details">
           <summary>❓ 使用說明</summary>
           <div class="manual-content">
-            <p><strong>1) 產生新說書 HTML</strong><br>在「🛠️ 生成說書」上傳 PDF、選風格後提交。成功後可用「開啟 / 搜尋 / 詢問」快速回流。</p>
+            <p><strong>1) 產生新說書 HTML</strong><br>在「🛠️ 說書改寫」上傳 PDF、選風格後提交。成功後可用「開啟 / 搜尋 / 詢問」快速回流。</p>
             <p><strong>2) 論文狀態</strong></p>
             <ul>
               <li><span class="badge-ready">✅ 就緒</span>：可直接搜尋與 Q&A</li>
@@ -195,7 +195,7 @@
     <!-- ── MAIN ── -->
     <main class="main-content">
       <div class="main-header">
-        <h1 class="page-title">🦞 論文說書人中心</h1>
+        <h1 class="page-title">🦞 論文說書改寫中心</h1>
         <p class="page-subtitle">用自然語言搜尋論文、對論文內容提問</p>
       </div>
 
@@ -203,7 +203,7 @@
       <div class="tab-bar">
         <button class="tab-btn" :class="{active: tab==='search'}" @click="tab='search'">🔍 語意搜尋</button>
         <button class="tab-btn" :class="{active: tab==='qa'}" @click="tab='qa'">💬 Q&A 對話</button>
-        <button class="tab-btn" :class="{active: tab==='generate'}" @click="tab='generate'">🛠️ 生成說書</button>
+        <button class="tab-btn" :class="{active: tab==='generate'}" @click="tab='generate'">🛠️ 說書改寫</button>
       </div>
 
       <!-- ──── TAB: SEARCH ───────────────────────── -->
@@ -345,7 +345,7 @@
       <!-- ──── TAB: GENERATE ───────────────────────── -->
       <div class="tab-panel" x-show="tab==='generate'">
         <div class="gen-form card">
-          <h3 class="card-title">📄 提交生成任務</h3>
+          <h3 class="card-title">📄 提交改寫任務</h3>
 
           <!-- Input Mode Toggle -->
           <div class="input-mode-toggle" style="margin-bottom:16px">
@@ -478,7 +478,7 @@
           <div class="engine-order-panel">
             <div class="engine-order-head">
               <div>
-                <div class="engine-order-title">生成說書 AI 引擎優先順序</div>
+                <div class="engine-order-title">說書改寫 AI 引擎優先順序</div>
                 <div class="muted">會依序交付改寫提示詞給各模型，直到任務完成。</div>
               </div>
               <button class="btn btn-sm btn-ghost" type="button" @click="resetEngineOrder('generate')">
@@ -551,7 +551,7 @@
 
           <button class="btn btn-primary btn-full" style="margin-top:16px"
                   @click="submitGenJob()" :disabled="submitting">
-            <span x-show="!submitting">🚀 提交生成任務</span>
+            <span x-show="!submitting">🚀 提交改寫任務</span>
             <span x-show="submitting"><span class="spinner-sm"></span> 提交中...</span>
           </button>
         </div>
@@ -566,7 +566,7 @@
           <span class="spinner-sm"></span> 載入中...
         </div>
 
-        <div x-show="jobs.length === 0 && !jobsLoading" class="muted">目前沒有生成任務</div>
+        <div x-show="jobs.length === 0 && !jobsLoading" class="muted">目前沒有改寫任務</div>
 
         <!-- job status summary -->
         <div x-show="jobs.length > 0" class="job-status-summary" x-text="jobStatusSummary()"></div>
@@ -663,7 +663,7 @@
                         <div class="handoff-btns">
                           <button class="btn btn-sm btn-primary"
                                   :disabled="!jobDetail.paper_ready && !jobDetail.output_paper_id"
-                                  @click="handoffOpen(jobDetail)">📖 開啟生成結果</button>
+                                  @click="handoffOpen(jobDetail)">📖 開啟改寫結果</button>
                           <button class="btn btn-sm btn-primary"
                                   :disabled="!jobDetail.paper_ready"
                                   @click="handoffSearch(jobDetail)">🔍 搜尋這篇</button>

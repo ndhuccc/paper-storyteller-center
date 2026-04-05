@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""HTML loading utilities for Paper Storyteller Center."""
+"""HTML loading utilities for Paper Story Rewriting Center."""
 
 import re
 from pathlib import Path

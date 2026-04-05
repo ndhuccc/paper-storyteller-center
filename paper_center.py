@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-論文說書人中心 - 核心模組（Chunk Embedding 版）
+論文說書改寫中心 - 核心模組（Chunk Embedding 版）
 功能：論文分段索引建立、語意搜尋、Q&A 對話
 """
 
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     
     if len(sys.argv) < 2:
         print("""
-📚 論文說書人中心 - 使用說明
+📚 論文說書改寫中心 - 使用說明
   python3 paper_center.py init     - 初始化並建立 chunk 索引
   python3 paper_center.py rebuild  - 重建全部索引
   python3 paper_center.py search   - 搜尋論文

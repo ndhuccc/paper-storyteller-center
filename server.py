@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entry point for Paper Storyteller Center Flask server."""
+"""Entry point for Paper Story Rewriting Center Flask server."""
 import sys
 import os
 

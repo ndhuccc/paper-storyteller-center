@@ -1,4 +1,4 @@
-"""All REST API routes for Paper Storyteller Center."""
+"""All REST API routes for Paper Story Rewriting Center."""
 import re
 import time
 from pathlib import Path

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repository helpers for Paper Storyteller Center.
+"""Repository helpers for Paper Story Rewriting Center.
 
 設計原則：
 1. repository 層不依賴 Streamlit runtime。

@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════
    app.js — Alpine.js Application State
-   Paper Storyteller Center
+  Paper Story Rewriting Center
    ═══════════════════════════════════════════════ */
 
 function App() {

@@ -1,4 +1,4 @@
-"""Flask web application for Paper Storyteller Center."""
+"""Flask web application for Paper Story Rewriting Center."""
 import sys
 import os
 

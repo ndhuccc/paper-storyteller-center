@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared retrieval/indexing services for Paper Storyteller Center."""
+"""Shared retrieval/indexing services for Paper Story Rewriting Center."""
 
 import html
 import json

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GUI-facing coordination service for Paper Storyteller Center."""
+"""GUI-facing coordination service for Paper Story Rewriting Center."""
 
 from typing import Any, Dict, List, Optional, Tuple
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-論文說書人中心 - Streamlit GUI
+論文說書改寫中心 - Streamlit GUI
 
 設計原則：
 1. GUI 只負責畫面與互動流程。
@@ -55,7 +55,7 @@ UPLOAD_MAX_FILES = 200
 
 # ==================== 頁面設定 ====================
 st.set_page_config(
-    page_title="📚 論文說書人中心",
+    page_title="📚 論文說書改寫中心",
     page_icon="🦞",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -299,13 +299,13 @@ def render_user_manual():
     with st.expander("❓ 使用說明", expanded=False):
         st.markdown(
             "**1) 產生新說書 HTML**\n"
-            "在右欄「🛠️ 生成說書」可直接上傳 PDF（或填路徑）、選風格後按「🚀 提交生成任務」。\n"
-            "成功後可用「📖 開啟生成結果 / 🔍 搜尋這篇 / 💬 詢問這篇」快速回流。\n\n"
+            "在右欄「🛠️ 說書改寫」可直接上傳 PDF（或填路徑）、選風格後按「🚀 提交改寫任務」。\n"
+            "成功後可用「📖 開啟改寫結果 / 🔍 搜尋這篇 / 💬 詢問這篇」快速回流。\n\n"
             "**2) 論文狀態代表什麼**\n"
             "- `✅ 就緒 (ready)`：可直接搜尋與 Q&A\n"
             "- `🟡 待索引 (generated_not_indexed)`：已有 HTML，尚未完成索引\n"
             "- `🟠 僅索引 (index_only)`：可檢索但缺少 HTML 閱覽檔\n"
-            "- `⚪ 不可用 (unavailable)`：資料不足，需先生成或重建索引\n\n"
+            "- `⚪ 不可用 (unavailable)`：資料不足，需先改寫或重建索引\n\n"
             "**3) 搜尋與 Q&A**\n"
             "左欄先用關鍵字搜尋；可勾選論文縮小 Q&A 範圍。未勾選時，Q&A 會自動搜尋最相關內容。\n\n"
             "**4) 管理與刪除**\n"
@@ -328,7 +328,7 @@ def render_sidebar(all_papers: List[Dict]):
         st.divider()
         st.header("📚 所有論文")
         if not all_papers:
-            st.caption("目前沒有論文，可在右欄「🛠️ 生成說書」先提交 PDF。")
+            st.caption("目前沒有論文，可在右欄「🛠️ 說書改寫」先提交 PDF。")
         for paper in all_papers:
             normalized = normalize_paper(paper)
             paper_id = str(normalized.get("paper_id", normalized.get("id", ""))).strip()
@@ -897,7 +897,7 @@ def _build_generation_rows(job_summaries: List[Dict[str, Any]]) -> List[Dict[str
 def render_generation_panel(all_papers: List[Dict[str, Any]]):
     """渲染最小可用 generation 面板。"""
     st.divider()
-    st.header("🛠️ 生成說書")
+    st.header("🛠️ 說書改寫")
 
     uploaded_pdf = st.file_uploader(
         "上傳 PDF",
@@ -918,7 +918,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
     )
     auto_index = st.checkbox("完成後自動重建索引", value=True, key="gen_auto_index")
 
-    if st.button("🚀 提交生成任務", key="gen_submit_btn", use_container_width=True):
+    if st.button("🚀 提交改寫任務", key="gen_submit_btn", use_container_width=True):
         resolved_pdf_path = ""
         cleanup_result: Dict[str, int] | None = None
         try:
@@ -950,7 +950,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                 "auto_index": auto_index,
             }
             try:
-                with st.spinner("提交生成任務中..."):
+                with st.spinner("提交改寫任務中..."):
                     job = submit_generation_job(payload=payload)
                     job_id = str(job.get("job_id", "")).strip()
                     if not job_id:
@@ -959,7 +959,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                     if launched is None:
                         raise RuntimeError("failed to launch background generation job")
             except Exception as e:
-                st.error(f"生成任務失敗: {e}")
+                st.error(f"改寫任務失敗: {e}")
             else:
                 st.session_state.last_generation_job_id = job_id
                 if uploaded_pdf is not None:
@@ -984,7 +984,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
         return
 
     if not recent_jobs:
-        st.caption("目前沒有生成任務")
+        st.caption("目前沒有改寫任務")
         return
 
     status_counts: Dict[str, int] = {}
@@ -1087,12 +1087,12 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
                 st.success(f"✅ 自動索引流程已完成（mode={auto_index_mode}）。")
             elif auto_index_requested:
                 st.warning(
-                    f"⚠️ 說書已生成，但自動索引失敗（mode={auto_index_mode}）。"
+                    f"⚠️ 說書已改寫，但自動索引失敗（mode={auto_index_mode}）。"
                     "若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。"
                 )
             else:
                 st.info(
-                    f"ℹ️ 說書已生成，但這次未執行自動索引（mode={auto_index_mode}）。"
+                    f"ℹ️ 說書已改寫，但這次未執行自動索引（mode={auto_index_mode}）。"
                     "若要搜尋或 Q&A，請先按側欄「🔄 重建索引」。"
                 )
 
@@ -1125,7 +1125,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
             col_open, col_search, col_ask = st.columns([1, 1, 1])
             with col_open:
                 if st.button(
-                    "📖 開啟生成結果",
+                    "📖 開啟改寫結果",
                     key=f"handoff_open_{info['job_id_full']}",
                     use_container_width=True,
                     disabled=not can_open_output,
@@ -1198,7 +1198,7 @@ def main():
     apply_handoff_prefill_if_any()
     maybe_show_open_paper_dialog()
 
-    st.title("🦞 論文說書人中心")
+    st.title("🦞 論文說書改寫中心")
     st.markdown("*用自然語言搜尋論文、對論文內容提問*")
 
     all_papers = get_all_papers()
