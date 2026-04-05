@@ -280,6 +280,7 @@ def _build_job_summary(job: Dict) -> Dict:
     return {
         "job_id": str(job.get("job_id", "")).strip(),
         "status": str(job.get("status", "-")),
+        "phase": job.get("phase") or "",
         "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
         "style": str(payload.get("style", "-")),
         "output_path": str(output_path or "-"),

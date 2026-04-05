@@ -12,7 +12,10 @@ STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 _BR_RE = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _TAGS_RE = re.compile(r"<[^>]+>")
 _BULLET_RE = re.compile(r"^[-*]\s+")
+_ORDERED_RE = re.compile(r"^\d+\.\s+")
 _P_RE = re.compile(r"<p>(.*?)</p>", re.DOTALL | re.IGNORECASE)
+_TABLE_ROW_RE = re.compile(r"^\s*\|")
+_TABLE_SEP_RE = re.compile(r"^\s*\|[\s\-|:]+\|?\s*$")
 
 
 def _fix_markdown_lists_in_html(content: str) -> str:
@@ -37,8 +40,15 @@ def _fix_markdown_lists_in_html(content: str) -> str:
                 continue
             indent = len(text_no_tags) - len(text_no_tags.lstrip())
             is_bullet = bool(_BULLET_RE.match(text))
-            clean_html = re.sub(r"^\s*[-*]\s+", "", raw.strip()) if is_bullet else raw.strip()
-            rows.append({"indent": indent, "html": clean_html, "bullet": is_bullet})
+            is_ordered = bool(_ORDERED_RE.match(text))
+            is_list = is_bullet or is_ordered
+            if is_bullet:
+                clean_html = re.sub(r"^\s*[-*]\s+", "", raw.strip())
+            elif is_ordered:
+                clean_html = re.sub(r"^\s*\d+\.\s+", "", raw.strip())
+            else:
+                clean_html = raw.strip()
+            rows.append({"indent": indent, "html": clean_html, "bullet": is_list, "ordered": is_ordered})
 
         if not any(r["bullet"] for r in rows):
             return m.group(0)  # nothing to convert
@@ -57,32 +67,39 @@ def _fix_markdown_lists_in_html(content: str) -> str:
 
         out: list = []
         depth = 0
+        depth_ordered: list = []  # track <ol> vs <ul> per nesting level
 
         for row in rows:
             if row["level"] < 0:
-                # Non-bullet line: close any open lists, emit as <p>
+                # Non-list line: close any open lists, emit as <p>
                 while depth > 0:
-                    out.append("</ul>")
+                    out.append("</ol>" if depth_ordered[-1] else "</ul>")
+                    depth_ordered.pop()
                     depth -= 1
                 out.append(f'<p>{row["html"]}</p>')
                 continue
 
             lv = row["level"]
+            tag = "ol" if row["ordered"] else "ul"
             if depth == 0:
-                out.append("<ul>")
+                out.append(f"<{tag}>")
+                depth_ordered.append(row["ordered"])
                 depth = 1
             # Open deeper levels
             while depth - 1 < lv:
-                out.append("<ul>")
+                out.append(f"<{tag}>")
+                depth_ordered.append(row["ordered"])
                 depth += 1
             # Close too-deep levels
             while depth - 1 > lv:
-                out.append("</ul>")
+                out.append("</ol>" if depth_ordered[-1] else "</ul>")
+                depth_ordered.pop()
                 depth -= 1
             out.append(f'<li>{row["html"]}</li>')
 
         while depth > 0:
-            out.append("</ul>")
+            out.append("</ol>" if depth_ordered[-1] else "</ul>")
+            depth_ordered.pop()
             depth -= 1
 
         return "\n".join(out)
@@ -92,6 +109,74 @@ def _fix_markdown_lists_in_html(content: str) -> str:
     if body_start == -1:
         return _P_RE.sub(_process_p, content)
 
+    head = content[:body_start]
+    body = content[body_start:]
+    return head + _P_RE.sub(_process_p, body)
+
+
+def _fix_markdown_tables_in_html(content: str) -> str:
+    """Convert <p> blocks containing raw GFM table syntax to proper <table> HTML.
+
+    When Python markdown fails to parse a table (because no blank line precedes
+    it), the output is a <p> where each row is ``| col |`` separated by ``<br>``.
+    This function detects the pattern (consecutive ``|`` lines with a separator
+    row at index 1) and replaces the paragraph with ``<table>`` HTML.
+    """
+
+    def _parse_cells(row: str) -> list:
+        s = _TAGS_RE.sub("", row).strip()
+        if s.startswith("|"):
+            s = s[1:]
+        if s.endswith("|"):
+            s = s[:-1]
+        return [c.strip() for c in s.split("|")]
+
+    def _process_p(m: re.Match) -> str:
+        inner = m.group(1)
+        raw_lines = _BR_RE.split(inner)
+        clean = [_TAGS_RE.sub("", l).strip() for l in raw_lines]
+
+        if not any(_TABLE_ROW_RE.match(c) for c in clean):
+            return m.group(0)  # no table syntax present
+
+        out: list = []
+        changed = False
+        i = 0
+        while i < len(clean):
+            if _TABLE_ROW_RE.match(clean[i]):
+                # Collect consecutive | lines
+                j = i
+                while j < len(clean) and _TABLE_ROW_RE.match(clean[j]):
+                    j += 1
+                run_clean = clean[i:j]
+                run_raw = raw_lines[i:j]
+                # GFM table: ≥3 rows, second row is separator
+                if len(run_clean) >= 3 and _TABLE_SEP_RE.match(run_clean[1]):
+                    headers = _parse_cells(run_raw[0])
+                    thead = "<tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr>"
+                    tbody = "".join(
+                        "<tr>" + "".join(f"<td>{c}</td>" for c in _parse_cells(r)) + "</tr>"
+                        for r in run_raw[2:]
+                    )
+                    out.append(f"<table><thead>{thead}</thead><tbody>{tbody}</tbody></table>")
+                    changed = True
+                else:
+                    for l in run_raw:
+                        if l.strip():
+                            out.append(f"<p>{l.strip()}</p>")
+                i = j
+            else:
+                if clean[i]:
+                    out.append(f"<p>{raw_lines[i].strip()}</p>")
+                i += 1
+
+        if not changed:
+            return m.group(0)
+        return "\n".join(out)
+
+    body_start = content.lower().find("<body")
+    if body_start == -1:
+        return _P_RE.sub(_process_p, content)
     head = content[:body_start]
     body = content[body_start:]
     return head + _P_RE.sub(_process_p, body)
@@ -114,6 +199,10 @@ def load_paper_html(paper_id: str) -> str:
         # (affects files generated before the _ensure_list_blank_lines fix).
         content = _fix_markdown_lists_in_html(content)
 
+        # Repair markdown-style table syntax that was not converted to <table>
+        # (affects files generated before the table blank-line fix).
+        content = _fix_markdown_tables_in_html(content)
+
         # Ensure <ul>/<ol>/<li> render with proper indentation and bullets.
         # Some generated HTML files omit explicit list CSS, causing browsers to
         # use default styles which may be overridden by a CSS reset.
@@ -125,6 +214,10 @@ body ol { list-style-type: decimal; }
 body ul ul, body ul ol { list-style-type: circle; }
 body ol ol, body ol ul { list-style-type: lower-alpha; }
 body li { margin: 0.25em 0; }
+body table { border-collapse: collapse; margin: 0.75em 0; width: auto; }
+body th, body td { border: 1px solid #ccc; padding: 4px 10px; text-align: left; }
+body thead tr { background: #f0f0f0; font-weight: bold; }
+body tbody tr:nth-child(even) { background: #fafafa; }
 </style>
 """
         if "</head>" in content:

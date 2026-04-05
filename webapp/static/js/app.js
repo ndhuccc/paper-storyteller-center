@@ -220,22 +220,30 @@ function App() {
         text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
     },
 
-    // marked.js (CommonMark) requires a blank line before a list block when it
-    // follows paragraph text; without it list items are absorbed into the
-    // paragraph and rendered as literal "- " / "* " text with <br> separators.
-    // This preprocessor inserts the missing blank line so lists always parse
-    // into proper <ul>/<ol><li> elements.
+    // marked.js (CommonMark) requires a blank line before a list block or GFM
+    // table when it follows paragraph text; without it they are absorbed into
+    // the paragraph and rendered as literal text with <br> separators.
+    // This preprocessor inserts the missing blank line.
     _ensureListBlankLines(text) {
       const listRe = /^[ \t]*(?:[-*+]|\d+\.)[ \t]+/;
+      const tableRe = /^[ \t]*\|/;
       const lines = text.split('\n');
       const out = [];
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (listRe.test(line)) {
-          const prev = out.length ? out[out.length - 1] : '';
-          if (prev.trim() && !listRe.test(prev)) {
+        const prev = out.length ? out[out.length - 1] : '';
+        const isList = listRe.test(line);
+        const isTable = tableRe.test(line);
+        const prevIsList = listRe.test(prev);
+        const prevIsTable = tableRe.test(prev);
+        if (isList || isTable) {
+          if (prev.trim() && !prevIsList && !prevIsTable) {
             out.push('');
           }
+        } else if (line.trim() && prevIsTable) {
+          // Table blocks need a closing blank line to prevent the next
+          // paragraph from being absorbed as an extra table row.
+          out.push('');
         }
         out.push(line);
       }

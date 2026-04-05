@@ -316,6 +316,9 @@
               <summary class="job-summary-row">
                 <span class="job-id" x-text="job.job_id.slice(0,8)"></span>
                 <span class="job-status-chip" :class="'status-' + job.status" x-text="job.status"></span>
+                <template x-if="job.status === 'running' && job.phase">
+                  <span class="job-phase" x-text="job.phase"></span>
+                </template>
                 <span class="job-meta" x-text="`sections: ${job.sections_generated??'-'} | warn: ${job.warnings_count} | err: ${job.errors_count}`"></span>
                 <span class="job-time muted" x-text="job.updated_at?.slice(0,16)||'-'"></span>
               </summary>

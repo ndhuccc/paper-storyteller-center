@@ -66,15 +66,39 @@ load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
 load_dotenv(dotenv_path=Path.home() / ".env", override=False)
 
 STYLE_PROMPTS: Dict[str, str] = {
-    "storyteller": """說書人（生活化類比 + Why-first + 公式拆解）
-- 先講「為什麼」：每段都要先回答這個設計在解決什麼痛點、為何這樣做會有效。
-- 多用生活化類比：把抽象概念對照到日常情境（交通、廚房、工廠、排隊、導航、團隊協作等）。
-- 內容節奏：先動機與直覺，再方法步驟，最後講效益、限制與適用情境。
-- 公式硬性規則（必須遵守）：
-  1) 看到公式一定要拆解：逐一說明變數代表什麼與彼此關係。
-  2) 一定要提供「白話文字版」公式意思（不只貼 LaTeX）。
-  3) 一定要給一個具體數值例子（代入合理數字，算出結果並解讀意義）。
-  4) 保留原始 LaTeX，不得改寫成錯誤的偽公式。""",
+    "storyteller": """說書人（故事化解說 + Why-first + 讀者視角 + 公式拆解）
+
+【角色視角】
+- 你是擅長把技術內容講成故事的通俗作家，目標讀者是初學者。
+- 少用「本文討論」「該方法」等論文語氣。
+- 多用「我們一起看」「想像一下」「為什麼會這樣？」等引導讀者的口吻。
+
+【結構方式（逐單元改寫）】
+- 先逐段消化內容，抓住段落重點，不可捨棄原文任一段落。
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 每個改寫單元依序進行：
+  1. 開頭：用日常情境、問題或懸念引入，讓讀者先有感覺再看技術。
+  2. 中段：逐步揭示單元的核心重點，保持「先動機與直覺，再方法步驟」節奏。
+  3. 洞察：說明關鍵洞察與推論，解釋「為什麼這樣設計、為什麼這樣做會有效」。
+  4. 結尾：交代此單元重點的重要性與影響力，讓讀者知道「這段說了什麼、為何重要」。
+- 改寫後篇幅可隨單元重點數量彈性調整；每個改寫單元給予適當的 Markdown 標題。
+
+【表達規則】
+- 技術術語**第一次出現時**，立刻用白話解釋（括號或破折號皆可）。
+- 首次出現的重要概念請加 **粗體**。
+- 優先用生活化、結構相似的類比幫助理解（交通、廚房、工廠、排隊、導航、團隊協作等），類比必須貼合原意。
+- 適度擬人化、提問、製造節奏感，增加閱讀流暢度。
+
+【文字風格】
+- 長短句交替，像在說故事，不像在念教科書。
+- 溫暖度 7／10、視覺化程度 8／10、數學密度 4／10、詼諧感 0.5／1。
+
+【專業術語表（每個改寫單元必須附上）】
+- 每個改寫單元的正文之後，必須附上一張「📖 本節術語表」。
+- 列出該單元正文中出現的所有專業術語（包含縮寫、模型名稱、方法名稱）。
+- 格式為 Markdown 表格，欄位：術語 | 白話解釋；每列一個術語。
+- 解釋文字須讓完全沒有背景的初學者也能理解，避免再用另一個術語解釋術語。
+- 若同一術語在前面單元已列過，本單元仍需重複列出（方便讀者單獨閱讀本節）。""",
     "blog": """科普部落格（鉤子句 + 段落標題 + 結尾留問題）
 - 第一段先用一句有吸引力的鉤子句開場。
 - 內文用 2-3 個短標題分段（例如【問題背景】、【方法重點】）。
@@ -102,8 +126,15 @@ STYLE_PROMPTS: Dict[str, str] = {
 }
 
 
-def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
-    """Run one minimal storyteller generation job end-to-end."""
+def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dict[str, Any]:
+    """Run one minimal storyteller generation job end-to-end.
+
+    Args:
+        job: Job dict from the job store.
+        phase_reporter: Optional callable(label: str) -> None.  Called at each
+            major pipeline phase so the caller can persist progress (e.g. write a
+            ``phase`` field back to the job store for frontend polling).
+    """
     payload = job.get("payload", {}) if isinstance(job, dict) else {}
     if not isinstance(payload, dict):
         payload = {}
@@ -115,10 +146,14 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
             "Supported keys include pdf_path/source_pdf_path/input_path/file_path/path/pdf."
         )
 
+    if phase_reporter:
+        phase_reporter("PDF 文字掃描中…")
     extracted_text, extraction_warning, pdf_extraction_model = _extract_pdf_text(pdf_path)
     if not extracted_text.strip():
         raise RuntimeError(f"No text extracted from PDF: {pdf_path}")
 
+    if phase_reporter:
+        phase_reporter("段落結構解析中…")
     sections = _split_into_sections(extracted_text)
     if not sections:
         raise RuntimeError(f"Unable to build sections from extracted text: {pdf_path}")
@@ -145,6 +180,10 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         ]
     else:
         fallback_chain = [dict(spec) for spec in DEFAULT_REWRITE_FALLBACK_CHAIN]
+    # Derive legacy single-fallback fields for backward-compat summary/return values.
+    _first_fallback = fallback_chain[0] if fallback_chain else {}
+    fallback_model: str = _first_fallback.get("model", "")
+    fallback_provider: str = _first_fallback.get("provider", "")
     ollama_base_url = str(payload.get("ollama_base_url") or DEFAULT_OLLAMA_BASE_URL).rstrip("/")
     minimax_base_url = str(
         payload.get("minimax_base_url") or os.getenv("MINIMAX_PORTAL_BASE_URL") or DEFAULT_MINIMAX_PORTAL_BASE_URL
@@ -175,7 +214,10 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
             )
 
     rewrite_chunks_generated = 0
+    total_sections = len(selected_sections)
     for index, section in enumerate(selected_sections, start=1):
+        if phase_reporter:
+            phase_reporter(f"說書改寫中（第 {index}／{total_sections} 節）…")
         rewrite_parts = _split_section_into_rewrite_parts(
             section_title=section["title"],
             source_text=section["source_text"],
@@ -238,11 +280,14 @@ def run_storyteller_pipeline(job: Dict[str, Any]) -> Dict[str, Any]:
         )
 
     rewrite_model = primary_model
-    if fallback_model in rewrite_models_used and primary_model in rewrite_models_used:
-        rewrite_model = f"{primary_model} (partial fallback: {fallback_model})"
-    elif fallback_model in rewrite_models_used and primary_model not in rewrite_models_used:
-        rewrite_model = fallback_model
+    fallback_models_used = rewrite_models_used - {primary_model}
+    if fallback_models_used and primary_model in rewrite_models_used:
+        rewrite_model = f"{primary_model} (partial fallback: {', '.join(sorted(fallback_models_used))})"
+    elif fallback_models_used and primary_model not in rewrite_models_used:
+        rewrite_model = ", ".join(sorted(fallback_models_used))
 
+    if phase_reporter:
+        phase_reporter("輸出 HTML…")
     title = _resolve_title(payload=payload, pdf_path=pdf_path, sections=rendered_sections)
     output_path = _build_output_path(pdf_path=pdf_path, payload=payload)
     output_html = _build_story_html_document(
@@ -1747,25 +1792,32 @@ def _build_story_html_document(
 
 
 def _ensure_list_blank_lines(text: str) -> str:
-    """Insert a blank line before markdown list items that are not already preceded by one.
+    """Insert a blank line before markdown list items and table rows not already preceded by one.
 
-    The Python ``markdown`` library requires at least one blank line before a
-    list block when it is preceded by non-list text.  Without the blank line
-    the parser treats ``* item`` / ``- item`` lines as literal characters inside
-    a paragraph (made worse by the ``nl2br`` extension which turns every
-    newline into ``<br>``).  This pre-processor guarantees the blank line so
-    that nested and flat lists are rendered with proper ``<ul>/<li>`` HTML.
+    The Python ``markdown`` library (with ``tables`` + ``nl2br`` extensions)
+    requires at least one blank line before a list block or GFM table when
+    preceded by non-list/non-table text.  This pre-processor guarantees the
+    blank line so that lists render as ``<ul>/<ol><li>`` and tables render as
+    ``<table>`` instead of literal text with ``<br>`` separators.
     """
     lines = text.split("\n")
     result: List[str] = []
     list_re = re.compile(r"^[ \t]*(?:[-*+]|\d+\.)[ \t]+")
-    for i, line in enumerate(lines):
-        if list_re.match(line):
-            # Look at the previous non-empty line.  If it's not blank and not
-            # itself a list item, inject a blank line first.
-            prev = result[-1] if result else ""
-            if prev.strip() and not list_re.match(prev):
+    table_re = re.compile(r"^[ \t]*\|")
+    for line in lines:
+        prev = result[-1] if result else ""
+        is_list = bool(list_re.match(line))
+        is_table = bool(table_re.match(line))
+        prev_is_list = bool(list_re.match(prev))
+        prev_is_table = bool(table_re.match(prev))
+        if is_list or is_table:
+            # Blank line needed before list/table if previous is non-blank, non-compatible
+            if prev.strip() and not prev_is_list and not prev_is_table:
                 result.append("")
+        elif line.strip() and prev_is_table:
+            # Table blocks need a closing blank line; without it the next
+            # paragraph text is absorbed as an extra table row.
+            result.append("")
         result.append(line)
     return "\n".join(result)
 

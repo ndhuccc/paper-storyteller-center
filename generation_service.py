@@ -718,8 +718,11 @@ class GenerationService:
         if latest and latest.get("status") == STATUS_CANCELED:
             return latest
 
+        def _phase_reporter(label: str) -> None:
+            self.store.update_job(job_id, {"phase": label, "updated_at": _utc_now_iso()})
+
         try:
-            pipeline_output = run_storyteller_pipeline(job)
+            pipeline_output = run_storyteller_pipeline(job, phase_reporter=_phase_reporter)
             latest = self.store.get_job(job_id)
             if latest and latest.get("status") == STATUS_CANCELED:
                 return latest
@@ -740,6 +743,7 @@ class GenerationService:
                     "completed_at": completed_at,
                     "result": result,
                     "error": None,
+                    "phase": None,
                 },
             )
         except Exception as exc:
@@ -763,6 +767,7 @@ class GenerationService:
                     "completed_at": completed_at,
                     "result": result,
                     "error": f"{type(exc).__name__}: {exc}",
+                    "phase": None,
                 },
             )
 
