@@ -14,6 +14,7 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 
 QAResult = Tuple[str, List[Dict]]
+QADetailResult = Dict[str, Any]
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 
 
@@ -135,20 +136,34 @@ def build_context(results: List[Dict], content_limit: int) -> str:
     return "\n\n".join(context_parts)
 
 
-def generate_answer(
+def generate_answer_with_metadata(
     *,
     prompt: str,
     model: str,
+    provider: str = "",
     ollama_base_url: str,
+    minimax_base_url: str = "",
+    minimax_oauth_token: str = "",
     timeout: int = 180,
     fallbacks: Optional[List[Dict[str, str]]] = None,
-) -> str:
-    """依序嘗試主模型與備案清單，全部失敗才拋出例外。"""
+) -> Dict[str, str]:
+    """依序嘗試主模型與備案清單，回傳實際成功的模型資訊。"""
     _errors: List[str] = []
     try:
-        return _call_single_model(
-            prompt=prompt, model=model, ollama_base_url=ollama_base_url, timeout=timeout
+        text = _call_single_model(
+            prompt=prompt,
+            model=model,
+            provider=provider,
+            ollama_base_url=ollama_base_url,
+            minimax_base_url=minimax_base_url,
+            minimax_oauth_token=minimax_oauth_token,
+            timeout=timeout,
         )
+        return {
+            "text": text,
+            "model": str(model or "").strip(),
+            "provider": str(provider or ("gemini" if _is_gemini_model(model) else "ollama")).strip(),
+        }
     except Exception as primary_exc:
         _errors.append(f"primary ({model}): {primary_exc}")
 
@@ -159,7 +174,7 @@ def generate_answer(
         fb_minimax_base = spec.get("minimax_base_url", "")
         fb_minimax_token = spec.get("minimax_oauth_token", "")
         try:
-            return _call_single_model(
+            text = _call_single_model(
                 prompt=prompt,
                 model=fb_model,
                 provider=fb_provider,
@@ -168,10 +183,39 @@ def generate_answer(
                 minimax_oauth_token=fb_minimax_token,
                 timeout=timeout,
             )
+            return {
+                "text": text,
+                "model": str(fb_model or "").strip(),
+                "provider": str(fb_provider or "ollama").strip() or "ollama",
+            }
         except Exception as fb_exc:
             _errors.append(f"{fb_provider or 'ollama'}:{fb_model}: {fb_exc}")
 
     raise RuntimeError("; ".join(_errors))
+
+
+def generate_answer(
+    *,
+    prompt: str,
+    model: str,
+    provider: str = "",
+    ollama_base_url: str,
+    minimax_base_url: str = "",
+    minimax_oauth_token: str = "",
+    timeout: int = 180,
+    fallbacks: Optional[List[Dict[str, str]]] = None,
+) -> str:
+    """依序嘗試主模型與備案清單，全部失敗才拋出例外。"""
+    return generate_answer_with_metadata(
+        prompt=prompt,
+        model=model,
+        provider=provider,
+        ollama_base_url=ollama_base_url,
+        minimax_base_url=minimax_base_url,
+        minimax_oauth_token=minimax_oauth_token,
+        timeout=timeout,
+        fallbacks=fallbacks,
+    ).get("text", "")
 
 
 def _call_single_model(
@@ -283,30 +327,79 @@ def answer_with_results(
     question: str,
     results: List[Dict],
     model: str,
+    provider: str = "",
     prompt_builder: Callable[[str, str], str],
     context_content_limit: int,
     not_found_message: str,
     error_prefix: str,
     ollama_base_url: str,
+    minimax_base_url: str = "",
+    minimax_oauth_token: str = "",
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QAResult:
     """以已取得的論文結果產生回答。"""
+    detail = answer_with_results_detailed(
+        question=question,
+        results=results,
+        model=model,
+        provider=provider,
+        prompt_builder=prompt_builder,
+        context_content_limit=context_content_limit,
+        not_found_message=not_found_message,
+        error_prefix=error_prefix,
+        ollama_base_url=ollama_base_url,
+        minimax_base_url=minimax_base_url,
+        minimax_oauth_token=minimax_oauth_token,
+        fallbacks=fallbacks,
+    )
+    return str(detail.get("answer", "")), detail.get("sources", [])
+
+
+def answer_with_results_detailed(
+    *,
+    question: str,
+    results: List[Dict],
+    model: str,
+    provider: str = "",
+    prompt_builder: Callable[[str, str], str],
+    context_content_limit: int,
+    not_found_message: str,
+    error_prefix: str,
+    ollama_base_url: str,
+    minimax_base_url: str = "",
+    minimax_oauth_token: str = "",
+    fallbacks: Optional[List[Dict[str, str]]] = None,
+) -> QADetailResult:
+    """以已取得的論文結果產生回答，附帶實際使用模型資訊。"""
     if not results:
-        return not_found_message, []
+        return {"answer": not_found_message, "sources": [], "used_model": "", "used_provider": ""}
 
     enriched_results = enrich_results_with_citations(results)
     context = build_context(enriched_results, context_content_limit)
     prompt = prompt_builder(question, context)
     try:
-        answer = generate_answer(
+        answer_meta = generate_answer_with_metadata(
             prompt=prompt,
             model=model,
+            provider=provider,
             ollama_base_url=ollama_base_url,
+            minimax_base_url=minimax_base_url,
+            minimax_oauth_token=minimax_oauth_token,
             fallbacks=fallbacks,
         )
-        return answer, enriched_results
+        return {
+            "answer": str(answer_meta.get("text", "")),
+            "sources": enriched_results,
+            "used_model": str(answer_meta.get("model", "")).strip(),
+            "used_provider": str(answer_meta.get("provider", "")).strip(),
+        }
     except Exception as e:
-        return f"{error_prefix}{e}", enriched_results
+        return {
+            "answer": f"{error_prefix}{e}",
+            "sources": enriched_results,
+            "used_model": "",
+            "used_provider": "",
+        }
 
 
 def answer_with_search(
@@ -315,28 +408,71 @@ def answer_with_search(
     search_fn: Callable[[str, int], List[Dict]],
     top_k: int,
     model: str,
+    provider: str = "",
     prompt_builder: Callable[[str, str], str],
     context_content_limit: int,
     not_found_message: str,
     error_prefix: str,
     ollama_base_url: str,
+    minimax_base_url: str = "",
+    minimax_oauth_token: str = "",
     forced_papers: Optional[List[Dict]] = None,
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QAResult:
     """先搜尋（或使用指定論文），再產生回答。"""
-    if forced_papers:
-        results = forced_papers
-    else:
-        results = search_fn(question, top_k)
-
-    return answer_with_results(
+    detail = answer_with_search_detailed(
         question=question,
-        results=results,
+        search_fn=search_fn,
+        top_k=top_k,
         model=model,
+        provider=provider,
         prompt_builder=prompt_builder,
         context_content_limit=context_content_limit,
         not_found_message=not_found_message,
         error_prefix=error_prefix,
         ollama_base_url=ollama_base_url,
+        minimax_base_url=minimax_base_url,
+        minimax_oauth_token=minimax_oauth_token,
+        forced_papers=forced_papers,
+        fallbacks=fallbacks,
+    )
+    return str(detail.get("answer", "")), detail.get("sources", [])
+
+
+def answer_with_search_detailed(
+    *,
+    question: str,
+    search_fn: Callable[[str, int], List[Dict]],
+    top_k: int,
+    model: str,
+    provider: str = "",
+    prompt_builder: Callable[[str, str], str],
+    context_content_limit: int,
+    not_found_message: str,
+    error_prefix: str,
+    ollama_base_url: str,
+    minimax_base_url: str = "",
+    minimax_oauth_token: str = "",
+    forced_papers: Optional[List[Dict]] = None,
+    fallbacks: Optional[List[Dict[str, str]]] = None,
+) -> QADetailResult:
+    """先搜尋（或使用指定論文），再產生回答，附帶實際使用模型資訊。"""
+    if forced_papers:
+        results = forced_papers
+    else:
+        results = search_fn(question, top_k)
+
+    return answer_with_results_detailed(
+        question=question,
+        results=results,
+        model=model,
+        provider=provider,
+        prompt_builder=prompt_builder,
+        context_content_limit=context_content_limit,
+        not_found_message=not_found_message,
+        error_prefix=error_prefix,
+        ollama_base_url=ollama_base_url,
+        minimax_base_url=minimax_base_url,
+        minimax_oauth_token=minimax_oauth_token,
         fallbacks=fallbacks,
     )

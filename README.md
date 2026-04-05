@@ -54,7 +54,7 @@
 
 ### 生成規則
 - 預設順序式處理
-- 支援 storyteller / blog / podcast / fairy / lazy / question / log 風格
+- 支援 storyteller / blog / professor / fairy / lazy / question / log 風格
 - 目前只正式支援 `storyteller` 風格
 
 ### Runtime 規則
@@ -207,7 +207,7 @@ print(select_preferred_python(required_modules=('lancedb',)))
 
 ## 已知限制
 
-- generation 支援 7 種風格（storyteller / blog / podcast / fairy / lazy / question / log）
+- generation 支援 7 種風格（storyteller / blog / professor / fairy / lazy / question / log）
 - GUI generation 採非同步 job，但無即時輪詢刷新
 - `auto_index` 目前仍是 full rebuild
 - section parsing 採保守 heuristic

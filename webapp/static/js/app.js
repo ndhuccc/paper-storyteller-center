@@ -41,12 +41,14 @@ function App() {
     qaQuestion: '',
     answering: false,
     qaHistory: [],
+    qaEngines: [],
 
     /* ── generation ── */
     styles: [],
     genStyle: 'storyteller',
     styleParamDefs: {},      // { styleKey: [{key, label, min, max, step, default}] }
     genStyleParams: {},      // { paramKey: currentValue }
+    genEngines: [],
     genPdfPath: '',
     genAutoIndex: true,
     selectedFile: null,
@@ -65,7 +67,7 @@ function App() {
 
     /* ════════ LIFECYCLE ════════ */
     async init() {
-      await Promise.all([this.loadPapers(), this.loadStyles()]);
+      await Promise.all([this.loadPapers(), this.loadStyles(), this.loadEngines()]);
       this.loadJobs();
       // poll jobs every 8s
       setInterval(() => { if (this.tab === 'generate') this.loadJobs(); }, 8000);
@@ -214,18 +216,75 @@ function App() {
     },
 
     /* ════════ Q&A ════════ */
+    async loadEngines() {
+      try {
+        const data = await api.get('/api/engines');
+        this.qaEngines = (data.data?.qa || []).map((item) => ({ ...item }));
+        this.genEngines = (data.data?.generation || []).map((item) => ({ ...item }));
+      } catch (e) {
+        this.qaEngines = [];
+        this.genEngines = [];
+        this.toast('warning', '載入 AI 引擎列表失敗，將使用後端預設順序');
+      }
+    },
+
+    moveEngineUp(scope, index) {
+      const list = scope === 'qa' ? [...this.qaEngines] : [...this.genEngines];
+      if (index <= 0 || index >= list.length) return;
+      const temp = list[index - 1];
+      list[index - 1] = list[index];
+      list[index] = temp;
+      if (scope === 'qa') this.qaEngines = list;
+      else this.genEngines = list;
+    },
+
+    moveEngineDown(scope, index) {
+      const list = scope === 'qa' ? [...this.qaEngines] : [...this.genEngines];
+      if (index < 0 || index >= list.length - 1) return;
+      const temp = list[index + 1];
+      list[index + 1] = list[index];
+      list[index] = temp;
+      if (scope === 'qa') this.qaEngines = list;
+      else this.genEngines = list;
+    },
+
+    resetEngineOrder(scope) {
+      if (scope === 'qa') {
+        this.qaEngines = [...this.qaEngines].sort((a, b) => (a.default_order || 999) - (b.default_order || 999));
+      } else {
+        this.genEngines = [...this.genEngines].sort((a, b) => (a.default_order || 999) - (b.default_order || 999));
+      }
+    },
+
+    getEngineOrder(scope) {
+      const list = scope === 'qa' ? this.qaEngines : this.genEngines;
+      return (list || []).map((item) => item.id).filter(Boolean);
+    },
+
+    formatEngineOrder(engines) {
+      if (!Array.isArray(engines) || engines.length === 0) return '-';
+      return engines.map((item) => item.label || item.model || item.id || '?').join(' → ');
+    },
+
     async submitQuestion() {
       const q = this.qaQuestion.trim();
       if (!q || this.answering) return;
       this.answering = true;
       const forcedPapers = Object.values(this.selectedPapers);
       try {
-        const payload = { question: q };
+        const payload = { question: q, engine_order: this.getEngineOrder('qa') };
         if (forcedPapers.length > 0) payload.forced_papers = forcedPapers;
         const data = await api.post('/api/answer', payload);
-        const { answer, sources } = data.data;
+        const { answer, sources, used_model, engine_order } = data.data;
         const answerHtml = this.renderAnswer(answer);
-        this.qaHistory.push({ question: q, answer, answerHtml, sources: sources || [] });
+        this.qaHistory.push({
+          question: q,
+          answer,
+          answerHtml,
+          sources: sources || [],
+          usedModel: used_model || '',
+          engineOrder: engine_order || [],
+        });
         this.qaQuestion = '';
         this.$nextTick(() => {
           const el = document.getElementById('qa-history');
@@ -309,6 +368,26 @@ function App() {
       this.qaHistory = [];
     },
 
+    styleLabel(styleKey) {
+      const found = (this.styles || []).find((item) => item.key === styleKey);
+      return found?.label || styleKey || '-';
+    },
+
+    styleParamLabel(styleKey, paramKey) {
+      const defs = this.styleParamDefs[styleKey] || [];
+      const found = defs.find((item) => item.key === paramKey);
+      return found?.label || paramKey;
+    },
+
+    formatStyleParams(styleKey, params) {
+      if (!params || typeof params !== 'object' || Array.isArray(params)) return [];
+      return Object.entries(params).map(([key, value]) => ({
+        key,
+        label: this.styleParamLabel(styleKey, key),
+        value,
+      }));
+    },
+
     /* ════════ GENERATION ════════ */
     async loadStyles() {
       try {
@@ -345,21 +424,87 @@ function App() {
 
     getOrderedStyleParams() {
       const defs = this.styleParamDefs[this.genStyle] || [];
-      if (this.genStyle !== 'blog') return defs;
+      if (this.genStyle === 'blog') {
+        const order = {
+          affinity: 1,
+          hook: 2,
+          tech_density: 3,
+          stance: 4,
+          humor: 5,
+        };
 
-      const order = {
-        affinity: 1,
-        hook: 2,
-        tech_density: 3,
-        stance: 4,
-        humor: 5,
-      };
+        return [...defs].sort((a, b) => {
+          const oa = order[a.key] || 999;
+          const ob = order[b.key] || 999;
+          return oa - ob;
+        });
+      }
 
-      return [...defs].sort((a, b) => {
-        const oa = order[a.key] || 999;
-        const ob = order[b.key] || 999;
-        return oa - ob;
-      });
+      if (this.genStyle === 'professor') {
+        const order = {
+          formality: 1,
+          structure: 2,
+          beginner_friendly: 3,
+          math_density: 4,
+          exam_focus: 5,
+        };
+
+        return [...defs].sort((a, b) => {
+          const oa = order[a.key] || 999;
+          const ob = order[b.key] || 999;
+          return oa - ob;
+        });
+      }
+
+      if (this.genStyle === 'fairy') {
+        const order = {
+          fairy_tone: 1,
+          fidelity: 2,
+          age_level: 3,
+          visual: 4,
+          explicitness: 5,
+        };
+
+        return [...defs].sort((a, b) => {
+          const oa = order[a.key] || 999;
+          const ob = order[b.key] || 999;
+          return oa - ob;
+        });
+      }
+
+      if (this.genStyle === 'lazy') {
+        const order = {
+          bullet_count: 1,
+          compression: 2,
+          beginner_friendly: 3,
+          visual: 4,
+          takeaway_strength: 5,
+        };
+
+        return [...defs].sort((a, b) => {
+          const oa = order[a.key] || 999;
+          const ob = order[b.key] || 999;
+          return oa - ob;
+        });
+      }
+
+      if (this.genStyle === 'question') {
+        const order = {
+          question_count: 1,
+          curiosity: 2,
+          depth: 3,
+          beginner_friendly: 4,
+          closure_strength: 5,
+        };
+
+        return [...defs].sort((a, b) => {
+          const oa = order[a.key] || 999;
+          const ob = order[b.key] || 999;
+          return oa - ob;
+        });
+      }
+
+      return defs;
     },
 
     getStyleParamHint(paramKey) {
@@ -376,6 +521,34 @@ function App() {
           tech_density: '技術細節比例，越高越偏向專業內容。',
           stance: '觀點鮮明程度，越高越會提出清楚立場。',
           humor: '幽默感強度，越高語氣越輕鬆。',
+        },
+        professor: {
+          formality: '正式語氣強度，越高越像課堂講義而非口語聊天。',
+          structure: '結構整理程度，越高越強調分層、歸納與教學順序。',
+          beginner_friendly: '初學者照顧程度，越高越會補定義、直覺與基礎說明。',
+          math_density: '數學與公式細節比例，越高越偏向推導與技術細節。',
+          exam_focus: '考點整理傾向，越高越會強調比較、限制與重點整理。',
+        },
+        fairy: {
+          fairy_tone: '童話氛圍強度，越高越有角色、場景、魔法規則與寓言感。',
+          fidelity: '知識對應嚴謹度，越高越緊貼原文核心機制與邏輯。',
+          age_level: '目標年齡層定位，越高越偏向較成熟、可承載更複雜敘事。',
+          visual: '畫面感強度，越高越常用具體場景與意象幫助理解。',
+          explicitness: '知識說明顯性程度，越高越會明講故事對應的知識。',
+        },
+        lazy: {
+          bullet_count: '重點條列數量，越高越完整，越低越極簡。',
+          compression: '資訊壓縮程度，越高越像快速重點整理。',
+          beginner_friendly: '補背景與白話解釋的程度，越高越照顧新手。',
+          visual: '是否用具象比喻或圖像化描述幫助快速理解。',
+          takeaway_strength: '每節重點是否被明確收束並打亮。',
+        },
+        question: {
+          question_count: '每節用多少核心問題來帶動閱讀節奏。',
+          curiosity: '問題設計的勾引力，越高越會先挑起讀者疑問。',
+          depth: '回答拆解深度，越高越會一路追問到機制與限制。',
+          beginner_friendly: '是否補足背景、定義與直覺解釋。',
+          closure_strength: '最後是否把答案清楚收斂成可帶走的結論。',
         },
       };
       const map = byStyle[this.genStyle] || {};
@@ -396,6 +569,34 @@ function App() {
           tech_density: { min: '淺白', max: '專業' },
           stance: { min: '中性', max: '鮮明' },
           humor: { min: '嚴肅', max: '輕鬆' },
+        },
+        professor: {
+          formality: { min: '口語', max: '正式' },
+          structure: { min: '自然鋪陳', max: '高度條理' },
+          beginner_friendly: { min: '預設基礎', max: '零基礎友善' },
+          math_density: { min: '概念為主', max: '推導為主' },
+          exam_focus: { min: '理解導向', max: '考點導向' },
+        },
+        fairy: {
+          fairy_tone: { min: '偏寫實', max: '童話濃厚' },
+          fidelity: { min: '自由改寫', max: '緊貼原意' },
+          age_level: { min: '低齡', max: '青少年' },
+          visual: { min: '平實', max: '很有畫面' },
+          explicitness: { min: '寓意隱含', max: '明白解說' },
+        },
+        lazy: {
+          bullet_count: { min: '精簡', max: '完整' },
+          compression: { min: '保留細節', max: '高度濃縮' },
+          beginner_friendly: { min: '預設基礎', max: '新手友善' },
+          visual: { min: '直白', max: '比喻化' },
+          takeaway_strength: { min: '自然帶過', max: '重點很明確' },
+        },
+        question: {
+          question_count: { min: '少量提問', max: '多題引導' },
+          curiosity: { min: '平鋪直述', max: '強烈提問' },
+          depth: { min: '快速回答', max: '逐層深挖' },
+          beginner_friendly: { min: '偏專業', max: '偏新手' },
+          closure_strength: { min: '開放收束', max: '明確結論' },
         },
       };
       const map = byStyle[this.genStyle] || {};
@@ -500,6 +701,7 @@ function App() {
             style: this.genStyle,
             auto_index: this.genAutoIndex,
             style_params: this.genStyleParams,
+            engine_order: this.getEngineOrder('generate'),
           };
           const data = await api.post('/api/jobs/submit', payload);
           const jobId = data.data?.job_id || '';
@@ -526,6 +728,9 @@ function App() {
         form.append('auto_index', this.genAutoIndex ? 'true' : 'false');
         if (Object.keys(this.genStyleParams).length > 0) {
           form.append('style_params', JSON.stringify(this.genStyleParams));
+        }
+        if (this.genEngines.length > 0) {
+          form.append('engine_order', JSON.stringify(this.getEngineOrder('generate')));
         }
         const data = await api.postForm('/api/jobs/submit', form);
         const jobId = data.data?.job_id || '';

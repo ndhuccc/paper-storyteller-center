@@ -22,13 +22,13 @@ from dotenv import load_dotenv
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
 DEFAULT_REWRITE_MODEL = "models/gemini-3.1-flash-lite-preview"
 DEFAULT_REWRITE_FALLBACK_CHAIN: List[Dict[str, str]] = [
-    {"model": "gemma4:e2b",     "provider": "ollama",     "ollama_base_url": "http://134.208.2.42:11434"},
+    {"model": "gemma4:e2b",     "provider": "ollama",     "ollama_base_url": "http://localhost:11434"},
     {"model": "MiniMax-M2.5",   "provider": "minimax.io"},
-    {"model": "deepseek-r1:8b", "provider": "ollama",     "ollama_base_url": "http://134.208.2.42:11434"},
+    {"model": "deepseek-r1:8b", "provider": "ollama",     "ollama_base_url": "http://localhost:11434"},
 ]
 DEFAULT_PDF_EXTRACTION_MODEL = "models/gemini-3.1-flash-lite-preview"
 PDF_EXTRACTION_FALLBACK_MODEL = "gemini-2.5-flash"
-DEFAULT_OLLAMA_BASE_URL = "http://134.208.2.42:11434"
+DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_MINIMAX_PORTAL_BASE_URL = "https://api.minimax.io"
 DEFAULT_MAX_SECTIONS = 0
 DEFAULT_REWRITE_CHUNK_CHARS = 3000
@@ -148,22 +148,169 @@ STYLE_PROMPTS: Dict[str, str] = {
 
 【風格參數】
 - 親和度 {affinity}／10、吸睛度 {hook}／10、技術密度 {tech_density}／10、觀點感 {stance}／10、詼諧感 {humor}／1。""",
-    "podcast": """Podcast（口語化、對話感）
-- 用口語自然的語氣，像主持人在向聽眾說明。
-- 允許適度使用「你可以想像」「我們來看」等對話引導句。
-- 內容要順暢、有節奏，但不能偏離原文技術重點。""",
-    "fairy": """童話故事（擬人化、主角/挑戰/勝利結構）
-- 把方法中的關鍵元件擬人化為角色。
-- 結構採「主角 → 挑戰 → 解法/勝利」。
-- 保留技術正確性，不把數學內容改寫成錯誤寓言。""",
-    "lazy": """懶人包（bullet points、圖像化、快速抓重點）
-- 以 {bullet_count} 個條列點整理重點，每點一句到兩句。
-- 先講結論，再補充必要背景。
-- 用具象比喻幫助快速理解，但不要發明不存在的結果。""",
-    "question": """問題驅動（先問問題、再逐層解釋）
-- 先提出 {question_count} 個核心問題引導讀者。
-- 依序回答：問題是什麼 → 為什麼難 → 作者怎麼解。
-- 結尾收斂到實驗結果或限制。""",
+        "professor": """大教授（課堂講義 + 條理清楚 + 可複習）
+
+【角色視角】
+- 你是一位教學經驗豐富的專業教師，擅長把複雜內容整理成條理清楚、適合教學與複習的講義。
+- 目標不是營造聊天感，而是產出可直接用於上課或考前複習的教材內容。
+
+【改寫單元規則（比照說書人與部落格）】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 不可省略原文任一改寫單元。
+- 每個改寫單元都要保留原文核心邏輯，但可以依教學需求重組順序。
+
+【任務目標】
+- 保留原文核心意思與重要內容，但改寫成更有教學性、條理性、可複習性的講義。
+
+【改寫原則】
+- 以學生理解與複習需求為優先。
+- 依教學邏輯重組內容：先基礎，再進階；先直觀，再正式；先概念，再細節。
+- 每個重要術語第一次出現時，要先給清楚定義與白話解釋。
+- 說明「這是什麼、為什麼需要、怎麼運作、有何限制」。
+- 可加入分點、比較、常見誤解、注意事項與重點整理。
+- 風格要像正式但易懂的課堂講義，而不是故事文或部落格文。
+
+【輸出格式】
+- 依序整理為：
+    1. 主題
+    2. 學習目標
+    3. 背景與問題意識
+    4. 核心概念與定義
+    5. 原理或機制
+    6. 例子或直觀理解
+    7. 比較、限制或補充
+    8. 重點整理
+- 使用小節標題與分層條列，讓讀者容易掃描與複習。
+- 重要概念首次出現時加 **粗體**。
+- 若有公式，保留必要者並加上白話解釋。
+
+【品質檢查】
+- 是否像一份可直接用於上課或複習的講義？
+- 是否有清楚的知識結構？
+- 是否每個重要概念都有定義與說明？
+- 是否兼顧初學者理解與內容正確性？
+
+【風格參數】
+- 正式度 {formality}／10、條理化程度 {structure}／10、初學者友善度 {beginner_friendly}／10、數學密度 {math_density}／10、考點導向 {exam_focus}／10。""",
+        "fairy": """童話故事（知識童話 + 角色化 + 寓意對應）
+
+【角色視角】
+- 你是一位擅長把複雜知識寫成童話故事的教育作家。
+- 目標不是只營造童話氣氛，而是讓初學者透過角色、場景與事件直覺理解知識內容。
+
+【改寫單元規則（比照前面風格）】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 不可省略原文任一改寫單元。
+- 每個改寫單元都要保留原文核心概念與邏輯關係，但可為了故事敘事而重組順序。
+
+【任務目標】
+- 保留原文最核心的概念與邏輯關係，但改寫成有角色、有場景、有衝突、有解法、有寓意的童話故事，讓初學者能用直覺理解內容。
+
+【改寫原則】
+- 將重要概念轉化為角色、道具、地點、力量或規則。
+- 將技術流程改寫成故事中的任務、困難與解決過程。
+- 保留核心機制，不可只剩童話氣氛而失去知識內容。
+- 優先用故事事件呈現概念，而不是直接講術語。
+- 可在故事結尾補一小段白話說明，點出這個童話在對應什麼知識。
+- 若有公式，盡量改成故事中的規則或簡單描述；只有必要時才保留公式本體。
+- 風格要溫柔、有畫面感、適合初學者閱讀。
+
+【輸出格式】
+- 請包含：
+    1. 故事標題
+    2. 開場
+    3. 情節發展
+    4. 問題如何解決
+    5. 寓意／知識對應說明
+- 各段請使用清楚的小節標題。
+- 若故事中出現對應原文的重要概念，可在結尾的知識對應段落用白話補充，但不要打斷故事流。
+
+【品質檢查】
+- 是否像一篇完整童話？
+- 是否保留核心概念？
+- 是否讓讀者能透過故事建立直覺理解？
+- 是否避免只有故事感卻沒有知識對應？
+
+【風格參數】
+- 童話感 {fairy_tone}／10、知識保真度 {fidelity}／10、年齡定位 {age_level}／10、畫面感 {visual}／10、解說顯性程度 {explicitness}／10。""",
+        "lazy": """懶人包（結論先行 + 條列整理 + 快速吸收）
+
+【角色視角】
+- 你是一位擅長把複雜內容濃縮成高可讀懶人包的知識編輯。
+- 目標是讓讀者在最短時間內抓到核心問題、方法、結果與限制。
+
+【改寫單元規則（比照前面風格）】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 不可省略原文任一改寫單元。
+- 每個改寫單元都要保留核心結論，但表達上優先追求可快速掃描與快速理解。
+
+【任務目標】
+- 保留原文的重要概念、邏輯與結論，但整理成一份結論先行、條列清楚、能快速讀懂的懶人包。
+
+【改寫原則】
+- 先講結論，再補背景與細節。
+- 用條列、短段、對照與重點框架幫助快速吸收。
+- 技術術語第一次出現時，給一句最短可懂的白話解釋。
+- 不可為了精簡而刪掉會影響理解的關鍵限制、前提或結果。
+- 可適度用具象比喻幫助理解，但不得發明不存在的結果。
+
+【輸出格式】
+- 每個改寫單元請依序整理為：
+    1. 一句話結論
+    2. 背景／問題
+    3. 重點條列（約 {bullet_count} 點）
+    4. 限制或注意事項
+    5. 一句帶走重點
+- 每個條列點盡量控制在 1-2 句。
+- 使用小標題與條列，不要寫成長篇散文。
+
+【品質檢查】
+- 是否能讓讀者在短時間內抓到重點？
+- 是否保留了必要的因果、方法與限制？
+- 是否結構清楚、方便掃描？
+- 是否不是單純剪短，而是真的整理成懶人包？
+
+【風格參數】
+- 條列點數 {bullet_count}、濃縮度 {compression}／10、初學者友善度 {beginner_friendly}／10、圖像化程度 {visual}／10、重點力度 {takeaway_strength}／10。""",
+        "question": """問題驅動（提問引導 + 逐層拆解 + 收束答案）
+
+【角色視角】
+- 你是一位擅長用提問來引導理解的知識講解者。
+- 目標是讓讀者不是被動接受資訊，而是沿著問題一步步理解原文的動機、方法與結論。
+
+【改寫單元規則（比照前面風格）】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 不可省略原文任一改寫單元。
+- 每個改寫單元都要先提出問題，再依序帶出背景、困難、解法與收束答案。
+
+【任務目標】
+- 保留原文核心內容，但改寫成由問題驅動的說明方式，讓讀者透過提問與回答逐層建立理解。
+
+【改寫原則】
+- 先問讀者真正會在意的問題，再回答。
+- 問題應能對應原文中的關鍵動機、方法、限制或結果。
+- 回答順序以「問題是什麼 → 為什麼困難 → 作者怎麼解 → 有什麼限制或結果」為主。
+- 重要術語第一次出現時，要補一句白話解釋。
+- 可加入追問、對比與常見誤解，但不可扭曲原文。
+
+【輸出格式】
+- 每個改寫單元請依序整理為：
+    1. 核心提問（約 {question_count} 題）
+    2. 問題背景
+    3. 逐題回答
+    4. 方法或機制拆解
+    5. 限制、結果或延伸問題
+    6. 最後總結
+- 使用小節標題，並讓每個問題都得到明確回答。
+
+【品質檢查】
+- 問題是否真的引導理解，而不是裝飾？
+- 是否能讓讀者沿著問題一路看懂？
+- 是否保留原文重要機制與限制？
+- 是否避免只剩問句形式、但沒有深入回答？
+
+【風格參數】
+- 問題數量 {question_count}、好奇心強度 {curiosity}／10、拆解深度 {depth}／10、初學者友善度 {beginner_friendly}／10、收束力度 {closure_strength}／10。""",
     "log": """實驗日誌（研究過程記錄、工程師視角）
 - 用工程師觀點描述研究流程與決策取捨。
 - 強調「觀察到什麼問題、做了什麼調整、得到什麼結果」。
@@ -186,11 +333,33 @@ STYLE_PARAMS: Dict[str, List[Dict[str, Any]]] = {
         {"key": "stance",       "label": "觀點感",   "min": 0, "max": 10, "step": 1,   "default": 6},
         {"key": "humor",        "label": "詼諧感",   "min": 0, "max": 1,  "step": 0.1, "default": 0.4},
     ],
+    "professor": [
+        {"key": "formality",         "label": "正式度",       "min": 0, "max": 10, "step": 1, "default": 7},
+        {"key": "structure",         "label": "條理化程度",   "min": 0, "max": 10, "step": 1, "default": 9},
+        {"key": "beginner_friendly", "label": "初學者友善度", "min": 0, "max": 10, "step": 1, "default": 8},
+        {"key": "math_density",      "label": "數學密度",     "min": 0, "max": 10, "step": 1, "default": 4},
+        {"key": "exam_focus",        "label": "考點導向",     "min": 0, "max": 10, "step": 1, "default": 6},
+    ],
+    "fairy": [
+        {"key": "fairy_tone",  "label": "童話感",       "min": 0, "max": 10, "step": 1, "default": 8},
+        {"key": "fidelity",    "label": "知識保真度",   "min": 0, "max": 10, "step": 1, "default": 8},
+        {"key": "age_level",   "label": "年齡定位",     "min": 0, "max": 10, "step": 1, "default": 7},
+        {"key": "visual",      "label": "畫面感",       "min": 0, "max": 10, "step": 1, "default": 9},
+        {"key": "explicitness", "label": "解說顯性程度", "min": 0, "max": 10, "step": 1, "default": 6},
+    ],
     "lazy": [
-        {"key": "bullet_count", "label": "條列點數量", "min": 2, "max": 8, "step": 1, "default": 5},
+        {"key": "bullet_count",      "label": "條列點數量",   "min": 3, "max": 8,  "step": 1, "default": 5},
+        {"key": "compression",       "label": "濃縮度",       "min": 0, "max": 10, "step": 1, "default": 8},
+        {"key": "beginner_friendly", "label": "初學者友善度", "min": 0, "max": 10, "step": 1, "default": 7},
+        {"key": "visual",            "label": "圖像化程度",   "min": 0, "max": 10, "step": 1, "default": 6},
+        {"key": "takeaway_strength", "label": "重點力度",     "min": 0, "max": 10, "step": 1, "default": 8},
     ],
     "question": [
-        {"key": "question_count", "label": "核心問題數量", "min": 1, "max": 4, "step": 1, "default": 2},
+        {"key": "question_count",    "label": "問題數量",     "min": 2, "max": 5,  "step": 1, "default": 3},
+        {"key": "curiosity",         "label": "好奇心強度",   "min": 0, "max": 10, "step": 1, "default": 8},
+        {"key": "depth",             "label": "拆解深度",     "min": 0, "max": 10, "step": 1, "default": 7},
+        {"key": "beginner_friendly", "label": "初學者友善度", "min": 0, "max": 10, "step": 1, "default": 8},
+        {"key": "closure_strength",  "label": "收束力度",     "min": 0, "max": 10, "step": 1, "default": 7},
     ],
 }
 
@@ -1335,6 +1504,8 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str, res
 
 def _normalize_style(style: Any) -> str:
     normalized = str(style or "").strip().lower()
+    if normalized == "podcast":
+        return "professor"
     if normalized in STYLE_PROMPTS:
         return normalized
     return DEFAULT_STYLE

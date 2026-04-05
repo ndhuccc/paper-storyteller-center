@@ -28,10 +28,10 @@ UPLOAD_MAX_FILES = 200
 STYLE_LABELS: Dict[str, str] = {
     "storyteller": "說書人（生活化類比，重點在「為什麼」）",
     "blog": "科普部落格（鉤子句 + 段落標題 + 結尾留問題）",
-    "podcast": "Podcast（口語化、對話感）",
-    "fairy": "童話故事（擬人化、主角/挑戰/勝利結構）",
-    "lazy": "懶人包（bullet points、圖像化、快速抓重點）",
-    "question": "問題驅動（先問問題、再逐層解釋）",
+    "professor": "大教授（課堂講義 / 可複習）",
+    "fairy": "童話故事（知識童話、角色化、寓意對應）",
+    "lazy": "懶人包（結論先行、條列重點、快速吸收）",
+    "question": "問題驅動（提問引導、逐層拆解、收束答案）",
     "log": "實驗日誌（研究過程記錄、工程師視角）",
 }
 
@@ -264,16 +264,48 @@ def _extract_generation_output_paper_id(payload: Dict, result: Dict, output: Dic
     )
 
 
+def _engine_label_map(scope: str) -> Dict[str, str]:
+    options = (
+        center_service.get_qa_engine_options()
+        if scope == "qa"
+        else center_service.get_generation_engine_options()
+    )
+    return {
+        str(item.get("id", "")).strip(): str(item.get("label", "")).strip()
+        for item in options
+        if str(item.get("id", "")).strip()
+    }
+
+
+def _normalize_engine_order(raw: Any) -> List[str]:
+    if not isinstance(raw, list):
+        return []
+    result: List[str] = []
+    seen = set()
+    for item in raw:
+        value = str(item or "").strip()
+        if not value or value in seen:
+            continue
+        result.append(value)
+        seen.add(value)
+    return result
+
+
 def _build_job_summary(job: Dict) -> Dict:
     payload = _as_dict(job.get("payload"))
     result = _as_dict(job.get("result"))
     output = _as_dict(result.get("output"))
+    style = str(payload.get("style", "-")).strip() or "-"
+    style_params = payload.get("style_params") if isinstance(payload.get("style_params"), dict) else {}
+    rewrite_engine_order = _normalize_engine_order(payload.get("rewrite_engine_order"))
+    generation_engine_labels = _engine_label_map("generation")
     ai_state = _auto_index_state(result=result, payload=payload)
     warnings = _extract_warnings(result)
     errors = _extract_errors(result)
     steps = _extract_steps(result)
     sections_generated = result.get("sections_generated") or _as_dict(result.get("metadata")).get("sections_generated")
     rewrite_model = result.get("model") or _as_dict(result.get("metadata")).get("model") or "-"
+    rewrite_model_primary = result.get("rewrite_model_primary") or payload.get("model") or "-"
     pdf_extraction_model = result.get("pdf_extraction_model") or _as_dict(result.get("metadata")).get("pdf_extraction_model") or "-"
     output_path = result.get("output_path") or output.get("output_path")
     output_filename = _extract_generation_output_filename(result=result, output=output)
@@ -283,12 +315,20 @@ def _build_job_summary(job: Dict) -> Dict:
         "status": str(job.get("status", "-")),
         "phase": job.get("phase") or "",
         "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
-        "style": str(payload.get("style", "-")),
+        "style": style,
+        "style_label": STYLE_LABELS.get(style, style),
+        "style_params": style_params,
         "output_path": str(output_path or "-"),
         "output_filename": output_filename,
         "output_paper_id": output_paper_id,
         "sections_generated": sections_generated,
         "rewrite_model": rewrite_model,
+        "rewrite_model_primary": rewrite_model_primary,
+        "rewrite_engine_order": rewrite_engine_order,
+        "rewrite_engine_labels": [
+            generation_engine_labels.get(engine_id, engine_id)
+            for engine_id in rewrite_engine_order
+        ],
         "pdf_extraction_model": pdf_extraction_model,
         "warnings": warnings,
         "warnings_count": len(warnings),
@@ -398,9 +438,14 @@ def answer():
     if not question:
         return _err("question is required")
     forced_papers = data.get("forced_papers") or None
+    engine_order = _normalize_engine_order(data.get("engine_order"))
     try:
-        answer_text, sources = center_service.answer(question=question, forced_papers=forced_papers)
-        return _ok({"answer": answer_text, "sources": sources})
+        detail = center_service.answer_detailed(
+            question=question,
+            forced_papers=forced_papers,
+            engine_order=engine_order,
+        )
+        return _ok(detail)
     except Exception as e:
         return _err(str(e), 500)
 
@@ -515,6 +560,7 @@ def submit_job():
     style_params: dict = {}
     manual_sections_raw = None
     paper_title_manual = ""
+    engine_order: List[str] = []
     if request.content_type and "multipart" in request.content_type:
         raw_sp = request.form.get("style_params", "")
         if raw_sp:
@@ -522,6 +568,12 @@ def submit_job():
                 style_params = _json.loads(raw_sp)
             except Exception:
                 pass
+        raw_engine_order = request.form.get("engine_order", "")
+        if raw_engine_order:
+            try:
+                engine_order = _normalize_engine_order(_json.loads(raw_engine_order))
+            except Exception:
+                engine_order = []
     else:
         data2 = request.get_json(force=True, silent=True) or {}
         sp_raw = data2.get("style_params", {})
@@ -531,13 +583,23 @@ def submit_job():
         if isinstance(ms, list):
             manual_sections_raw = ms
         paper_title_manual = str(data2.get("paper_title", "")).strip()
+        engine_order = _normalize_engine_order(data2.get("engine_order"))
 
     resolved_pdf_path = saved_path or pdf_path_field
     if not resolved_pdf_path and not manual_sections_raw:
         return _err("請提供 PDF 檔案或路徑，或使用手動輸入改寫單元")
 
     try:
-        payload = {"pdf_path": resolved_pdf_path or "", "style": style, "auto_index": auto_index, "style_params": style_params}
+        resolved_engines = center_service.resolve_generation_engine_chain(engine_order)
+        payload = {
+            "pdf_path": resolved_pdf_path or "",
+            "style": style,
+            "auto_index": auto_index,
+            "style_params": style_params,
+            "model": resolved_engines["primary_model"],
+            "rewrite_fallback_chain": resolved_engines["fallbacks"],
+            "rewrite_engine_order": resolved_engines["ordered_ids"],
+        }
         if manual_sections_raw is not None:
             payload["manual_sections"] = manual_sections_raw
         if paper_title_manual:
@@ -567,6 +629,14 @@ def list_styles():
         {"key": k, "label": v, "params": STYLE_PARAMS.get(k, [])}
         for k, v in STYLE_LABELS.items()
     ])
+
+
+@bp.route("/engines", methods=["GET"])
+def list_engines():
+    return _ok({
+        "qa": center_service.get_qa_engine_options(),
+        "generation": center_service.get_generation_engine_options(),
+    })
 
 
 @bp.route("/health", methods=["GET"])

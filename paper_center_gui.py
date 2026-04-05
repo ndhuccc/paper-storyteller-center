@@ -40,10 +40,10 @@ from qa_render import answer_to_mathjax_html
 STYLE_LABELS: Dict[str, str] = {
     "storyteller": "說書人（生活化類比，重點在「為什麼」）",
     "blog": "科普部落格（鉤子句 + 段落標題 + 結尾留問題）",
-    "podcast": "Podcast（口語化、對話感）",
-    "fairy": "童話故事（擬人化、主角/挑戰/勝利結構）",
-    "lazy": "懶人包（bullet points、圖像化、快速抓重點）",
-    "question": "問題驅動（先問問題、再逐層解釋）",
+    "professor": "大教授（課堂講義 / 可複習）",
+    "fairy": "童話故事（知識童話、角色化、寓意對應）",
+    "lazy": "懶人包（結論先行、條列重點、快速吸收）",
+    "question": "問題驅動（提問引導、逐層拆解、收束答案）",
     "log": "實驗日誌（研究過程記錄、工程師視角）",
 }
 
@@ -911,7 +911,7 @@ def render_generation_panel(all_papers: List[Dict[str, Any]]):
         key="gen_pdf_path",
     )
     style = st.selectbox(
-        "風格",
+        "說書風格",
         options=list(STYLE_LABELS.keys()),
         format_func=lambda key: f"{key} - {STYLE_LABELS.get(key, key)}",
         key="gen_style",
