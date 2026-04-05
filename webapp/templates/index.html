@@ -18,7 +18,15 @@
     <div class="modal-container">
       <div class="modal-header">
         <span class="modal-title" x-text="modalTitle">論文閱覽</span>
-        <button class="modal-close" @click="closeModal()">✕</button>
+        <div class="modal-actions">
+          <a class="modal-download"
+             :href="modalDownloadUrl"
+             x-show="modalDownloadUrl"
+             download>
+            ⬇ 下載 HTML
+          </a>
+          <button class="modal-close" @click="closeModal()">✕</button>
+        </div>
       </div>
       <div class="modal-body">
         <iframe id="paper-iframe" class="paper-iframe" :src="modalSrc" x-show="modalSrc"></iframe>

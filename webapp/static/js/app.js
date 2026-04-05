@@ -24,6 +24,7 @@ function App() {
     modalOpen: false,
     modalTitle: '',
     modalSrc: '',
+    modalDownloadUrl: '',
 
     /* ── search ── */
     searchQuery: '',
@@ -112,12 +113,14 @@ function App() {
       if (!pid) { this.toast('warning', '找不到 paper_id'); return; }
       this.modalTitle = paper?.title || '論文閱覽';
       this.modalSrc = '/api/papers/' + encodeURIComponent(pid) + '/html';
+      this.modalDownloadUrl = '/api/papers/' + encodeURIComponent(pid) + '/download';
       this.modalOpen = true;
     },
 
     closeModal() {
       this.modalOpen = false;
       this.modalSrc = '';
+      this.modalDownloadUrl = '';
     },
 
     /* ════════ SEARCH ════════ */

@@ -409,6 +409,30 @@ a { color: var(--primary); text-decoration: none; }
   border-bottom: 1px solid var(--border);
 }
 .modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.modal-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.modal-download:hover {
+  background: var(--surface-hover);
+  border-color: var(--primary-light);
+  color: var(--primary);
+}
 .modal-close {
   background: none;
   border: none;

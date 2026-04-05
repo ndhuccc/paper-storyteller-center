@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 from typing import Any, Dict, List
 
-from flask import Blueprint, jsonify, request, Response
+from flask import Blueprint, jsonify, request, Response, send_file
 
 import center_service
 from paper_repository import (
@@ -322,6 +322,29 @@ def get_paper_html(paper_id: str):
         return Response(html, mimetype="text/html")
     except Exception as e:
         return _err(str(e), 404)
+
+
+@bp.route("/papers/<paper_id>/download", methods=["GET"])
+def download_paper_html(paper_id: str):
+    try:
+        normalized_id = str(paper_id or "").strip()
+        if "_chunk_" in normalized_id:
+            normalized_id = normalized_id.rsplit("_chunk_", 1)[0]
+        if not normalized_id:
+            return _err("paper_id is required")
+
+        html_path = STORYTELLERS_DIR / f"{normalized_id}.html"
+        if not html_path.exists() or not html_path.is_file():
+            return _err("HTML not found", 404)
+
+        return send_file(
+            html_path,
+            mimetype="text/html",
+            as_attachment=True,
+            download_name=html_path.name,
+        )
+    except Exception as e:
+        return _err(str(e), 500)
 
 
 @bp.route("/papers/<paper_id>", methods=["DELETE"])
