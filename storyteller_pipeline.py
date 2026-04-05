@@ -91,7 +91,7 @@ STYLE_PROMPTS: Dict[str, str] = {
 
 【文字風格】
 - 長短句交替，像在說故事，不像在念教科書。
-- 溫暖度 7／10、視覺化程度 8／10、數學密度 4／10、詼諧感 0.5／1。
+- 溫暖度 {warmth}／10、視覺化程度 {visual}／10、數學密度 {math_density}／10、詼諧感 {humor}／1。
 
 【專業術語表（每個改寫單元必須附上）】
 - 每個改寫單元的正文之後，必須附上一張「📖 本節術語表」。
@@ -99,10 +99,55 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 格式為 Markdown 表格，欄位：術語 | 白話解釋；每列一個術語。
 - 解釋文字須讓完全沒有背景的初學者也能理解，避免再用另一個術語解釋術語。
 - 若同一術語在前面單元已列過，本單元仍需重複列出（方便讀者單獨閱讀本節）。""",
-    "blog": """科普部落格（鉤子句 + 段落標題 + 結尾留問題）
-- 第一段先用一句有吸引力的鉤子句開場。
-- 內文用 2-3 個短標題分段（例如【問題背景】、【方法重點】）。
-- 最後留下一個延伸思考問題。""",
+        "blog": """科普部落格（知識轉譯 + 讀者關聯 + 易讀不失真）
+
+【角色視角】
+- 你是一位擅長把技術內容寫成大眾知識型文章的專業部落客。
+- 目標是讓一般讀者願意讀完、看懂重點，並知道這和自己有什麼關係。
+
+【改寫單元規則（比照說書人）】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 不可省略原文任一改寫單元。
+- 每個改寫單元依序包含：
+    1. 引入：用一般讀者在意的問題、迷思、現象或痛點切入。
+    2. 直覺：先用白話說清楚「它在解什麼問題」。
+    3. 原理：再講核心方法或機制。
+    4. 重要性：說明「這和讀者有什麼關係」。
+    5. 收束：一句本節重點或可行動的理解結論。
+
+【改寫原則】
+- 先講直覺，再講原理，再講重要性。
+- 技術術語第一次出現時，立刻用白話解釋；重要概念首次出現請加 **粗體**。
+- 可用類比、比較、情境例子、常見誤解幫助理解。
+- 風格自然、清楚、有吸引力，但不浮誇、不聳動。
+
+【公式與技術內容處理】
+- 只保留理解核心機制必需的公式。
+- 每個保留公式都要補：
+    - 變數白話解釋。
+    - 這個公式在解什麼問題（1-2 句）。
+- 不可刪除會影響理解結論的關鍵技術內容。
+
+【禁止事項】
+- 不可杜撰原文沒有的數據、結果、引用、案例。
+- 不可扭曲原文因果關係或結論方向。
+- 不可把推測語氣改寫成確定事實。
+
+【輸出格式】
+- 產出一個吸引一般讀者的標題。
+- 前言 2-4 句：說明為何值得讀。
+- 內文每段以 3-5 句為主；涉及公式、推導或多步驟機制時可放寬至 6-7 句，但應維持單段單一主旨。
+- 內文分成數個有小標題的段落。
+- 結語：重點整理 + 一個延伸思考問題。
+
+【品質檢查】
+- 標題是否對非專業讀者有吸引力？
+- 是否快速說清楚「為何重要」？
+- 是否把技術內容轉成易讀又不失真的文章？
+- 是否避免只是學術原文換句話說？
+
+【風格參數】
+- 親和度 {affinity}／10、吸睛度 {hook}／10、技術密度 {tech_density}／10、觀點感 {stance}／10、詼諧感 {humor}／1。""",
     "podcast": """Podcast（口語化、對話感）
 - 用口語自然的語氣，像主持人在向聽眾說明。
 - 允許適度使用「你可以想像」「我們來看」等對話引導句。
@@ -112,11 +157,11 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 結構採「主角 → 挑戰 → 解法/勝利」。
 - 保留技術正確性，不把數學內容改寫成錯誤寓言。""",
     "lazy": """懶人包（bullet points、圖像化、快速抓重點）
-- 以 4-6 個條列點整理重點，每點一句到兩句。
+- 以 {bullet_count} 個條列點整理重點，每點一句到兩句。
 - 先講結論，再補充必要背景。
 - 用具象比喻幫助快速理解，但不要發明不存在的結果。""",
     "question": """問題驅動（先問問題、再逐層解釋）
-- 先提出 1-2 個核心問題引導讀者。
+- 先提出 {question_count} 個核心問題引導讀者。
 - 依序回答：問題是什麼 → 為什麼難 → 作者怎麼解。
 - 結尾收斂到實驗結果或限制。""",
     "log": """實驗日誌（研究過程記錄、工程師視角）
@@ -124,6 +169,48 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 強調「觀察到什麼問題、做了什麼調整、得到什麼結果」。
 - 語氣客觀，像可追蹤的實驗紀錄。""",
 }
+
+# Per-style adjustable parameters with defaults.
+# Each entry: {key, label, min, max, step, default}
+STYLE_PARAMS: Dict[str, List[Dict[str, Any]]] = {
+    "storyteller": [
+        {"key": "warmth",       "label": "溫暖度",     "min": 0, "max": 10, "step": 1,   "default": 7},
+        {"key": "visual",       "label": "視覺化程度", "min": 0, "max": 10, "step": 1,   "default": 8},
+        {"key": "math_density", "label": "數學密度",   "min": 0, "max": 10, "step": 1,   "default": 4},
+        {"key": "humor",        "label": "詼諧感",     "min": 0, "max": 1,  "step": 0.1, "default": 0.5},
+    ],
+    "blog": [
+        {"key": "affinity",     "label": "親和度",   "min": 0, "max": 10, "step": 1,   "default": 7},
+        {"key": "hook",         "label": "吸睛度",   "min": 0, "max": 10, "step": 1,   "default": 8},
+        {"key": "tech_density", "label": "技術密度", "min": 0, "max": 10, "step": 1,   "default": 4},
+        {"key": "stance",       "label": "觀點感",   "min": 0, "max": 10, "step": 1,   "default": 6},
+        {"key": "humor",        "label": "詼諧感",   "min": 0, "max": 1,  "step": 0.1, "default": 0.4},
+    ],
+    "lazy": [
+        {"key": "bullet_count", "label": "條列點數量", "min": 2, "max": 8, "step": 1, "default": 5},
+    ],
+    "question": [
+        {"key": "question_count", "label": "核心問題數量", "min": 1, "max": 4, "step": 1, "default": 2},
+    ],
+}
+
+
+def _get_style_prompt(style_key: str, params: Dict[str, Any] = None) -> str:
+    """Return the style prompt with parameters substituted (falls back to defaults)."""
+    template = STYLE_PROMPTS.get(style_key, STYLE_PROMPTS[DEFAULT_STYLE])
+    # Build substitution dict: start from defaults, overlay with supplied params
+    param_defs = STYLE_PARAMS.get(style_key, [])
+    values: Dict[str, Any] = {p["key"]: p["default"] for p in param_defs}
+    if params:
+        for k, v in params.items():
+            if k in values:
+                values[k] = v
+    if not values:
+        return template
+    try:
+        return template.format_map(values)
+    except (KeyError, ValueError):
+        return template
 
 
 def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dict[str, Any]:
@@ -139,24 +226,45 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     if not isinstance(payload, dict):
         payload = {}
 
-    pdf_path = _resolve_pdf_path(job=job, payload=payload)
-    if pdf_path is None:
-        raise ValueError(
-            "No readable PDF path found in job payload. "
-            "Supported keys include pdf_path/source_pdf_path/input_path/file_path/path/pdf."
-        )
+    # ── Manual sections mode: bypass PDF extraction entirely ──────────────────
+    manual_sections_raw = payload.get("manual_sections")
+    if isinstance(manual_sections_raw, list) and manual_sections_raw:
+        if phase_reporter:
+            phase_reporter("使用手動輸入改寫單元…")
+        sections = []
+        for item in manual_sections_raw:
+            if isinstance(item, dict):
+                title = str(item.get("title") or "未命名單元").strip() or "未命名單元"
+                body = str(item.get("body") or "").strip()
+                if body:
+                    sections.append({"title": title, "source_text": body})
+        if not sections:
+            raise RuntimeError("Manual sections provided but all bodies were empty.")
+        paper_title_slug = _slugify(str(payload.get("paper_title", "manual_input")).strip() or "manual_input")
+        pdf_path = Path(f"{paper_title_slug}.pdf")  # virtual path used only for naming
+        extracted_text = ""
+        extraction_warning = None
+        pdf_extraction_model = "manual"
+    else:
+        # ── Normal PDF extraction path ─────────────────────────────────────────
+        pdf_path = _resolve_pdf_path(job=job, payload=payload)
+        if pdf_path is None:
+            raise ValueError(
+                "No readable PDF path found in job payload. "
+                "Supported keys include pdf_path/source_pdf_path/input_path/file_path/path/pdf."
+            )
 
-    if phase_reporter:
-        phase_reporter("PDF 文字掃描中…")
-    extracted_text, extraction_warning, pdf_extraction_model = _extract_pdf_text(pdf_path)
-    if not extracted_text.strip():
-        raise RuntimeError(f"No text extracted from PDF: {pdf_path}")
+        if phase_reporter:
+            phase_reporter("PDF 文字掃描中…")
+        extracted_text, extraction_warning, pdf_extraction_model = _extract_pdf_text(pdf_path)
+        if not extracted_text.strip():
+            raise RuntimeError(f"No text extracted from PDF: {pdf_path}")
 
-    if phase_reporter:
-        phase_reporter("段落結構解析中…")
-    sections = _split_into_sections(extracted_text)
-    if not sections:
-        raise RuntimeError(f"Unable to build sections from extracted text: {pdf_path}")
+        if phase_reporter:
+            phase_reporter("段落結構解析中…")
+        sections = _split_into_sections(extracted_text)
+        if not sections:
+            raise RuntimeError(f"Unable to build sections from extracted text: {pdf_path}")
 
     max_sections = _safe_positive_int(payload.get("max_sections"), DEFAULT_MAX_SECTIONS)
     rewrite_chunk_chars = _safe_positive_int(
@@ -196,6 +304,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         or ""
     ).strip()
     style = _normalize_style(payload.get("style"))
+
+    style_params: Dict[str, Any] = {}
+    raw_style_params = payload.get("style_params")
+    if isinstance(raw_style_params, dict):
+        style_params = raw_style_params
 
     rendered_sections: List[Dict[str, Any]] = []
     llm_failures: List[str] = []
@@ -244,6 +357,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 style=style,
                 rewrite_response_format=rewrite_response_format,
                 append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
             )
             if failure:
                 llm_failures.append(
@@ -1066,6 +1180,7 @@ def _rewrite_section(
     style: str,
     rewrite_response_format: str,
     append_missing_formulas: bool,
+    style_params: Dict[str, Any] = None,
 ) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str], str]:
     """Rewrite a section into storyteller style.
     
@@ -1082,6 +1197,7 @@ def _rewrite_section(
         source_text=text,
         style=style,
         response_format=rewrite_response_format,
+        style_params=style_params,
     )
     formulas = _extract_latex_expressions(text)
 
@@ -1154,11 +1270,11 @@ def _rewrite_section(
     return story_text, terms, formula_explanations, True, _merge_notes(fallback_note, missing_formula_note), used_model
 
 
-def _build_story_prompt(*, section_title: str, source_text: str, style: str, response_format: str) -> str:
+def _build_story_prompt(*, section_title: str, source_text: str, style: str, response_format: str, style_params: Dict[str, Any] = None) -> str:
     source_text = source_text.strip()
     style_key = _normalize_style(style)
     response_format = _normalize_rewrite_response_format(response_format)
-    style_hint = STYLE_PROMPTS.get(style_key, STYLE_PROMPTS[DEFAULT_STYLE])
+    style_hint = _get_style_prompt(style_key, style_params)
     base_prompt = f"""你是頂尖的論文說書人，請把論文段落改寫成「易懂、可信、具教學感」的繁體中文說明。
 
 改寫風格：

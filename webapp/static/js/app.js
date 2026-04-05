@@ -45,6 +45,8 @@ function App() {
     /* ── generation ── */
     styles: [],
     genStyle: 'storyteller',
+    styleParamDefs: {},      // { styleKey: [{key, label, min, max, step, default}] }
+    genStyleParams: {},      // { paramKey: currentValue }
     genPdfPath: '',
     genAutoIndex: true,
     selectedFile: null,
@@ -52,6 +54,14 @@ function App() {
     submitting: false,
     jobs: [],
     jobsLoading: false,
+
+    /* ── manual units input ── */
+    inputMode: 'pdf',        // 'pdf' | 'manual'
+    manualPaperTitle: '',
+    manualUnits: [],         // [{id, title, body}]
+    showBatchInput: false,
+    batchInputText: '',
+    _nextUnitId: 0,
 
     /* ════════ LIFECYCLE ════════ */
     async init() {
@@ -304,11 +314,92 @@ function App() {
       try {
         const data = await api.get('/api/styles');
         this.styles = data.data || [];
+        // Build styleParamDefs lookup
+        this.styleParamDefs = {};
+        for (const s of this.styles) {
+          if (s.params && s.params.length > 0) this.styleParamDefs[s.key] = s.params;
+        }
         if (this.styles.length > 0) this.genStyle = this.styles[0].key;
+        this._applyStyleParamDefaults();
       } catch (e) {
         // Fallback
         this.styles = [{ key: 'storyteller', label: '說書人' }];
       }
+    },
+
+    _applyStyleParamDefaults() {
+      const defs = this.styleParamDefs[this.genStyle] || [];
+      const params = {};
+      for (const d of defs) params[d.key] = d.default;
+      this.genStyleParams = params;
+    },
+
+    onStyleChange() {
+      this._applyStyleParamDefaults();
+    },
+
+    resetStyleParams() {
+      this._applyStyleParamDefaults();
+      this.toast('info', '已還原為建議值');
+    },
+
+    getOrderedStyleParams() {
+      const defs = this.styleParamDefs[this.genStyle] || [];
+      if (this.genStyle !== 'blog') return defs;
+
+      const order = {
+        affinity: 1,
+        hook: 2,
+        tech_density: 3,
+        stance: 4,
+        humor: 5,
+      };
+
+      return [...defs].sort((a, b) => {
+        const oa = order[a.key] || 999;
+        const ob = order[b.key] || 999;
+        return oa - ob;
+      });
+    },
+
+    getStyleParamHint(paramKey) {
+      const byStyle = {
+        storyteller: {
+          warmth: '敘事溫度，越高越有陪伴感與引導語氣。',
+          visual: '畫面感強度，越高越常用情境與意象幫助理解。',
+          math_density: '公式與數學細節比例，越高越偏技術推導。',
+          humor: '詼諧感強度，越高語氣越輕鬆活潑。',
+        },
+        blog: {
+          affinity: '語氣親近度，越高越像在和讀者對話。',
+          hook: '開場吸引力，越高越重視抓住注意力。',
+          tech_density: '技術細節比例，越高越偏向專業內容。',
+          stance: '觀點鮮明程度，越高越會提出清楚立場。',
+          humor: '幽默感強度，越高語氣越輕鬆。',
+        },
+      };
+      const map = byStyle[this.genStyle] || {};
+      return map[paramKey] || '';
+    },
+
+    getStyleParamScaleHint(paramKey, side) {
+      const byStyle = {
+        storyteller: {
+          warmth: { min: '理性', max: '溫暖' },
+          visual: { min: '抽象', max: '具象' },
+          math_density: { min: '淺白', max: '推導' },
+          humor: { min: '嚴謹', max: '活潑' },
+        },
+        blog: {
+          affinity: { min: '冷硬', max: '親切' },
+          hook: { min: '平實', max: '吸睛' },
+          tech_density: { min: '淺白', max: '專業' },
+          stance: { min: '中性', max: '鮮明' },
+          humor: { min: '嚴肅', max: '輕鬆' },
+        },
+      };
+      const map = byStyle[this.genStyle] || {};
+      return (map[paramKey] && map[paramKey][side]) || '';
     },
 
     onFileSelect(event) {
@@ -332,7 +423,97 @@ function App() {
       if (input) input.value = '';
     },
 
+    /* ════════ MANUAL UNITS ════════ */
+    addManualUnit() {
+      this.manualUnits.push({ id: ++this._nextUnitId, title: '', body: '' });
+    },
+
+    removeManualUnit(id) {
+      this.manualUnits = this.manualUnits.filter(u => u.id !== id);
+    },
+
+    moveUnitUp(id) {
+      const i = this.manualUnits.findIndex(u => u.id === id);
+      if (i > 0) {
+        const tmp = this.manualUnits[i - 1];
+        this.manualUnits[i - 1] = this.manualUnits[i];
+        this.manualUnits[i] = tmp;
+        this.manualUnits = [...this.manualUnits];
+      }
+    },
+
+    moveUnitDown(id) {
+      const i = this.manualUnits.findIndex(u => u.id === id);
+      if (i >= 0 && i < this.manualUnits.length - 1) {
+        const tmp = this.manualUnits[i + 1];
+        this.manualUnits[i + 1] = this.manualUnits[i];
+        this.manualUnits[i] = tmp;
+        this.manualUnits = [...this.manualUnits];
+      }
+    },
+
+    applyBatchInput() {
+      const text = this.batchInputText.trim();
+      if (!text) return;
+      // Split by a line containing only 3+ = or - characters
+      const blocks = text.split(/\n[ \t]*={3,}[ \t]*\n|\n[ \t]*-{3,}[ \t]*\n/)
+        .map(b => b.trim()).filter(Boolean);
+      let added = 0;
+      for (const block of blocks) {
+        const lines = block.split('\n');
+        const firstLine = lines[0].replace(/^#+\s*/, '').trim();
+        const body = lines.slice(1).join('\n').trim();
+        if (body) {
+          this.manualUnits.push({ id: ++this._nextUnitId, title: firstLine, body });
+          added++;
+        }
+      }
+      this.batchInputText = '';
+      this.showBatchInput = false;
+      if (added > 0) this.toast('success', `已匯入 ${added} 個改寫單元`);
+      else this.toast('warning', '未解析出有效單元（請確認格式：標題行 + 內文，用 === 分隔多單元）');
+    },
+
+    clearManualUnits() {
+      this.manualUnits = [];
+      this.manualPaperTitle = '';
+      this.batchInputText = '';
+      this.showBatchInput = false;
+    },
+
     async submitGenJob() {
+      if (this.inputMode === 'manual') {
+        // ── Manual units mode ────────────────────────────────────────────────
+        const validUnits = this.manualUnits.filter(u => u.body && u.body.trim());
+        if (validUnits.length === 0) {
+          this.toast('warning', '請至少新增一個含有內文的改寫單元');
+          return;
+        }
+        this.submitting = true;
+        try {
+          const payload = {
+            manual_sections: validUnits.map(u => ({
+              title: (u.title || '').trim() || '未命名單元',
+              body: u.body.trim(),
+            })),
+            paper_title: this.manualPaperTitle.trim() || '手動輸入論文',
+            style: this.genStyle,
+            auto_index: this.genAutoIndex,
+            style_params: this.genStyleParams,
+          };
+          const data = await api.post('/api/jobs/submit', payload);
+          const jobId = data.data?.job_id || '';
+          this.toast('success', `✅ 任務已提交：${jobId.slice(0,8)}（背景執行中）`);
+          await this.loadJobs();
+        } catch (e) {
+          this.toast('error', '提交失敗: ' + e.message);
+        } finally {
+          this.submitting = false;
+        }
+        return;
+      }
+
+      // ── PDF upload mode ────────────────────────────────────────────────────
       if (!this.selectedFile) {
         this.toast('warning', '請先上傳 PDF 檔案');
         return;
@@ -343,6 +524,9 @@ function App() {
         form.append('pdf', this.selectedFile);
         form.append('style', this.genStyle);
         form.append('auto_index', this.genAutoIndex ? 'true' : 'false');
+        if (Object.keys(this.genStyleParams).length > 0) {
+          form.append('style_params', JSON.stringify(this.genStyleParams));
+        }
         const data = await api.postForm('/api/jobs/submit', form);
         const jobId = data.data?.job_id || '';
         this.toast('success', `✅ 任務已提交：${jobId.slice(0,8)}（背景執行中）`);

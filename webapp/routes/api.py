@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 from flask import Blueprint, jsonify, request, Response, send_file
 
 import center_service
+from storyteller_pipeline import STYLE_PARAMS
 from paper_repository import (
     PAPER_STATUS_READY,
     PAPER_STATUS_GENERATED_NOT_INDEXED,
@@ -509,12 +510,38 @@ def submit_job():
         auto_index = _as_bool(data.get("auto_index", True))
         pdf_path_field = str(data.get("pdf_path", "")).strip()
 
+    # Parse style_params (JSON-encoded string in multipart, or dict in JSON body)
+    import json as _json
+    style_params: dict = {}
+    manual_sections_raw = None
+    paper_title_manual = ""
+    if request.content_type and "multipart" in request.content_type:
+        raw_sp = request.form.get("style_params", "")
+        if raw_sp:
+            try:
+                style_params = _json.loads(raw_sp)
+            except Exception:
+                pass
+    else:
+        data2 = request.get_json(force=True, silent=True) or {}
+        sp_raw = data2.get("style_params", {})
+        if isinstance(sp_raw, dict):
+            style_params = sp_raw
+        ms = data2.get("manual_sections")
+        if isinstance(ms, list):
+            manual_sections_raw = ms
+        paper_title_manual = str(data2.get("paper_title", "")).strip()
+
     resolved_pdf_path = saved_path or pdf_path_field
-    if not resolved_pdf_path:
-        return _err("請提供 PDF 檔案或路徑")
+    if not resolved_pdf_path and not manual_sections_raw:
+        return _err("請提供 PDF 檔案或路徑，或使用手動輸入改寫單元")
 
     try:
-        payload = {"pdf_path": resolved_pdf_path, "style": style, "auto_index": auto_index}
+        payload = {"pdf_path": resolved_pdf_path or "", "style": style, "auto_index": auto_index, "style_params": style_params}
+        if manual_sections_raw is not None:
+            payload["manual_sections"] = manual_sections_raw
+        if paper_title_manual:
+            payload["paper_title"] = paper_title_manual
         job = center_service.submit_generation_job(payload=payload)
         job_id = str(job.get("job_id", "")).strip()
         if not job_id:
@@ -536,7 +563,10 @@ def submit_job():
 
 @bp.route("/styles", methods=["GET"])
 def list_styles():
-    return _ok([{"key": k, "label": v} for k, v in STYLE_LABELS.items()])
+    return _ok([
+        {"key": k, "label": v, "params": STYLE_PARAMS.get(k, [])}
+        for k, v in STYLE_LABELS.items()
+    ])
 
 
 @bp.route("/health", methods=["GET"])
