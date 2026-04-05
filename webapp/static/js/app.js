@@ -22,6 +22,9 @@ function App() {
     renamePaperId: '',
     renameNewName: '',
     renaming: false,
+    editDisplayPaperId: '',
+    editDisplayName: '',
+    editingDisplayName: false,
 
     /* ── modal ── */
     modalOpen: false,
@@ -147,6 +150,32 @@ function App() {
       }
     },
 
+    /* ════════ EDIT DISPLAY NAME ════════ */
+    async updateDisplayName() {
+      if (!this.editDisplayPaperId || !this.editDisplayName.trim()) return;
+      this.editingDisplayName = true;
+      try {
+        const data = await api.patch(
+          '/api/papers/' + encodeURIComponent(this.editDisplayPaperId) + '/display-name',
+          { display_name: this.editDisplayName.trim() }
+        );
+        this.toast('success', data.data?.message || '顯示名稱已更新');
+        if (this.editDisplayPaperId in this.selectedPapers) {
+          this.selectedPapers[this.editDisplayPaperId] = {
+            ...this.selectedPapers[this.editDisplayPaperId],
+            title: this.editDisplayName.trim(),
+          };
+        }
+        this.editDisplayPaperId = '';
+        this.editDisplayName = '';
+        await this.loadPapers();
+      } catch (e) {
+        this.toast('error', '更新顯示名稱失敗: ' + e.message);
+      } finally {
+        this.editingDisplayName = false;
+      }
+    },
+
     /* ════════ MODAL ════════ */
     openPaper(paper) {
       const pid = paper?.paper_id || paper?.id || '';
@@ -228,9 +257,10 @@ function App() {
       }
     },
 
-    moveEngineUp(scope, index) {
+    moveEngineUp(scope, engineId) {
       const list = scope === 'qa' ? [...this.qaEngines] : [...this.genEngines];
-      if (index <= 0 || index >= list.length) return;
+      const index = list.findIndex((item) => item && item.id === engineId);
+      if (index <= 0) return;
       const temp = list[index - 1];
       list[index - 1] = list[index];
       list[index] = temp;
@@ -238,8 +268,9 @@ function App() {
       else this.genEngines = list;
     },
 
-    moveEngineDown(scope, index) {
+    moveEngineDown(scope, engineId) {
       const list = scope === 'qa' ? [...this.qaEngines] : [...this.genEngines];
+      const index = list.findIndex((item) => item && item.id === engineId);
       if (index < 0 || index >= list.length - 1) return;
       const temp = list[index + 1];
       list[index + 1] = list[index];

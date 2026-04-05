@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from retrieval_service import delete_paper as retrieval_delete_paper
+from retrieval_service import get_display_title_overrides as retrieval_get_display_title_overrides
 from retrieval_service import rename_paper as retrieval_rename_paper
+from retrieval_service import update_paper_display_title as retrieval_update_paper_display_title
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
@@ -317,6 +319,23 @@ def _prefer(indexed_value: Any, html_value: Any) -> Any:
     return html_value
 
 
+def _apply_display_title_override(item: Dict[str, Any], overrides: Dict[str, str]) -> Dict[str, Any]:
+    out = dict(item)
+    paper_id = _normalize_paper_id(out.get("paper_id") or out.get("id"))
+    override = str(overrides.get(paper_id, "")).strip() if paper_id else ""
+    if override:
+        out["title"] = override
+    return out
+
+
+def apply_display_title_overrides(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Apply custom display title overrides to a list of paper-like dict items."""
+    overrides = retrieval_get_display_title_overrides()
+    if not overrides:
+        return [dict(item) for item in items]
+    return [_apply_display_title_override(item, overrides) for item in items]
+
+
 def scan_html_papers() -> List[Dict]:
     """Scan HTML papers from STORYTELLERS_DIR and parse basic metadata."""
     papers: List[Dict] = []
@@ -425,7 +444,8 @@ def build_paper_manifest() -> List[Dict]:
     """Build combined paper manifest from HTML files and indexed LanceDB rows."""
     html_papers = scan_html_papers()
     indexed_papers = get_indexed_papers()
-    return merge_paper_sources(html_papers=html_papers, indexed_papers=indexed_papers)
+    merged = merge_paper_sources(html_papers=html_papers, indexed_papers=indexed_papers)
+    return apply_display_title_overrides(merged)
 
 
 def get_all_papers() -> List[Dict]:
@@ -483,6 +503,36 @@ def rename_paper(paper_id: Any, new_name: str) -> Dict[str, Any]:
             "paper_id": normalized_paper_id,
             "new_name": new_name,
             "message": "rename_paper 回傳格式錯誤",
+            "repository_cache_cleared": True,
+        }
+
+    output = dict(result)
+    output["repository_cache_cleared"] = True
+    return output
+
+
+def update_paper_display_title(paper_id: Any, display_title: str) -> Dict[str, Any]:
+    """Update only paper display title (title field) without changing filename/paper_id."""
+    normalized_paper_id = _normalize_paper_id(paper_id)
+    if not normalized_paper_id:
+        clear_lance_db_cache()
+        return {
+            "ok": False,
+            "paper_id": "",
+            "display_title": str(display_title or "").strip(),
+            "message": "paper_id 不可為空",
+            "repository_cache_cleared": True,
+        }
+
+    result = retrieval_update_paper_display_title(normalized_paper_id, display_title)
+    clear_lance_db_cache()
+
+    if not isinstance(result, dict):
+        return {
+            "ok": False,
+            "paper_id": normalized_paper_id,
+            "display_title": str(display_title or "").strip(),
+            "message": "update_paper_display_title 回傳格式錯誤",
             "repository_cache_cleared": True,
         }
 

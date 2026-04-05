@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Shared retrieval/indexing services for Paper Storyteller Center."""
 
+import html
 import json
 import re
 import tempfile
@@ -72,11 +73,11 @@ def _paper_signature(html_path: Path) -> str:
 
 def _load_index_metadata() -> Dict[str, Any]:
     if not INDEX_METADATA_FILE.exists():
-        return {"index_config": _index_config(), "papers": {}}
+        return {"index_config": _index_config(), "papers": {}, "display_titles": {}}
     try:
         payload = json.loads(INDEX_METADATA_FILE.read_text(encoding="utf-8"))
     except Exception:
-        return {"index_config": _index_config(), "papers": {}}
+        return {"index_config": _index_config(), "papers": {}, "display_titles": {}}
 
     papers = payload.get("papers")
     if not isinstance(papers, dict):
@@ -86,7 +87,16 @@ def _load_index_metadata() -> Dict[str, Any]:
     if not isinstance(config, dict):
         config = _index_config()
 
-    return {"index_config": config, "papers": papers}
+    raw_display_titles = payload.get("display_titles")
+    display_titles: Dict[str, str] = {}
+    if isinstance(raw_display_titles, dict):
+        for raw_pid, raw_title in raw_display_titles.items():
+            pid = _normalize_paper_id(raw_pid)
+            title = str(raw_title or "").strip()
+            if pid and title:
+                display_titles[pid] = title
+
+    return {"index_config": config, "papers": papers, "display_titles": display_titles}
 
 
 def _save_index_metadata(metadata: Dict[str, Any]) -> None:
@@ -302,9 +312,16 @@ def rename_paper(paper_id: str, new_name: str) -> Dict[str, Any]:
     # Remove from index metadata
     metadata = _load_index_metadata()
     metadata_papers = metadata.get("papers") if isinstance(metadata.get("papers"), dict) else {}
+    display_titles = metadata.get("display_titles") if isinstance(metadata.get("display_titles"), dict) else {}
     metadata_papers.pop(normalized_old, None)
     metadata_papers.pop(old_path.stem, None)
+    # Keep custom display title override with the new paper_id.
+    if normalized_old in display_titles:
+        display_titles[normalized_new] = str(display_titles.pop(normalized_old))
+    if old_path.stem in display_titles:
+        display_titles[normalized_new] = str(display_titles.pop(old_path.stem))
     metadata["papers"] = metadata_papers
+    metadata["display_titles"] = display_titles
     try:
         INDEX_METADATA_FILE.parent.mkdir(parents=True, exist_ok=True)
         INDEX_METADATA_FILE.write_text(
@@ -498,6 +515,141 @@ def _build_rows_for_html_file(html_file: Path) -> Tuple[List[Dict[str, Any]], Di
     return rows, summary
 
 
+def get_display_title_overrides() -> Dict[str, str]:
+    """Return user-defined display title overrides keyed by paper_id."""
+    metadata = _load_index_metadata()
+    raw = metadata.get("display_titles")
+    if not isinstance(raw, dict):
+        return {}
+    out: Dict[str, str] = {}
+    for raw_pid, raw_title in raw.items():
+        pid = _normalize_paper_id(raw_pid)
+        title = str(raw_title or "").strip()
+        if pid and title:
+            out[pid] = title
+    return out
+
+
+def _sync_html_display_title(paper_id: str, display_title: str) -> Dict[str, Any]:
+    """Sync display title to HTML <title> and first <h1> for the paper."""
+    try:
+        html_path = _resolve_storytellers_html_path(paper_id)
+    except Exception as e:
+        return {
+            "ok": False,
+            "html_synced": False,
+            "html_path": "",
+            "html_error": str(e),
+            "title_updated": False,
+            "h1_updated": False,
+        }
+
+    try:
+        html_content = html_path.read_text(encoding="utf-8")
+    except Exception as e:
+        return {
+            "ok": False,
+            "html_synced": False,
+            "html_path": str(html_path),
+            "html_error": f"讀取 HTML 失敗: {e}",
+            "title_updated": False,
+            "h1_updated": False,
+        }
+
+    safe_title = html.escape(display_title)
+    updated = html_content
+
+    # Keep browser tab title aligned with display name.
+    new_title_tag = f"<title>{safe_title} - 說書人版</title>"
+    updated, title_count = re.subn(
+        r"<title>.*?</title>",
+        new_title_tag,
+        updated,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    # Keep visible page main heading aligned with display name.
+    updated, h1_count = re.subn(
+        r"(<h1\b[^>]*>)(.*?)(</h1>)",
+        rf"\1📚 {safe_title}\3",
+        updated,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    if updated != html_content:
+        try:
+            html_path.write_text(updated, encoding="utf-8")
+        except Exception as e:
+            return {
+                "ok": False,
+                "html_synced": False,
+                "html_path": str(html_path),
+                "html_error": f"寫入 HTML 失敗: {e}",
+                "title_updated": bool(title_count),
+                "h1_updated": bool(h1_count),
+            }
+
+    return {
+        "ok": True,
+        "html_synced": updated != html_content,
+        "html_path": str(html_path),
+        "html_error": "",
+        "title_updated": bool(title_count),
+        "h1_updated": bool(h1_count),
+    }
+
+
+def update_paper_display_title(paper_id: str, display_title: str) -> Dict[str, Any]:
+    """Update only display title metadata, without renaming filename or paper_id."""
+    normalized_paper_id = _normalize_paper_id(paper_id)
+    normalized_title = str(display_title or "").strip()
+    if not normalized_paper_id:
+        return {
+            "ok": False,
+            "paper_id": "",
+            "display_title": normalized_title,
+            "message": "paper_id 不可為空",
+        }
+    if not normalized_title:
+        return {
+            "ok": False,
+            "paper_id": normalized_paper_id,
+            "display_title": normalized_title,
+            "message": "display_title 不可為空",
+        }
+
+    metadata = _load_index_metadata()
+    display_titles = metadata.get("display_titles") if isinstance(metadata.get("display_titles"), dict) else {}
+    display_titles[normalized_paper_id] = normalized_title
+    metadata["display_titles"] = display_titles
+    _save_index_metadata(metadata)
+
+    html_sync = _sync_html_display_title(normalized_paper_id, normalized_title)
+    html_sync_ok = bool(html_sync.get("ok"))
+    html_sync_message = "已同步更新 HTML 標題"
+    if not html_sync_ok:
+        html_sync_message = str(html_sync.get("html_error", "HTML 標題同步失敗"))
+
+    return {
+        "ok": True,
+        "paper_id": normalized_paper_id,
+        "display_title": normalized_title,
+        "html_sync_ok": html_sync_ok,
+        "html_synced": bool(html_sync.get("html_synced")),
+        "html_path": str(html_sync.get("html_path", "")),
+        "title_updated": bool(html_sync.get("title_updated")),
+        "h1_updated": bool(html_sync.get("h1_updated")),
+        "html_sync_message": html_sync_message,
+        "message": (
+            "已更新顯示名稱並同步 HTML 大標題（不變更檔名與 paper_id）"
+            if html_sync_ok
+            else "已更新顯示名稱，但同步 HTML 大標題失敗"
+        ),
+    }
+
+
 def incremental_index() -> Dict[str, Any]:
     """Incrementally sync HTML papers to LanceDB index with resumable progress."""
     db = get_lance_db()
@@ -523,7 +675,11 @@ def incremental_index() -> Dict[str, Any]:
                 "message": f"index config changed but failed to reset table: {e}",
                 "mode": "incremental",
             }
-        metadata = {"index_config": current_config, "papers": {}}
+        metadata = {
+            "index_config": current_config,
+            "papers": {},
+            "display_titles": metadata.get("display_titles", {}),
+        }
         metadata_papers = {}
 
     tbl = _open_or_create_papers_table(db)
@@ -669,6 +825,7 @@ def rebuild_index() -> bool:
         tbl.add(all_rows)
         papers_count = len(set(r["paper_id"] for r in all_rows))
         print(f"✅ 已建立索引: {papers_count} 篇論文，共 {len(all_rows)} 個 chunks")
+        existing = _load_index_metadata()
         metadata = {
             "index_config": _index_config(),
             "papers": {
@@ -678,6 +835,7 @@ def rebuild_index() -> bool:
                 }
                 for html_file in html_files
             },
+            "display_titles": existing.get("display_titles", {}),
         }
         _save_index_metadata(metadata)
         return True

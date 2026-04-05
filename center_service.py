@@ -12,11 +12,13 @@ from generation_service import run_job as generation_run_job
 from generation_service import submit_job as generation_submit_job
 from html_loader import load_paper_html as service_load_paper_html
 from paper_repository import PAPER_STATUS_READY
+from paper_repository import apply_display_title_overrides as repository_apply_display_title_overrides
 from paper_repository import delete_paper as repository_delete_paper
 from paper_repository import get_all_papers as repository_get_all_papers
 from paper_repository import normalize_manifest_paper
 from paper_repository import rename_paper as repository_rename_paper
 from paper_repository import resolve_manifest_paper_from_generation_output
+from paper_repository import update_paper_display_title as repository_update_paper_display_title
 from qa_service import answer_with_search as service_answer_with_search
 from qa_service import answer_with_search_detailed as service_answer_with_search_detailed
 from qa_service import build_gui_prompt
@@ -85,7 +87,8 @@ def get_all_papers() -> List[Dict]:
 
 def search(query: str, top_k: int = 10, similarity_threshold: float = 0.0) -> List[Dict]:
     """Search relevant papers by semantic similarity."""
-    return service_search_papers(query, top_k=top_k, similarity_threshold=similarity_threshold)
+    results = service_search_papers(query, top_k=top_k, similarity_threshold=similarity_threshold)
+    return repository_apply_display_title_overrides(results)
 
 
 def _normalize_provider(spec: Dict[str, Any]) -> str:
@@ -271,6 +274,20 @@ def rename_paper(paper_id: str, new_name: str) -> Dict[str, Any]:
         "paper_id": str(paper_id or "").strip(),
         "new_name": str(new_name or "").strip(),
         "message": "rename_paper 回傳格式錯誤",
+    }
+
+
+def update_paper_display_name(paper_id: str, display_name: str) -> Dict[str, Any]:
+    """Update paper display title only, without changing file name or paper_id."""
+    result = repository_update_paper_display_title(paper_id, display_name)
+    clear_lance_db_cache()
+    if isinstance(result, dict):
+        return result
+    return {
+        "ok": False,
+        "paper_id": str(paper_id or "").strip(),
+        "display_title": str(display_name or "").strip(),
+        "message": "update_paper_display_name 回傳格式錯誤",
     }
 
 

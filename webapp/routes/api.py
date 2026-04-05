@@ -412,6 +412,21 @@ def rename_paper(paper_id: str):
         return _err(str(e), 500)
 
 
+@bp.route("/papers/<paper_id>/display-name", methods=["PATCH"])
+def update_paper_display_name(paper_id: str):
+    data = request.get_json(force=True) or {}
+    display_name = str(data.get("display_name", "")).strip()
+    if not display_name:
+        return _err("display_name is required")
+    try:
+        result = center_service.update_paper_display_name(paper_id, display_name)
+        if not result.get("ok"):
+            return _err(result.get("message", "更新顯示名稱失敗"), 400)
+        return _ok(result)
+    except Exception as e:
+        return _err(str(e), 500)
+
+
 # ───────────────────── Search ─────────────────────
 
 @bp.route("/search", methods=["POST"])
