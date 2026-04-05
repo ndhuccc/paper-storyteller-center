@@ -5,40 +5,44 @@
 
 ## 使用手冊
 
-- 詳細中文操作手冊請見：`使用手冊.md`
+- 詳細中文操作手冊請見：[使用手冊.md](使用手冊.md)
 
 ## 目前狀態
 
-目前系統已完成 v1.0 核心功能：
+目前系統以 Flask Web 介面為主，核心流程已完整可用：
 
 1. **PDF → 說書人 HTML**（非同步背景執行，支援 7 種風格）
-2. **HTML → 向量索引**（auto-index 支援 runtime fallback）
-3. **搜尋 / Q&A / 閱覽**
+2. **HTML → 向量索引**（auto-index 走 incremental sync，支援 runtime fallback）
+3. **語意搜尋 / Q&A / HTML 閱覽**
 4. **Paper manifest**（merged HTML + index，具備 canonical status）
 5. **Generation job 管理**（submit / run / status / retry / cancel / handoff）
-6. **Paper 刪除與歷史管理**（刪除時同步移除索引與 HTML）
-7. **GUI 使用說明**（側欄內建 Help / User Manual）
+6. **Paper 管理**（刪除、重新命名、編輯顯示名稱）
+7. **側欄內建使用說明**（Help / User Manual）
 
 ---
 
 ## 功能
 
-- 📚 **生成說書人 HTML**
+- 📚 **說書改寫（PDF 或手動單元）**
   - 從單篇 PDF 產生 storyteller 風格 HTML
+  - 支援手動輸入改寫單元（不經 PDF）
   - 非同步背景執行，不阻塞 GUI
-  - 可選 auto-index（生成後自動重建索引）
+  - 可選 auto-index（改寫後自動做 incremental index sync）
 - 🧰 **Generation job 管理**
   - 任務列表、狀態追蹤、失敗重試（retry）、進行中取消（cancel）
-  - 成功後可直接 handoff 到閱覽 / 搜尋 / Q&A
-- 🗂️ **論文管理（刪除）**
-  - 側欄管理區可刪除指定論文
-  - 會同步清除 LanceDB 索引與本地 HTML（不可復原）
+  - 成功後可直接 handoff 到開啟 / 搜尋 / 詢問
+  - 前端會每 8 秒輪詢任務狀態
+- 🗂️ **論文管理**
+  - 刪除論文（同步清除 LanceDB 索引與本地 HTML，不可復原）
+  - 重新命名檔名
+  - 編輯顯示名稱（不動檔名與 paper_id）
 - 🔍 **語意搜尋**
   - 以 chunk 為檢索單位，依 `paper_id` 去重成論文結果
 - 💬 **Q&A 對話**
-  - 本地 LLM 回答，支援 forced paper selection
+  - 支援 forced paper selection（可先勾選論文再提問）
+  - 支援引擎優先順序調整與 fallback
 - 📖 **論文閱覽**
-  - Streamlit dialog 內嵌 HTML，優先補 KaTeX auto-render
+  - Web modal 內嵌 HTML，支援下載
 - 📐 **公式渲染**
   - Q&A 區：MathJax
   - 內嵌 HTML 閱覽區：KaTeX auto-render
@@ -59,7 +63,7 @@
 ### 生成規則
 - 預設順序式處理
 - 支援 storyteller / blog / professor / fairy / lazy / question / log 風格
-- 目前只正式支援 `storyteller` 風格
+- 各風格可在 Web UI 以 slider 調整參數
 
 ### Runtime 規則
 - 背景 job 與 auto-index 會自動偵測正確的 Python runtime
@@ -72,9 +76,11 @@
 
 | 元件 | 說明 |
 |------|------|
-| **Frontend** | Streamlit |
+| **Frontend** | Flask + Alpine.js 單頁介面 |
+| **Backend API** | Flask Blueprint（/api） |
 | **Embedding** | Ollama / `qwen3-embedding:8b`（本地） |
-| **Q&A LLM** | Ollama / `deepseek-r1:8b`（本地） |
+| **Q&A LLM** | Gemini（主）+ Ollama/MiniMax（fallback） |
+| **Rewrite LLM** | Gemini（主）+ Ollama/MiniMax（fallback） |
 | **Vector DB** | LanceDB（本地） |
 | **PDF 抽字** | `PyMuPDF` (fitz) |
 | **HTML 公式** | 全面統一使用 KaTeX auto-render |
@@ -84,24 +90,22 @@
 ## 模組分層
 
 ```text
-Storytellers/
-├── paper_center.py           # CLI 入口（較薄）
-├── paper_center_gui.py       # Streamlit GUI
-├── center_service.py         # GUI-facing 協調層
-├── paper_repository.py       # HTML / metadata / manifest / paper status
-├── retrieval_service.py      # embedding / LanceDB / search / rebuild
-├── qa_service.py             # Q&A context / prompt / answer
-├── qa_render.py              # Q&A 回答渲染（LaTeX 保護 + MathJax HTML）
-├── html_loader.py            # HTML 載入 / KaTeX 補注入 / anchor fix
-├── generation_service.py     # generation job orchestration + auto-index
-├── job_store.py              # JSON job storage
-├── storyteller_pipeline.py   # PDF → storyteller HTML pipeline
+project-root/
+├── server.py                 # Flask 入口
+├── start.sh                  # 一鍵啟動腳本
+├── webapp/                   # 前端模板、靜態資源、路由
+│   ├── routes/api.py         # REST API
+│   ├── templates/index.html  # 主頁
+│   └── static/js/app.js      # 前端互動與任務輪詢
+├── center_service.py         # Web-facing 協調層
+├── generation_service.py     # generation jobs + auto-index
+├── storyteller_pipeline.py   # PDF / manual sections → HTML
+├── retrieval_service.py      # embedding / LanceDB / search / index sync
+├── paper_repository.py       # manifest / paper status / metadata
+├── qa_service.py             # Q&A pipeline
+├── job_store.py              # job JSON storage
 ├── runtime_support.py        # Python runtime selection / fallback
-├── papers.lance/             # LanceDB 向量資料庫
-├── .jobs/                    # generation jobs（執行時產生）
-├── *.html                    # 說書人版 HTML
-├── test_mathjax_render.py    # Q&A 公式渲染 smoke test
-└── README.md
+└── paper_center.py           # CLI 入口（輕量）
 ```
 
 ---
@@ -116,34 +120,42 @@ Storytellers/
 
 ```bash
 ollama pull qwen3-embedding:8b
+ollama pull gemma4:e2b
 ollama pull deepseek-r1:8b
 ```
 
 ### 3. Python 套件
 
 ```bash
-/home/linuxbrew/.linuxbrew/bin/pip3 install lancedb streamlit markdown pymupdf
+python3 -m pip install flask flask-cors markdown lancedb pymupdf python-dotenv google-generativeai
 ```
 
-### 4. 啟動 GUI
+### 4. 啟動 Web 服務
 
 ```bash
-cd ~/Documents/Storytellers
-/home/linuxbrew/.linuxbrew/bin/python3 -m streamlit run paper_center_gui.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
+cd /path/to/paper-storyteller-center
+./start.sh
+```
+
+或
+
+```bash
+cd /path/to/paper-storyteller-center
+python3 server.py
 ```
 
 ---
 
 ## 使用方式
 
-### A. 從 GUI 生成
-1. 在 `🛠️ 生成說書` 面板輸入 PDF 路徑
-2. 選風格（目前 `storyteller`）
+### A. 從 Web UI 生成
+1. 在 `🛠️ 說書改寫` 面板上傳 PDF（或改用手動輸入單元）
+2. 選風格（storyteller / blog / professor / fairy / lazy / question / log）
 3. 選是否 `auto_index`
 4. 提交 → 背景執行
-5. 在 recent jobs 追蹤狀態
+5. 在 recent jobs 追蹤狀態（前端會定期刷新）
 6. 成功後可直接：
-   - `📖 開啟生成結果`
+  - `📖 開啟改寫結果`
    - `🔍 搜尋這篇`
    - `💬 詢問這篇`
 
@@ -156,7 +168,7 @@ cd ~/Documents/Storytellers
 ## CLI 使用
 
 ```bash
-cd ~/Documents/Storytellers
+cd /path/to/paper-storyteller-center
 python3 paper_center.py init      # 建立索引
 python3 paper_center.py rebuild   # 重建索引
 python3 paper_center.py search "knowledge distillation"
@@ -170,7 +182,7 @@ python3 paper_center.py ask "這篇論文的核心方法是什麼？"
 ### 1. Python 編譯檢查
 
 ```bash
-cd ~/Documents/Storytellers
+cd /path/to/paper-storyteller-center
 python3 -m py_compile paper_center.py paper_center_gui.py html_loader.py paper_repository.py retrieval_service.py qa_service.py center_service.py generation_service.py job_store.py storyteller_pipeline.py qa_render.py runtime_support.py
 ```
 
@@ -212,8 +224,8 @@ print(select_preferred_python(required_modules=('lancedb',)))
 ## 已知限制
 
 - generation 支援 7 種風格（storyteller / blog / professor / fairy / lazy / question / log）
-- GUI generation 採非同步 job，但無即時輪詢刷新
-- `auto_index` 目前仍是 full rebuild
+- generation 為非同步背景 job，前端採固定週期輪詢（非事件推送）
+- `auto_index` 目前為 incremental sync；全量重建仍可手動觸發
 - section parsing 採保守 heuristic
 - `paper_id` 主要由 output filename stem 推算
 
