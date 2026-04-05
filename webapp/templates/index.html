@@ -114,6 +114,35 @@
         </details>
       </div>
 
+      <!-- manage / rename -->
+      <div class="sidebar-section">
+        <details class="sidebar-details">
+          <summary>✏️ 管理（重新命名）</summary>
+          <div class="manage-panel" x-show="allPapers.length > 0">
+            <select class="form-select" x-model="renamePaperId">
+              <option value="">請選擇...</option>
+              <template x-for="p in allPapers" :key="p.paper_id||p.id">
+                <option :value="p.paper_id||p.id"
+                  x-text="`${statusBadge(p)} ${(p.title||'?').slice(0,32)} (${(p.paper_id||p.id||'').slice(0,8)})`">
+                </option>
+              </template>
+            </select>
+            <input class="form-input rename-input"
+                   type="text"
+                   placeholder="新檔名（不需要 .html）"
+                   x-model="renameNewName"
+                   @keydown.enter="renamePaper()">
+            <button class="btn btn-primary btn-full"
+                    :disabled="!renamePaperId || !renameNewName.trim() || renaming"
+                    @click="renamePaper()">
+              <span x-show="!renaming">✏️ 重新命名</span>
+              <span x-show="renaming">命名中...</span>
+            </button>
+          </div>
+          <div x-show="allPapers.length === 0" class="muted">目前沒有可管理的論文</div>
+        </details>
+      </div>
+
       <!-- user manual -->
       <div class="sidebar-section">
         <details class="sidebar-details">

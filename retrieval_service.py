@@ -226,6 +226,121 @@ def delete_paper(paper_id: str) -> Dict[str, Any]:
     }
 
 
+def rename_paper(paper_id: str, new_name: str) -> Dict[str, Any]:
+    """Rename an HTML paper file and remove stale LanceDB index rows.
+
+    The caller should rebuild the index afterwards so the renamed paper
+    becomes searchable again.
+    """
+    normalized_old = _normalize_paper_id(paper_id)
+    if not normalized_old:
+        return {
+            "ok": False,
+            "paper_id": "",
+            "new_name": new_name,
+            "message": "paper_id 不可為空",
+        }
+
+    # Sanitize new_name: allow word chars, hyphens, dots; strip .html suffix
+    raw_new = str(new_name or "").strip()
+    if raw_new.lower().endswith(".html"):
+        raw_new = raw_new[:-5].strip()
+    normalized_new = re.sub(r"[^\w\-.]", "_", raw_new).strip("_.")
+    if not normalized_new:
+        return {
+            "ok": False,
+            "paper_id": normalized_old,
+            "new_name": new_name,
+            "message": "新名稱不合法（僅允許字母、數字、連字號、底線、點）",
+        }
+    if normalized_new == normalized_old:
+        return {
+            "ok": False,
+            "paper_id": normalized_old,
+            "new_name": new_name,
+            "message": "新名稱與舊名稱相同",
+        }
+
+    # Locate source HTML file
+    storytellers_root = STORYTELLERS_DIR.expanduser().resolve(strict=False)
+    old_path: Optional[Path] = None
+    for html_file in storytellers_root.glob("*.html"):
+        if html_file.stem.lower() == normalized_old.lower():
+            old_path = html_file
+            break
+    if old_path is None:
+        return {
+            "ok": False,
+            "paper_id": normalized_old,
+            "new_name": new_name,
+            "message": f"找不到 HTML 檔案：{normalized_old}.html",
+        }
+
+    new_path = storytellers_root / f"{normalized_new}.html"
+    if new_path.exists():
+        return {
+            "ok": False,
+            "paper_id": normalized_old,
+            "new_name": normalized_new,
+            "message": f"目標檔名已存在：{normalized_new}.html",
+        }
+
+    # Remove stale LanceDB records for old paper_id
+    index_deleted = False
+    index_error = ""
+    db = get_lance_db()
+    if db is not None:
+        try:
+            tables = set(db.list_tables().tables)
+            if "papers" in tables:
+                table = db.open_table("papers")
+                table.delete(f"paper_id = {_lancedb_string_literal(normalized_old)}")
+                index_deleted = True
+        except Exception as e:
+            index_error = str(e)
+
+    # Remove from index metadata
+    metadata = _load_index_metadata()
+    metadata_papers = metadata.get("papers") if isinstance(metadata.get("papers"), dict) else {}
+    metadata_papers.pop(normalized_old, None)
+    metadata_papers.pop(old_path.stem, None)
+    metadata["papers"] = metadata_papers
+    try:
+        INDEX_METADATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        INDEX_METADATA_FILE.write_text(
+            __import__("json").dumps(metadata, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass
+
+    # Rename the file
+    try:
+        old_path.rename(new_path)
+    except Exception as e:
+        return {
+            "ok": False,
+            "paper_id": normalized_old,
+            "new_name": normalized_new,
+            "message": f"重新命名失敗：{e}",
+        }
+
+    clear_lance_db_cache()
+
+    return {
+        "ok": True,
+        "paper_id": normalized_old,
+        "new_paper_id": normalized_new,
+        "new_name": normalized_new,
+        "old_filename": old_path.name,
+        "new_filename": new_path.name,
+        "index_deleted": index_deleted,
+        "index_error": index_error,
+        "cache_cleared": True,
+        "message": f"已重新命名為 {normalized_new}.html（如有索引已移除，請重建索引）",
+    }
+
+
 def create_table(db, overwrite: bool = True):
     """Create papers chunk table schema."""
     import pyarrow as pa

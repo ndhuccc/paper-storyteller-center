@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from retrieval_service import delete_paper as retrieval_delete_paper
+from retrieval_service import rename_paper as retrieval_rename_paper
 
 
 STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
@@ -452,6 +453,36 @@ def delete_paper(paper_id: Any) -> Dict[str, Any]:
             "ok": False,
             "paper_id": normalized_paper_id,
             "message": "delete_paper 回傳格式錯誤",
+            "repository_cache_cleared": True,
+        }
+
+    output = dict(result)
+    output["repository_cache_cleared"] = True
+    return output
+
+
+def rename_paper(paper_id: Any, new_name: str) -> Dict[str, Any]:
+    """Rename paper HTML file and remove stale index rows; clear repo cache."""
+    normalized_paper_id = _normalize_paper_id(paper_id)
+    if not normalized_paper_id:
+        clear_lance_db_cache()
+        return {
+            "ok": False,
+            "paper_id": "",
+            "new_name": new_name,
+            "message": "paper_id 不可為空",
+            "repository_cache_cleared": True,
+        }
+
+    result = retrieval_rename_paper(normalized_paper_id, new_name)
+    clear_lance_db_cache()
+
+    if not isinstance(result, dict):
+        return {
+            "ok": False,
+            "paper_id": normalized_paper_id,
+            "new_name": new_name,
+            "message": "rename_paper 回傳格式錯誤",
             "repository_cache_cleared": True,
         }
 

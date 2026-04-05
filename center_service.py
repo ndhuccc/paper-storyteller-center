@@ -15,6 +15,7 @@ from paper_repository import PAPER_STATUS_READY
 from paper_repository import delete_paper as repository_delete_paper
 from paper_repository import get_all_papers as repository_get_all_papers
 from paper_repository import normalize_manifest_paper
+from paper_repository import rename_paper as repository_rename_paper
 from paper_repository import resolve_manifest_paper_from_generation_output
 from qa_service import answer_with_search as service_answer_with_search
 from qa_service import build_gui_prompt
@@ -116,6 +117,20 @@ def delete_paper(paper_id: str) -> Dict[str, Any]:
         "ok": False,
         "paper_id": str(paper_id or "").strip(),
         "message": "delete_paper 回傳格式錯誤",
+    }
+
+
+def rename_paper(paper_id: str, new_name: str) -> Dict[str, Any]:
+    """Rename one paper HTML file and remove stale index rows."""
+    result = repository_rename_paper(paper_id, new_name)
+    clear_lance_db_cache()
+    if isinstance(result, dict):
+        return result
+    return {
+        "ok": False,
+        "paper_id": str(paper_id or "").strip(),
+        "new_name": str(new_name or "").strip(),
+        "message": "rename_paper 回傳格式錯誤",
     }
 
 

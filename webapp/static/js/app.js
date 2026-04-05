@@ -19,6 +19,9 @@ function App() {
     deletePaperId: '',
     deleteConfirmed: false,
     deleting: false,
+    renamePaperId: '',
+    renameNewName: '',
+    renaming: false,
 
     /* ── modal ── */
     modalOpen: false,
@@ -104,6 +107,31 @@ function App() {
         this.toast('error', '刪除失敗: ' + e.message);
       } finally {
         this.deleting = false;
+      }
+    },
+
+    /* ════════ RENAME ════════ */
+    async renamePaper() {
+      if (!this.renamePaperId || !this.renameNewName.trim()) return;
+      this.renaming = true;
+      try {
+        const data = await api.patch(
+          '/api/papers/' + encodeURIComponent(this.renamePaperId) + '/rename',
+          { new_name: this.renameNewName.trim() }
+        );
+        this.toast('success', data.data?.message || '重新命名完成，正在重建索引…');
+        // update selectedPapers if this paper was selected
+        if (this.renamePaperId in this.selectedPapers) {
+          delete this.selectedPapers[this.renamePaperId];
+        }
+        this.renamePaperId = '';
+        this.renameNewName = '';
+        await this.loadPapers();
+        await this.rebuildIndex();
+      } catch (e) {
+        this.toast('error', '重新命名失敗: ' + e.message);
+      } finally {
+        this.renaming = false;
       }
     },
 
@@ -477,5 +505,6 @@ const api = {
   get(url) { return this._request('GET', url); },
   post(url, body) { return this._request('POST', url, body); },
   postForm(url, form) { return this._request('POST', url, form, true); },
+  patch(url, body) { return this._request('PATCH', url, body); },
   del(url) { return this._request('DELETE', url); },
 };

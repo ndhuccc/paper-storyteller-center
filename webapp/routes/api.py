@@ -356,6 +356,21 @@ def delete_paper(paper_id: str):
         return _err(str(e), 500)
 
 
+@bp.route("/papers/<paper_id>/rename", methods=["PATCH"])
+def rename_paper(paper_id: str):
+    data = request.get_json(force=True) or {}
+    new_name = str(data.get("new_name", "")).strip()
+    if not new_name:
+        return _err("new_name is required")
+    try:
+        result = center_service.rename_paper(paper_id, new_name)
+        if not result.get("ok"):
+            return _err(result.get("message", "重新命名失敗"), 400)
+        return _ok(result)
+    except Exception as e:
+        return _err(str(e), 500)
+
+
 # ───────────────────── Search ─────────────────────
 
 @bp.route("/search", methods=["POST"])
