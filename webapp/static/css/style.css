@@ -800,6 +800,47 @@ a { color: var(--primary); text-decoration: none; }
   margin-top: 3px;
 }
 
+/* Drag and drop styles */
+.manual-unit-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.manual-unit-card {
+  transition: all 0.2s ease;
+}
+
+.manual-unit-card.dragging {
+  opacity: 0.5;
+  background: var(--surface);
+}
+
+.manual-unit-card.dragover {
+  border: 2px solid var(--primary);
+  background: var(--bg3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.drag-handle {
+  cursor: grab;
+  font-size: 11px;
+  color: var(--text-dim);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.manual-unit-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 2px;
+}
+
 @media (max-width: 980px) {
   .engine-order-head {
     flex-direction: column;

@@ -377,6 +377,17 @@
                 <button class="btn-icon" @click.stop="clearFile()">✕</button>
               </div>
             </div>
+            <!-- Scan-preview button: let user review extracted units before rewriting -->
+            <div style="margin-top:10px;display:flex;align-items:center;gap:10px" x-show="selectedFile">
+              <button class="btn btn-secondary btn-sm" type="button"
+                      :disabled="scanning || submitting"
+                      @click="scanPdfSections()">
+                <span x-show="!scanning">🔍 AI 掃描並預覽改寫單元</span>
+                <span x-show="scanning" x-cloak>⏳ 掃描中，請稍候…</span>
+              </button>
+              <span x-show="scanning" x-cloak
+                    style="font-size:12px;color:#64748b">AI 正在解析 PDF 結構…</span>
+            </div>
           </div>
 
           <!-- Manual units input -->
@@ -431,29 +442,44 @@
               </div>
             </div>
 
-            <!-- Individual units -->
+            <!-- Individual units (draggable) -->
             <div class="manual-units-list">
               <template x-for="(unit, index) in manualUnits" :key="unit.id">
-                <div class="manual-unit-card">
-                  <div class="manual-unit-header">
-                    <span class="manual-unit-index" x-text="`#${index + 1}`"></span>
-                    <input class="manual-unit-title-input"
-                           type="text"
-                           placeholder="單元標題（選填）"
-                           x-model="unit.title">
-                    <div class="manual-unit-actions">
-                      <button class="btn-icon" title="上移" @click="moveUnitUp(unit.id)"
-                              :disabled="index === 0">▲</button>
-                      <button class="btn-icon" title="下移" @click="moveUnitDown(unit.id)"
-                              :disabled="index === manualUnits.length - 1">▼</button>
-                      <button class="btn-icon" title="刪除" @click="removeManualUnit(unit.id)">✕</button>
+                <div class="manual-unit-wrapper">
+                  <div class="manual-unit-card"
+                       draggable="true"
+                       @dragstart="onUnitDragStart($event, unit.id)"
+                       @dragover.prevent="onUnitDragOver($event, unit.id)"
+                       @drop.prevent="onUnitDrop($event, unit.id)"
+                       @dragend="onUnitDragEnd($event)"
+                       :class="{dragging: dragSource === unit.id, dragover: dragTarget === unit.id}">
+                    <div class="manual-unit-header">
+                      <span class="manual-unit-index" x-text="`#${index + 1}`"></span>
+                      <span class="drag-handle" title="拖拉排序">⋮⋮</span>
+                      <input class="manual-unit-title-input"
+                             type="text"
+                             placeholder="單元標題（選填）"
+                             x-model="unit.title">
+                      <div class="manual-unit-actions">
+                        <button class="btn-icon" type="button" title="上移" @click="moveUnitUp(unit.id)"
+                                :disabled="index === 0">▲</button>
+                        <button class="btn-icon" type="button" title="下移" @click="moveUnitDown(unit.id)"
+                                :disabled="index === manualUnits.length - 1">▼</button>
+                        <button class="btn-icon" type="button" title="刪除" @click="removeManualUnit(unit.id)">✕</button>
+                      </div>
                     </div>
+                    <textarea class="manual-unit-body"
+                              rows="5"
+                              placeholder="貼上此單元的原文內容…"
+                              x-model="unit.body"></textarea>
+                    <div class="manual-unit-chars" x-text="`${(unit.body||'').length} 字元`"></div>
                   </div>
-                  <textarea class="manual-unit-body"
-                            rows="5"
-                            placeholder="貼上此單元的原文內容…"
-                            x-model="unit.body"></textarea>
-                  <div class="manual-unit-chars" x-text="`${(unit.body||'').length} 字元`"></div>
+                  <div class="manual-unit-footer">
+                    <button class="btn btn-sm btn-outline" type="button"
+                            @click="addUnitAfter(unit.id)">
+                      ➕ 在此後新增
+                    </button>
+                  </div>
                 </div>
               </template>
 

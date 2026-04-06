@@ -636,6 +636,52 @@ def submit_job():
         return _err(str(e), 500)
 
 
+# ───────────────────── PDF Scan (preview sections before rewrite) ─────────────────────
+
+@bp.route("/pdf/scan", methods=["POST"])
+def pdf_scan():
+    """Extract and return sections from an uploaded PDF without starting a rewrite job.
+
+    The frontend uses this to let users review / edit the extracted rewrite units
+    before submitting a full generation job.
+    """
+    from storyteller_pipeline import _extract_pdf_text, _split_into_sections  # local import to avoid circular issues at module load
+
+    pdf_file = request.files.get("pdf")
+    if not pdf_file:
+        return _err("請提供 PDF 檔案")
+    filename = pdf_file.filename or "upload.pdf"
+    if not filename.lower().endswith(".pdf"):
+        return _err("僅支援 PDF 檔案")
+
+    safe_name = re.sub(r"[^\w.\-]", "_", filename)[:120]
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    target = UPLOADS_DIR / f"scan_{uuid4().hex[:12]}_{safe_name}"
+    pdf_file.save(str(target))
+
+    try:
+        extracted_text, warning, model_used = _extract_pdf_text(target)
+        sections = _split_into_sections(extracted_text)
+        # Derive a human-readable default paper title from the filename
+        paper_title = re.sub(r"[_\-]+", " ", safe_name.removesuffix(".pdf")).strip()
+        return _ok({
+            "paper_title": paper_title,
+            "sections": [
+                {"title": s["title"], "body": s["source_text"]}
+                for s in sections
+            ],
+            "extraction_model": model_used,
+            "warning": warning,
+        })
+    except Exception as e:
+        return _err(str(e), 500)
+    finally:
+        try:
+            target.unlink()
+        except Exception:
+            pass
+
+
 # ───────────────────── Meta ─────────────────────
 
 @bp.route("/styles", methods=["GET"])

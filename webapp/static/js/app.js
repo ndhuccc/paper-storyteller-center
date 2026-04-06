@@ -67,6 +67,7 @@ function App() {
     showBatchInput: false,
     batchInputText: '',
     _nextUnitId: 0,
+    scanning: false,         // PDF scan-preview in progress
 
     /* ════════ LIFECYCLE ════════ */
     async init() {
@@ -655,9 +656,55 @@ function App() {
       if (input) input.value = '';
     },
 
+    /* ════════ PDF SCAN PREVIEW ════════ */
+    async scanPdfSections() {
+      if (!this.selectedFile) {
+        this.toast('warning', '請先選擇 PDF 檔案');
+        return;
+      }
+      this.scanning = true;
+      try {
+        const form = new FormData();
+        form.append('pdf', this.selectedFile);
+        const data = await api.postForm('/api/pdf/scan', form);
+        const res = data.data || {};
+        const sections = res.sections || [];
+        if (sections.length === 0) {
+          this.toast('warning', 'PDF 掃描完成，但未偵測到任何改寫單元');
+          return;
+        }
+        // Populate manual units and switch to manual mode
+        this._nextUnitId = 0;
+        this.manualUnits = sections.map(s => ({
+          id: ++this._nextUnitId,
+          title: s.title || '',
+          body: s.body || '',
+        }));
+        this.manualPaperTitle = res.paper_title || this.selectedFile.name.replace(/\.pdf$/i, '');
+        this.inputMode = 'manual';
+        if (res.warning) this.toast('warning', `掃描提醒：${res.warning}`);
+        this.toast('success', `✅ 掃描完成，已載入 ${sections.length} 個改寫單元，請確認後提交`);
+      } catch (e) {
+        this.toast('error', 'PDF 掃描失敗: ' + e.message);
+      } finally {
+        this.scanning = false;
+      }
+    },
+
     /* ════════ MANUAL UNITS ════════ */
+    dragSource: null,
+    dragTarget: null,
+
     addManualUnit() {
       this.manualUnits.push({ id: ++this._nextUnitId, title: '', body: '' });
+    },
+
+    addUnitAfter(id) {
+      const i = this.manualUnits.findIndex(u => u.id === id);
+      if (i >= 0) {
+        this.manualUnits.splice(i + 1, 0, { id: ++this._nextUnitId, title: '', body: '' });
+        this.manualUnits = [...this.manualUnits];
+      }
     },
 
     removeManualUnit(id) {
@@ -682,6 +729,39 @@ function App() {
         this.manualUnits[i] = tmp;
         this.manualUnits = [...this.manualUnits];
       }
+    },
+
+    onUnitDragStart(event, id) {
+      this.dragSource = id;
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', String(id));
+    },
+
+    onUnitDragOver(event, id) {
+      if (this.dragSource !== id) {
+        this.dragTarget = id;
+        event.dataTransfer.dropEffect = 'move';
+      }
+    },
+
+    onUnitDrop(event, targetId) {
+      event.preventDefault();
+      if (this.dragSource === null || this.dragSource === targetId) return;
+      const sourceIdx = this.manualUnits.findIndex(u => u.id === this.dragSource);
+      const targetIdx = this.manualUnits.findIndex(u => u.id === targetId);
+      if (sourceIdx === -1 || targetIdx === -1) return;
+      // Swap elements
+      const tmp = this.manualUnits[sourceIdx];
+      this.manualUnits[sourceIdx] = this.manualUnits[targetIdx];
+      this.manualUnits[targetIdx] = tmp;
+      this.manualUnits = [...this.manualUnits];
+      this.dragSource = null;
+      this.dragTarget = null;
+    },
+
+    onUnitDragEnd(event) {
+      this.dragSource = null;
+      this.dragTarget = null;
     },
 
     applyBatchInput() {

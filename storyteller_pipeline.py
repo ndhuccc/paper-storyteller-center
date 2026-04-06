@@ -578,6 +578,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         pdf_path=pdf_path,
         rendered_sections=rendered_sections,
         model=rewrite_model,
+        style=style,
     )
 
     STORYTELLERS_DIR.mkdir(parents=True, exist_ok=True)
@@ -1838,12 +1839,24 @@ def _slugify(value: str) -> str:
     return slug or "story"
 
 
+STYLE_DISPLAY_NAMES: Dict[str, str] = {
+    "storyteller": "說書人版本",
+    "blog":        "科普部落格版本",
+    "professor":   "大教授版本（課堂講義）",
+    "fairy":       "童話故事版本",
+    "lazy":        "懶人包版本",
+    "question":    "問題驅動版本",
+    "log":         "實驗日誌版本",
+}
+
+
 def _build_story_html_document(
     *,
     title: str,
     pdf_path: Path,
     rendered_sections: List[Dict[str, Any]],
     model: str,
+    style: str = DEFAULT_STYLE,
 ) -> str:
     toc_items: List[str] = []
     section_items: List[str] = []
@@ -1912,6 +1925,7 @@ def _build_story_html_document(
     safe_title = html.escape(title)
     safe_pdf = html.escape(str(pdf_path))
     safe_model = html.escape(model)
+    style_label = html.escape(STYLE_DISPLAY_NAMES.get(style, style))
     toc_html = "\n".join(toc_items)
     sections_html = "\n".join(section_items)
 
@@ -2062,7 +2076,7 @@ def _build_story_html_document(
 <body>
     <h1>📚 {safe_title}</h1>
     <div class="meta">
-        <strong>說書人版本（v1.5 - 術語表 + 公式詳解）</strong><br>
+        <strong>{style_label}</strong><br>
         Source PDF: {safe_pdf}<br>
         Model: {safe_model}<br>
         Generated at (UTC): {html.escape(generated_at)}
