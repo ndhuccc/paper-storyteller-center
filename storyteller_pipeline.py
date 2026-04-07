@@ -35,6 +35,13 @@ DEFAULT_REWRITE_CHUNK_CHARS = 3000
 DEFAULT_REWRITE_MODE = "paragraph"
 DEFAULT_APPEND_MISSING_FORMULAS = False
 DEFAULT_REWRITE_RESPONSE_FORMAT = "markdown"
+DEFAULT_CONCISE_LEVEL = 6
+DEFAULT_ANTI_REPEAT_LEVEL = 6
+DEFAULT_GEMINI_PREFLIGHT_ENABLED = True
+DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS = 8
+DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS = 75
+DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS = 45
+GEMINI_PREFLIGHT_CACHE_TTL_SECONDS = 120
 DEFAULT_STYLE = "storyteller"
 LATEX_PLACEHOLDER = "LATEXPH"
 GEMINI_EXTRACTION_PROMPT = (
@@ -65,40 +72,76 @@ HEADING_HINTS = (
 load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
 load_dotenv(dotenv_path=Path.home() / ".env", override=False)
 
+_GEMINI_PREFLIGHT_CACHE: Dict[str, Tuple[float, bool, str]] = {}
+
+# ── 工作簿10對齊：共用機制 ─────────────────────────────────────────────────
+_STORYTELLER_COT = """在開始改寫之前，請先在內部思考以下三個問題（不需要輸出這部分）：
+① 本節最重要的一個洞察是什麼？（用一句話說）
+② 最貼切的生活類比或比喻是什麼？（想一個再動筆）
+③ 用哪一句話當開頭最能抓住讀者？
+
+思考完後，直接輸出改寫結果。
+"""
+
+_STORYTELLER_EXAMPLE = """
+【示範：好的說書人改寫長什麼樣】
+
+原文（假設）：
+"We propose a masked loss function that reweights the reconstruction error within the edited region,
+encouraging the model to focus on the target area while preserving background content."
+
+❌ 差的改寫（只描述「是什麼」，無類比，無「為什麼」）：
+「我們提出一個遮罩損失函數，對編輯區域的重建誤差進行重新加權，讓模型專注在目標區域。」
+
+✅ 好的改寫（有類比、有「為什麼」、有洞察）：
+「想像你在考試卷上畫重點：標記過的地方，你會反覆讀；沒標記的背景文字，你會快速帶過。
+VIVA 的遮罩損失函數做的正是這件事——它告訴模型「這個區域是重點，要認真學習；其他背景，你只需要不破壞它就好」。
+這個設計解決了一個微妙問題：如果讓模型平等對待所有像素，大片不需要變動的背景會「稀釋」掉應該學習編輯的訊號，導致訓練變慢、改的地方也不精準。
+有了遮罩加權，模型的注意力就能精準聚焦在「刀口上」。」
+
+【示範結束——請以上面的好範例為品質標準，改寫你被分配到的節。】
+"""
+
+_STORYTELLER_SELF_EVAL = """
+【改寫完成後，必須在輸出結尾加上一行自評標記，格式如下】
+<!-- EVAL: 類比[有/無] | 為什麼[有/無] | 虛構[有/無] | 術語解釋[有/無/不適用] -->
+
+規則：
+- 若「類比=無」或「為什麼=無」，必須重新修改後再輸出（不得直接輸出「無」）
+- 若「虛構=有」，立即刪除虛構內容後重新輸出
+- 輸出內容必須同時具備：① 至少一個生活類比 ② 明確說明「為什麼這樣設計」 ③ 一句核心洞察，三者缺一補一
+"""
+
+_COMMON_RULES = """
+【共通規則 — 不可省略】
+1. 若本節出現數學公式，以文字描述其「作用與直覺」即可，不要列出公式符號；具體數值計算由系統 Stage 6 統一處理。
+2. 改寫內容必須呼應論文原文的核心論點，不得偏離主旨。
+3. 嚴禁虛構任何數值、實驗結果或引用文獻；原文有的才能寫，原文沒有的寫「原文未提及」。
+4. 每個段落改寫後，長度應與原文資訊量相當——複雜節可以較長，簡短節不需強行拉長。
+"""
+
 STYLE_PROMPTS: Dict[str, str] = {
-    "storyteller": """說書人（故事化解說 + Why-first + 讀者視角 + 公式拆解）
+    "storyteller": _STORYTELLER_COT + """說書人（故事化解說 + Why-first + 讀者視角）
 
-【角色視角】
+【角色與口吻】
 - 你是擅長把技術內容講成故事的通俗作家，目標讀者是初學者。
-- 少用「本文討論」「該方法」等論文語氣。
-- 多用「我們一起看」「想像一下」「為什麼會這樣？」等引導讀者的口吻。
+- 少用「本文討論」「該方法」等論文語氣；多用「我們一起看」「想像一下」「為什麼會這樣？」等引導口吻。
 
-【結構方式（逐單元改寫）】
-- 先逐段消化內容，抓住段落重點，不可捨棄原文任一段落。
-- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
-- 每個改寫單元依序進行：
-  1. 開頭：用日常情境、問題或懸念引入，讓讀者先有感覺再看技術。
-  2. 中段：逐步揭示單元的核心重點，保持「先動機與直覺，再方法步驟」節奏。
-  3. 洞察：說明關鍵洞察與推論，解釋「為什麼這樣設計、為什麼這樣做會有效」。
-  4. 結尾：交代此單元重點的重要性與影響力，讓讀者知道「這段說了什麼、為何重要」。
-- 改寫後篇幅可隨單元重點數量彈性調整；每個改寫單元給予適當的 Markdown 標題。
-
-【表達規則】
-- 技術術語**第一次出現時**，立刻用白話解釋（括號或破折號皆可）。
-- 首次出現的重要概念請加 **粗體**。
-- 優先用生活化、結構相似的類比幫助理解（交通、廚房、工廠、排隊、導航、團隊協作等），類比必須貼合原意。
-- 適度擬人化、提問、製造節奏感，增加閱讀流暢度。
+【逐單元改寫結構】
+- 以 subsection 為改寫單元（若無則以 section 為單元），不可省略原文任一段落。
+- 每單元依序：① 日常情境或懸念引入 → ② 動機與直覺先行 → ③ 解釋「為什麼這樣設計、為何有效」 → ④ 說明此單元的重要性。
+- 類比是橋樑：用類比引入後立刻說清楚技術機制，同一類比全文只展開一次。
+- 遇到設計選擇時，主動說明「為何選這個而非替代方案、犧牲了什麼換來什麼」。
 
 【文字風格】
-- 長短句交替，像在說故事，不像在念教科書。
+- 長短句交替，每節至少 4 句、最多 12 句（依內容量決定）。
+- 首次出現的術語立刻白話解釋並加 **粗體**。
 - 溫暖度 {warmth}／10、視覺化程度 {visual}／10、數學密度 {math_density}／10、詼諧感 {humor}／1。
 
-【專業術語表（每個改寫單元必須附上）】
-- 每個改寫單元的正文之後，必須附上一張「📖 本節術語表」。
-- 列出該單元正文中出現的所有專業術語（包含縮寫、模型名稱、方法名稱）。
-- 格式為 Markdown 表格，欄位：術語 | 白話解釋；每列一個術語。
-- 解釋文字須讓完全沒有背景的初學者也能理解，避免再用另一個術語解釋術語。
-- 若同一術語在前面單元已列過，本單元仍需重複列出（方便讀者單獨閱讀本節）。""",
+【術語表：不在本節輸出，統一收集供全文末尾使用】
+- 正文中遇到新術語時直接白話解釋即可，不需在本節末附術語表。
+- 術語表由系統在全文生成完畢後統一彙整輸出，避免每節重複。
+""" + _STORYTELLER_EXAMPLE + _STORYTELLER_SELF_EVAL + _COMMON_RULES,
         "blog": """科普部落格（知識轉譯 + 讀者關聯 + 易讀不失真）
 
 【角色視角】
@@ -444,6 +487,40 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     rewrite_response_format = _normalize_rewrite_response_format(
         payload.get("rewrite_response_format")
     )
+    concise_level = _safe_range_int(
+        payload.get("concise_level"),
+        default=DEFAULT_CONCISE_LEVEL,
+        min_value=0,
+        max_value=10,
+    )
+    anti_repeat_level = _safe_range_int(
+        payload.get("anti_repeat_level"),
+        default=DEFAULT_ANTI_REPEAT_LEVEL,
+        min_value=0,
+        max_value=10,
+    )
+    gemini_preflight_enabled = _normalize_bool(
+        payload.get("gemini_preflight_enabled"),
+        DEFAULT_GEMINI_PREFLIGHT_ENABLED,
+    )
+    gemini_preflight_timeout_seconds = _safe_range_int(
+        payload.get("gemini_preflight_timeout_seconds"),
+        default=DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
+        min_value=3,
+        max_value=30,
+    )
+    gemini_rewrite_timeout_seconds = _safe_range_int(
+        payload.get("gemini_rewrite_timeout_seconds"),
+        default=DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
+        min_value=15,
+        max_value=240,
+    )
+    rewrite_fallback_timeout_seconds = _safe_range_int(
+        payload.get("rewrite_fallback_timeout_seconds"),
+        default=DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
+        min_value=10,
+        max_value=180,
+    )
     append_missing_formulas = _normalize_bool(
         payload.get("append_missing_formulas"),
         DEFAULT_APPEND_MISSING_FORMULAS,
@@ -497,6 +574,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
 
     rewrite_chunks_generated = 0
     total_sections = len(selected_sections)
+    introduced_concepts: List[str] = []  # accumulates term names across sections
     for index, section in enumerate(selected_sections, start=1):
         if phase_reporter:
             phase_reporter(f"說書改寫中（第 {index}／{total_sections} 節）…")
@@ -527,6 +605,15 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 rewrite_response_format=rewrite_response_format,
                 append_missing_formulas=append_missing_formulas,
                 style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                section_index=index,
+                section_count=total_sections,
+                introduced_concepts=introduced_concepts if introduced_concepts else None,
             )
             if failure:
                 llm_failures.append(
@@ -541,6 +628,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 section_story_parts.append(rewritten_text.strip())
             if terms:
                 section_terms.extend(terms)
+                # Accumulate term names for cross-section context
+                for t in terms:
+                    term_name = t.get("term", "").strip()
+                    if term_name and term_name not in introduced_concepts:
+                        introduced_concepts.append(term_name)
             if formula_explanations:
                 section_formula_explanations.extend(formula_explanations)
 
@@ -606,6 +698,12 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         "rewrite_chunk_chars": rewrite_chunk_chars,
         "rewrite_mode": rewrite_mode,
         "rewrite_response_format": rewrite_response_format,
+        "concise_level": concise_level,
+        "anti_repeat_level": anti_repeat_level,
+        "gemini_preflight_enabled": gemini_preflight_enabled,
+        "gemini_preflight_timeout_seconds": gemini_preflight_timeout_seconds,
+        "gemini_rewrite_timeout_seconds": gemini_rewrite_timeout_seconds,
+        "rewrite_fallback_timeout_seconds": rewrite_fallback_timeout_seconds,
         "append_missing_formulas": append_missing_formulas,
         "max_sections": max_sections,
         "steps": [
@@ -1351,6 +1449,15 @@ def _rewrite_section(
     rewrite_response_format: str,
     append_missing_formulas: bool,
     style_params: Dict[str, Any] = None,
+    concise_level: int = DEFAULT_CONCISE_LEVEL,
+    anti_repeat_level: int = DEFAULT_ANTI_REPEAT_LEVEL,
+    gemini_preflight_enabled: bool = DEFAULT_GEMINI_PREFLIGHT_ENABLED,
+    gemini_preflight_timeout_seconds: int = DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
+    gemini_rewrite_timeout_seconds: int = DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
+    fallback_timeout_seconds: int = DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
+    section_index: int = 0,
+    section_count: int = 0,
+    introduced_concepts: List[str] = None,
 ) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str], str]:
     """Rewrite a section into storyteller style.
     
@@ -1368,18 +1475,35 @@ def _rewrite_section(
         style=style,
         response_format=rewrite_response_format,
         style_params=style_params,
+        concise_level=concise_level,
+        anti_repeat_level=anti_repeat_level,
+        section_index=section_index,
+        section_count=section_count,
+        introduced_concepts=introduced_concepts,
     )
     formulas = _extract_latex_expressions(text)
 
     used_model = model
     try:
         if model.startswith("models/"):
-            rewritten = _call_gemini_llm(prompt=prompt, model=model)
+            if gemini_preflight_enabled:
+                preflight_ok, preflight_reason = _gemini_rewrite_preflight(
+                    model=model,
+                    timeout=int(gemini_preflight_timeout_seconds),
+                )
+                if not preflight_ok:
+                    raise RuntimeError(f"Gemini preflight failed: {preflight_reason}")
+            rewritten = _call_gemini_llm(
+                prompt=prompt,
+                model=model,
+                timeout=int(gemini_rewrite_timeout_seconds),
+            )
         else:
             rewritten = _call_local_llm(
                 prompt=prompt,
                 model=model,
                 ollama_base_url=ollama_base_url,
+                timeout=int(fallback_timeout_seconds),
             )
     except Exception as exc:
         primary_failure = f"{type(exc).__name__}: {exc}"
@@ -1398,12 +1522,14 @@ def _rewrite_section(
                         model=fb_model,
                         oauth_token=fb_minimax_token,
                         base_url=fb_minimax_base,
+                        timeout=int(fallback_timeout_seconds),
                     )
                 else:
                     rewritten = _call_local_llm(
                         prompt=prompt,
                         model=fb_model,
                         ollama_base_url=fb_ollama_url,
+                        timeout=int(fallback_timeout_seconds),
                     )
                 used_model = fb_model
                 fallback_note = (
@@ -1424,6 +1550,14 @@ def _rewrite_section(
         fallback_text=text,
     )
 
+    story_text, removed_repeats = _deduplicate_story_text(
+        story_text,
+        anti_repeat_level=anti_repeat_level,
+    )
+    dedup_note = None
+    if removed_repeats > 0:
+        dedup_note = f"dedup removed {removed_repeats} repetitive blocks"
+
     # Check for missing formulas
     missing_formula_note = None
     if formulas:
@@ -1437,15 +1571,45 @@ def _rewrite_section(
                     "auto-append disabled"
                 )
 
-    return story_text, terms, formula_explanations, True, _merge_notes(fallback_note, missing_formula_note), used_model
+    note = _merge_notes(fallback_note, missing_formula_note)
+    note = _merge_notes(note, dedup_note)
+    return story_text, terms, formula_explanations, True, note, used_model
 
 
-def _build_story_prompt(*, section_title: str, source_text: str, style: str, response_format: str, style_params: Dict[str, Any] = None) -> str:
+def _build_story_prompt(
+    *,
+    section_title: str,
+    source_text: str,
+    style: str,
+    response_format: str,
+    style_params: Dict[str, Any] = None,
+    concise_level: int = DEFAULT_CONCISE_LEVEL,
+    anti_repeat_level: int = DEFAULT_ANTI_REPEAT_LEVEL,
+    section_index: int = 0,
+    section_count: int = 0,
+    introduced_concepts: List[str] = None,
+) -> str:
     source_text = source_text.strip()
     style_key = _normalize_style(style)
     response_format = _normalize_rewrite_response_format(response_format)
     style_hint = _get_style_prompt(style_key, style_params)
-    base_prompt = f"""你是頂尖的論文說書人，請把論文段落改寫成「易懂、可信、具教學感」的繁體中文說明。
+    concise_value = max(0, min(10, int(concise_level)))
+    anti_repeat_value = max(0, min(10, int(anti_repeat_level)))
+    paragraph_sentence_cap = max(2, 7 - (concise_value // 2))
+    max_short_sections = max(2, 6 - (concise_value // 3))
+
+    # Build section positioning block (only show when context is available)
+    section_context_block = ""
+    if section_index > 0 and section_count > 0:
+        section_context_block = f"\n章節定位：本節是全文第 {section_index}/{section_count} 節。"
+    if introduced_concepts:
+        concepts_str = "、".join(introduced_concepts[:40])  # cap to avoid token bloat
+        section_context_block += (
+            f"\n【強制禁止重複解釋】以下術語在前面章節已完整解釋過，本節絕對禁止再次定義或括號解釋，"
+            f"直接使用術語本身即可（違反此規則會導致輸出被截斷）：\n{concepts_str}"
+        )
+
+    base_prompt = f"""你是頂尖的論文說書人，請把論文段落改寫成「易懂、可信、具教學感」的繁體中文說明。{section_context_block}
 
 改寫風格：
 {style_hint}
@@ -1454,14 +1618,16 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str, res
 1. 保留原文技術重點，不要發明新實驗數據。
 2. 保留所有數學式的 LaTeX 分隔符與內容，包含 $...$、$$...$$、\\(...\\)、\\[...\\]，不可改成 Unicode 偽公式。
 3. 請優先說明「為什麼」：為什麼要這樣設計、為什麼這會有效、相比直覺做法差在哪裡。
-4. 使用生活化類比輔助理解，類比必須貼合原意，不能偏離技術內容。
+4. 類比是橋樑：用類比把讀者引到技術概念入口後，要快速說清楚技術機制本身。同一個類比在整篇文章只展開一次。
 5. 若內容含有任何公式，必須同時做到三件事：
-   - 逐一解釋變數與公式在做什麼（白話文字版）。
-   - 提供至少一個具體數值代入例子，並算出可解讀的結果。
-   - 解釋這個數字結果在實務上代表什麼意義。
+   - 說明這個公式在做什麼數學操作，以及為什麼這個操作能達成所描述的目標（因果說明）。
+   - 逐一解釋各變數的白話含義。
+   - 提供至少一個具體數值代入例子，並說明結果的實務意義。
 6. 可使用 Markdown 結構強化可讀性（例如 `**重點**`、清單、短小標），但不要過度冗長。
 7. 如果原文太破碎，先做最小整理再說明，但不要脫離原意。
 8. 直接輸出改寫內容，不要任何開場白、對話語氣或像「好的/以下是改寫」這類前綴。
+9. 精簡度：{concise_value}/10。優先保留資訊增量，刪除同義重述與口語贅詞；每段最多 {paragraph_sentence_cap} 句，整段小節最多 {max_short_sections} 個主要小段。
+10. 重複抑制度：{anti_repeat_value}/10。若前文已解釋過同一概念，除非補充新資訊，否則不可再次定義；避免重複使用相同句型開頭。
 
 章節標題：
 {section_title}
@@ -1478,8 +1644,7 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str, res
 {{
     "story_text": "改寫後的說書內容（Markdown 格式）",
     "terms": [
-        {{"term": "術語1", "explanation": "白話解釋"}},
-        {{"term": "術語2", "explanation": "白話解釋"}}
+        {{"term": "術語1", "explanation": "白話解釋"}}
     ],
     "formula_explanations": [
         {{
@@ -1489,6 +1654,8 @@ def _build_story_prompt(*, section_title: str, source_text: str, style: str, res
         }}
     ]
 }}
+
+重要：terms 陣列中只列出本節「首次出現」且不在【強制禁止重複解釋】清單中的術語。已禁止清單的術語一律不得出現在 terms 中。
 
 請直接輸出 JSON："""
 
@@ -1544,6 +1711,39 @@ def _call_gemini_llm(*, prompt: str, model: str, timeout: int = 240) -> str:
     if not text:
         raise RuntimeError("Gemini returned empty rewrite content")
     return text
+
+
+def _gemini_rewrite_preflight(*, model: str, timeout: int) -> Tuple[bool, str]:
+    now = time.time()
+    cached = _GEMINI_PREFLIGHT_CACHE.get(model)
+    if cached and now - cached[0] < GEMINI_PREFLIGHT_CACHE_TTL_SECONDS:
+        return cached[1], cached[2]
+
+    gemini_api_key = _configure_gemini()
+    if not gemini_api_key:
+        result = (False, "missing GOOGLE_API_KEY/GEMINI_API_KEY")
+        _GEMINI_PREFLIGHT_CACHE[model] = (now, result[0], result[1])
+        return result
+
+    try:
+        gm = genai.GenerativeModel(model)
+        try:
+            response = gm.generate_content(
+                "回覆 OK",
+                request_options={"timeout": int(timeout)},
+            )
+        except TypeError:
+            response = gm.generate_content("回覆 OK")
+        text = str(getattr(response, "text", "") or "").strip()
+        if not text:
+            result = (False, "empty preflight response")
+        else:
+            result = (True, "ok")
+    except Exception as exc:
+        result = (False, f"{type(exc).__name__}: {exc}")
+
+    _GEMINI_PREFLIGHT_CACHE[model] = (now, result[0], result[1])
+    return result
 
 
 def _call_minimax_portal_llm(*, prompt: str, model: str, oauth_token: str, base_url: str, timeout: int = 240) -> str:
@@ -1811,6 +2011,107 @@ def _extract_latex_expressions(text: str) -> List[str]:
     return unique
 
 
+def _deduplicate_story_text(text: str, *, anti_repeat_level: int) -> Tuple[str, int]:
+    level = max(0, min(10, int(anti_repeat_level)))
+    if level < 4:
+        return text, 0
+
+    blocks = [b.strip() for b in re.split(r"\n\s*\n+", str(text or "").strip()) if b.strip()]
+    if len(blocks) <= 1:
+        return text, 0
+
+    threshold = 0.90 - (level * 0.018)
+    threshold = max(0.70, min(0.92, threshold))
+
+    kept_blocks: List[str] = []
+    removed = 0
+    for block in blocks:
+        normalized = _normalize_dedup_text(block)
+        if not normalized:
+            kept_blocks.append(block)
+            continue
+        if _is_structured_markdown_block(block):
+            kept_blocks.append(block)
+            continue
+        is_repeat = False
+        for existing in kept_blocks:
+            if _is_structured_markdown_block(existing):
+                continue
+            existing_norm = _normalize_dedup_text(existing)
+            if not existing_norm:
+                continue
+            ratio = _quick_similarity_ratio(normalized, existing_norm)
+            if ratio >= threshold:
+                is_repeat = True
+                break
+        if is_repeat:
+            removed += 1
+            continue
+        kept_blocks.append(_dedupe_sentences_in_block(block, level))
+
+    if not kept_blocks:
+        return text, 0
+    return "\n\n".join(kept_blocks).strip(), removed
+
+
+def _normalize_dedup_text(text: str) -> str:
+    normalized = str(text or "").lower()
+    normalized = re.sub(r"`[^`]+`", "", normalized)
+    normalized = re.sub(r"\$[^$]+\$", "", normalized)
+    normalized = re.sub(r"[^\w\u4e00-\u9fff]+", "", normalized)
+    return normalized.strip()
+
+
+def _quick_similarity_ratio(left: str, right: str) -> float:
+    if not left or not right:
+        return 0.0
+    if left == right:
+        return 1.0
+    short, long = (left, right) if len(left) <= len(right) else (right, left)
+    if short and short in long:
+        return len(short) / max(len(long), 1)
+    overlap = len(set(_char_ngrams(left, 3)) & set(_char_ngrams(right, 3)))
+    total = max(len(set(_char_ngrams(left, 3)) | set(_char_ngrams(right, 3))), 1)
+    return overlap / total
+
+
+def _char_ngrams(text: str, size: int) -> List[str]:
+    if len(text) <= size:
+        return [text]
+    return [text[i : i + size] for i in range(0, len(text) - size + 1)]
+
+
+def _is_structured_markdown_block(block: str) -> bool:
+    line = str(block or "").lstrip()
+    if not line:
+        return False
+    return bool(re.match(r"^(#{1,6}\s+|[-*+]\s+|\d+[.)]\s+|\|.*\||```|>\s+)", line))
+
+
+def _dedupe_sentences_in_block(block: str, level: int) -> str:
+    if level < 6 or _is_structured_markdown_block(block):
+        return block
+    parts = re.split(r"(?<=[。！？.!?])\s+", block)
+    kept: List[str] = []
+    signatures: List[str] = []
+    sentence_threshold = 0.86 - (level * 0.015)
+    sentence_threshold = max(0.72, min(0.90, sentence_threshold))
+    for sentence in parts:
+        s = sentence.strip()
+        if not s:
+            continue
+        sig = _normalize_dedup_text(s)
+        if not sig:
+            kept.append(s)
+            continue
+        repeated = any(_quick_similarity_ratio(sig, prev) >= sentence_threshold for prev in signatures if prev)
+        if repeated:
+            continue
+        signatures.append(sig)
+        kept.append(s)
+    return " ".join(kept).strip() or block
+
+
 def _resolve_title(payload: Dict[str, Any], pdf_path: Path, sections: List[Dict[str, Any]]) -> str:
     candidate = payload.get("title") or payload.get("paper_title")
     if isinstance(candidate, str) and candidate.strip():
@@ -1867,7 +2168,7 @@ def _build_story_html_document(
         toc_items.append(f'<li><a href="#{section_id}">Section {idx} - {safe_title}</a></li>')
 
         story_html = _text_to_html_blocks(str(section.get("story_text", "")))
-        
+
         # Build terms table
         terms = section.get("terms", [])
         terms_html = ""
@@ -1885,7 +2186,7 @@ def _build_story_html_document(
                 {''.join(term_rows)}
             </table>
         </div>"""
-        
+
         # Build formula explanations
         formula_expls = section.get("formula_explanations", [])
         formula_html = ""
@@ -1907,9 +2208,31 @@ def _build_story_html_document(
                 </div>
             </div>""")
             formula_html = ''.join(formula_blocks)
-        
-        section_items.append(
-            f"""
+
+        # storyteller style: dual-column layout (left: original, right: rewritten)
+        if style == "storyteller":
+            orig_html = _text_to_html_blocks(str(section.get("source_text", "")))
+            section_items.append(
+                f"""
+    <section id="{section_id}">
+        <h2>Section {idx} - {safe_title}</h2>
+        <div class="dual-col">
+            <div class="col-orig">
+                <div class="col-label">📄 原文</div>
+{orig_html}
+            </div>
+            <div class="col-plain">
+                <div class="col-label">💬 說書人白話</div>
+{story_html}
+            </div>
+        </div>
+        {formula_html}
+        {terms_html}
+    </section>"""
+            )
+        else:
+            section_items.append(
+                f"""
     <section id="{section_id}">
         <h2>Section {idx} - {safe_title}</h2>
         <div class="story-block">
@@ -1919,7 +2242,7 @@ def _build_story_html_document(
         {formula_html}
         {terms_html}
     </section>"""
-        )
+            )
 
     generated_at = datetime.now(timezone.utc).isoformat()
     safe_title = html.escape(title)
@@ -2013,6 +2336,40 @@ def _build_story_html_document(
             padding: 20px;
             box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
             margin: 16px 0;
+        }}
+        /* 雙欄並列（說書人風格）*/
+        .dual-col {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+            align-items: start;
+        }}
+        @media (max-width: 768px) {{
+            .dual-col {{ grid-template-columns: 1fr; }}
+        }}
+        .col-orig, .col-plain {{
+            border-radius: 12px;
+            padding: 18px 20px;
+        }}
+        .col-orig {{
+            background: #f1f5f9;
+            border-left: 4px solid #94a3b8;
+            color: #475569;
+            font-size: 0.93em;
+        }}
+        .col-plain {{
+            background: #ffffff;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }}
+        .col-label {{
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 10px;
         }}
         p {{
             margin: 14px 0;
@@ -2199,6 +2556,14 @@ def _safe_positive_int(value: Any, default: int) -> int:
     if parsed <= 0:
         return default
     return parsed
+
+
+def _safe_range_int(value: Any, *, default: int, min_value: int, max_value: int) -> int:
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = default
+    return max(min_value, min(max_value, parsed))
 
 
 def _normalize_bool(value: Any, default: bool) -> bool:

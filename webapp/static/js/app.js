@@ -51,6 +51,12 @@ function App() {
     genStyle: 'storyteller',
     styleParamDefs: {},      // { styleKey: [{key, label, min, max, step, default}] }
     genStyleParams: {},      // { paramKey: currentValue }
+    genConciseLevel: 6,
+    genAntiRepeatLevel: 6,
+    genGeminiPreflightEnabled: true,
+    genGeminiPreflightTimeoutSeconds: 8,
+    genGeminiRewriteTimeoutSeconds: 75,
+    genRewriteFallbackTimeoutSeconds: 45,
     genEngines: [],
     genPdfPath: '',
     genAutoIndex: true,
@@ -811,6 +817,12 @@ function App() {
             paper_title: this.manualPaperTitle.trim() || '手動輸入論文',
             style: this.genStyle,
             auto_index: this.genAutoIndex,
+            concise_level: this.genConciseLevel,
+            anti_repeat_level: this.genAntiRepeatLevel,
+            gemini_preflight_enabled: this.genGeminiPreflightEnabled,
+            gemini_preflight_timeout_seconds: this.genGeminiPreflightTimeoutSeconds,
+            gemini_rewrite_timeout_seconds: this.genGeminiRewriteTimeoutSeconds,
+            rewrite_fallback_timeout_seconds: this.genRewriteFallbackTimeoutSeconds,
             style_params: this.genStyleParams,
             engine_order: this.getEngineOrder('generate'),
           };
@@ -837,6 +849,12 @@ function App() {
         form.append('pdf', this.selectedFile);
         form.append('style', this.genStyle);
         form.append('auto_index', this.genAutoIndex ? 'true' : 'false');
+        form.append('concise_level', String(this.genConciseLevel));
+        form.append('anti_repeat_level', String(this.genAntiRepeatLevel));
+        form.append('gemini_preflight_enabled', this.genGeminiPreflightEnabled ? 'true' : 'false');
+        form.append('gemini_preflight_timeout_seconds', String(this.genGeminiPreflightTimeoutSeconds));
+        form.append('gemini_rewrite_timeout_seconds', String(this.genGeminiRewriteTimeoutSeconds));
+        form.append('rewrite_fallback_timeout_seconds', String(this.genRewriteFallbackTimeoutSeconds));
         if (Object.keys(this.genStyleParams).length > 0) {
           form.append('style_params', JSON.stringify(this.genStyleParams));
         }

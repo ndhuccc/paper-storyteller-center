@@ -570,6 +570,103 @@
             </template>
           </div>
 
+          <div class="style-params-panel">
+            <div class="style-params-head">
+              <div class="style-params-title">✂️ 輸出精簡與去重</div>
+            </div>
+
+            <div class="style-param-row">
+              <label class="style-param-label">
+                <span>精簡度</span>
+                <span class="style-param-value" x-text="genConciseLevel"></span>
+              </label>
+              <div class="style-param-hint">越高越傾向保留資訊增量、減少鋪陳與贅述。</div>
+              <input class="style-param-slider" type="range"
+                     min="0" max="10" step="1"
+                     :value="genConciseLevel"
+                     @input="genConciseLevel = parseInt($event.target.value)">
+              <div class="style-param-range">
+                <span>0（完整鋪陳）</span>
+                <span>10（高度精簡）</span>
+              </div>
+            </div>
+
+            <div class="style-param-row">
+              <label class="style-param-label">
+                <span>重複抑制度</span>
+                <span class="style-param-value" x-text="genAntiRepeatLevel"></span>
+              </label>
+              <div class="style-param-hint">越高越嚴格刪除同義重述與重複句型。</div>
+              <input class="style-param-slider" type="range"
+                     min="0" max="10" step="1"
+                     :value="genAntiRepeatLevel"
+                     @input="genAntiRepeatLevel = parseInt($event.target.value)">
+              <div class="style-param-range">
+                <span>0（原樣保留）</span>
+                <span>10（強力去重）</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="style-params-panel">
+            <div class="style-params-head">
+              <div class="style-params-title">🛟 連線穩定策略（進階）</div>
+            </div>
+
+            <label class="check-label" style="margin-bottom:10px;">
+              <input type="checkbox" x-model="genGeminiPreflightEnabled">
+              <span>改寫前先做 Gemini 快速健康檢查（避免卡住）</span>
+            </label>
+
+            <div class="style-param-row">
+              <label class="style-param-label">
+                <span>健康檢查逾時秒數</span>
+                <span class="style-param-value" x-text="genGeminiPreflightTimeoutSeconds"></span>
+              </label>
+              <div class="style-param-hint">超過此秒數就視為不穩，直接進入後備模型。</div>
+              <input class="style-param-slider" type="range"
+                     min="3" max="30" step="1"
+                     :value="genGeminiPreflightTimeoutSeconds"
+                     @input="genGeminiPreflightTimeoutSeconds = parseInt($event.target.value)">
+              <div class="style-param-range">
+                <span>3 秒</span>
+                <span>30 秒</span>
+              </div>
+            </div>
+
+            <div class="style-param-row">
+              <label class="style-param-label">
+                <span>Gemini 改寫逾時秒數</span>
+                <span class="style-param-value" x-text="genGeminiRewriteTimeoutSeconds"></span>
+              </label>
+              <div class="style-param-hint">單次 Gemini 改寫最長等待時間。</div>
+              <input class="style-param-slider" type="range"
+                     min="15" max="240" step="1"
+                     :value="genGeminiRewriteTimeoutSeconds"
+                     @input="genGeminiRewriteTimeoutSeconds = parseInt($event.target.value)">
+              <div class="style-param-range">
+                <span>15 秒</span>
+                <span>240 秒</span>
+              </div>
+            </div>
+
+            <div class="style-param-row">
+              <label class="style-param-label">
+                <span>後備模型逾時秒數</span>
+                <span class="style-param-value" x-text="genRewriteFallbackTimeoutSeconds"></span>
+              </label>
+              <div class="style-param-hint">Ollama / MiniMax 等後備模型的最長等待時間。</div>
+              <input class="style-param-slider" type="range"
+                     min="10" max="180" step="1"
+                     :value="genRewriteFallbackTimeoutSeconds"
+                     @input="genRewriteFallbackTimeoutSeconds = parseInt($event.target.value)">
+              <div class="style-param-range">
+                <span>10 秒</span>
+                <span>180 秒</span>
+              </div>
+            </div>
+          </div>
+
           <label class="check-label">
             <input type="checkbox" x-model="genAutoIndex">
             <span>完成後自動重建索引</span>
@@ -623,6 +720,12 @@
                   <div>
                     <div class="detail-row"><label>style</label><span x-text="jobDetail.style_label || jobDetail.style || '-'"></span></div>
                     <div class="detail-row"><label>style_key</label><span x-text="jobDetail.style || '-'"></span></div>
+                    <div class="detail-row"><label>精簡度（concise_level）</label><span x-text="jobDetail.concise_level ?? '-'"></span></div>
+                    <div class="detail-row"><label>重複抑制度（anti_repeat_level）</label><span x-text="jobDetail.anti_repeat_level ?? '-'"></span></div>
+                    <div class="detail-row"><label>改寫前健康檢查（gemini_preflight_enabled）</label><span x-text="jobDetail.gemini_preflight_enabled ?? '-'"></span></div>
+                    <div class="detail-row"><label>健康檢查逾時秒數（gemini_preflight_timeout_seconds）</label><span x-text="jobDetail.gemini_preflight_timeout_seconds ?? '-'"></span></div>
+                    <div class="detail-row"><label>Gemini 改寫逾時秒數（gemini_rewrite_timeout_seconds）</label><span x-text="jobDetail.gemini_rewrite_timeout_seconds ?? '-'"></span></div>
+                    <div class="detail-row"><label>後備模型逾時秒數（rewrite_fallback_timeout_seconds）</label><span x-text="jobDetail.rewrite_fallback_timeout_seconds ?? '-'"></span></div>
                     <div class="detail-row"><label>pdf_path</label><span x-text="jobDetail.pdf_path||'-'"></span></div>
                     <div class="detail-row"><label>output_path</label><span x-text="jobDetail.output_path||'-'"></span></div>
                     <div class="detail-row"><label>rewrite_model</label><span x-text="jobDetail.rewrite_model||'-'"></span></div>

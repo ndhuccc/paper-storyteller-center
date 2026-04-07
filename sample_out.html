@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sample - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 sample</h1>
+    <div class="meta">
+        <strong>說書人版本</strong><br>
+        Source PDF: sample.pdf<br>
+        Model: nonexistent-local-model<br>
+        Generated at (UTC): 2026-04-07T01:01:27.772001+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - Sample Markdown</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - Sample Markdown</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h2><strong>Abstract</strong></h2>
+            <p>Instruction-based video editing aims to modify an input video according to a natural-language instruction while preserving content fidelity and temporal coherence. However, existing diffusion-based approaches are often trained on paired data of simple editing operations, which fundamentally limits their ability to generalize to diverse and complex, real-world instructions. To address this generalization gap, we propose VIVA, a scalable framework for instruction-based video editing that leverages VLM-guided encoding and reward optimization. First, we introduce a VLM-based instructor that encodes the textual instruction, the first frame of the source video, and an optional reference image into visually-grounded instruction representations, providing fine-grained spatial and semantic context for the diffusion transformer backbone. Second, we propose a post-training stage, Edit-GRPO, which adapts Group Relative Policy Optimization to the domain of video editing, directly optimizing the model for instruction-faithful, content-preserving, and aesthetically pleasing edits using relative rewards. Furthermore, we propose a data construction pipeline designed to synthetically generate diverse, high-fidelity paired video-instruction data of basic editing operations. Extensive experiments show that VIVA achieves superior instruction following, generalization, and editing quality over state-of-the-art methods. Website: https://viva-paper.github.io/.</p>
+            <p>===</p>
+            <h2><strong>1. Introduction</strong></h2>
+            <p>Video editing plays a central role in modern digital media creation, enabling applications such as film post-production, advertising, and language-guided content personalization [13, 24, 35, 53, 73]. Recent diffusion-based approaches typically formulate video editing as a supervised translation problem from an input video and an editing instruction to an edited output. This formulation relies on carefully constructed paired datasets of source videos and corresponding edited targets or text prompts [8, 13, 14, 25, 73, 75].</p>
+            <p>However, the practical construction of such paired training data faces a significant bottleneck: existing synthesis pipelines are largely confined to generating pairs for highly simplified editing tasks. These are often limited to basic operations like single object addition, deletion, or object swaps strictly within a predefined mask [8, 10, 73, 75]. It remains extremely difficult to automatically generate training pairs for more general and complex edits, such as combining multiple tasks, performing object swaps outside of the original mask, changing the global environment (e.g., weather or season), or executing other semantically-aware controls.</p>
+            <p>This reliance on training data comprised of simplistic edits fundamentally limits the generalization capabilities of current video editing systems. When faced with open-domain or complex real-world scenarios, their performance degrades. To address this generalization gap, we introduce a method to improve model performance on complex editing tasks, even when trained only on limited, simple editing pairs. Specifically, we introduce two complementary components that enhance how instructions are represented and how the video editing model is optimized for output quality.</p>
+            <p>First, we introduce the <em>VLM instructor</em>, a vision-language model used as a multimodal instruction encoder. Given the first frame of the input video together with the user's editing instructions, the VLM produces a sequence of grounded, fine-grained multimodal tokens that jointly encode the target entities, spatial regions, and desired attribute changes. These tokens are then fed as conditioning signals into the diffusion transformer (DiT) backbone, in place of standard text embeddings. Recent large vision-language models demonstrate strong capabilities in aligning visual content with detailed natural-language instructions and conversations [38, 45], and we leverage this capacity to obtain richer, disambiguated instruction representations. This approach allows us to effectively combine the advanced visual-linguistic understanding of the VLM with the high-fidelity video generation capability of the pretrained DiT.</p>
+            <p>Second, we introduce <em>Edit-GRPO</em>, a post-training stage that explicitly optimizes the model toward successful edits via reinforcement learning (RL). Building on Group Relative Policy Optimization (GRPO) [39, 55], which has been shown to improve reasoning ability in large language models by comparing groups of sampled outputs under task-specific rewards, we adapt the same principle to text-guided video editing. For each input video and carefully designed editing instruction, the model generates multiple candidate edited videos; we then compute edit-specific rewards that measure instruction fidelity, identity preservation, and structural consistency, and use the relative scores within each group to update the policy. This edit-centric RL phase focuses learning on semantic correctness rather than pixel-level reconstruction alone. Previous methods for image editing have employed iterative synthesis, where a model is trained, used to generate new pairs, and then good pairs are labeled and added back to the training set [56]. This process can be formulated as rejection-with-resampling (RWR) [31, 47] in an RL paradigm. In contrast, our approach directly uses an online RL method GRPO, which more effectively extracts supervision from each limited paired example to achieve better editing performance.</p>
+            <p>Furthermore, we propose a pipeline to construct a high-quality, synthetic dataset. This dataset consists of paired videos (original and edited) accompanied by accurate text instructions. Our pipeline is designed to generate video pairs demonstrating strict local editing and high fidelity, which cover a diverse range of basic editing operations, providing a solid foundation for training our model.</p>
+            <p>In summary, our contributions include:</p>
+            <ul>
+            <li>The VLM instructor that jointly processes the first frame and text to provide visually-grounded instruction representations for the video editor.</li>
+            <li>A post-traning stage, termed Edit-GRPO, that directly rewards successful, instruction-faithful edits.</li>
+            <li>A data construction pipeline that generates diverse, high-quality paired video-instruction dataset of basic editing operations.</li>
+            <li>Extensive evaluations showing superior instruction following without degrading video quality compared to strong baselines.</li>
+            </ul>
+            <p>===</p>
+            <h2>2. Related Work</h2>
+            <p><strong>Instruction-based video editing.</strong> Natural language-driven video transformation enables intuitive and controllable edits while maintaining visual fidelity. Earlier methods [8, 11, 16, 19, 26, 30, 33, 42, 48, 63, 68] leveraged inversion-based approaches [57] to perform zero-shot or one-shot text-driven edits on videos. With the advent of open-source pretrained video diffusion models [21, 29, 60], a wave of task-specific solutions emerged for video addition [59, 74], inpainting [5, 76], virtual try-on [17, 27, 77], and character replacement/animation [9]. Although effective in limited scenarios, these approaches typically depend on manual priors such as masks, poses, or motion trajectories, which limit flexibility and generalization. InsV2V [10] pioneers instruction-only video editing by utilizing InstructPix2Pix [6] to synthesize paired video editing data. However, its results were hindered by the limited data quality and backbone performance. More recent efforts [14, 24, 25, 35, 53, 70, 71] have scaled instruction-based editing with notable gains. Ditto [3] supplies a pretrained backbone with a series of trainable context-blocks. Concurrent works like InstructX [46], Omni-Video [58], OmniV2V [34], and Univideo [66] also harness VLM's understanding capacities to aid video editing, demonstrating impressive progress.</p>
+            <p><strong>VLMs for visual understanding and generation.</strong> Vision-language models (VLMs) provide a bridge between visual perception and textual description. Foundational VLMs such as CLIP [49], BLIP-2 [32], and Flamingo [1] learn joint representations that align visual content with textual descriptions. Instruction-tuned variants, including LLaVA [37], Video-ChatGPT [45], and Qwen2.5-VL [4], further enhance visual grounding and context-aware textual comprehension. These advances show that pretrained</p>
+            <p>VLMs can serve as powerful priors for conditional control in video generation. Building on this foundation, our work adopts a VLM-based instructor to encode both textual instructions and visual context, improving controllability and instruction fidelity in video editing.</p>
+            <p><strong>Reinforcement learning for generative models.</strong> Reinforcement learning has emerged as an effective approach for enhancing model alignment and controllability. Algorithms such as PPO [54], RPO [51], and GRPO [55] have been widely adopted in large language models to refine instruction-following and preference alignment. Recent studies [39, 40, 65, 69] have extended these ideas to visual generation, while other works [44, 67] focus on image editing, employing reward-guided fine-tuning to better align generative edits with user intent. We extend these approaches for video editing to comprehensively enhance overall performance, robustness, and generalization.</p>
+            <p>===</p>
+            <h2>3. Method</h2>
+            <p>As illustrated in Figure 2, VIVA employs a Diffusion Transformer (DiT) [29] as the generation branch and a Vision-Language Model (VLM) instructor as the understanding branch. Section 3.1 describes how the VLM instructor aggregates and interprets diverse multimodal conditions, including a text instruction, a source video, and an optional reference image. Section 3.2 introduces how VIVA adapts and fine-tunes a pretrained text-to-video (T2V) DiT to perform versatile instruction-based video editing using the semantic context provided by the VLM instructor and the source video. To enhance instruction following, content fidelity, and visual aesthetics, we introduce a post-training strategy based on Group Relative Policy Optimization (GRPO), termed <em>Edit-GRPO</em>, in Section 3.3. Section 3.4 presents our data preparation process that generates diverse and high-quality video editing dataset.</p>
+            <p>===</p>
+            <h3>3.1. Context-Aware VLM Instructor</h3>
+            <p>Since video editing is a highly context-aware task, it is critical and non-trivial to interpret the complicated relationship between diverse multimodal conditions among text instructions, source videos, and optionally provided reference images. We argue that an encoder exposed only to the language space, such as T5 series [50], struggles to provide sufficient semantic guidance, thereby introducing more difficulty and ambiguity to the subsequent generation branch. Instead, VLM achieves more robust alignment between language space and visual feature space, making it inherently a great alternative for understanding and processing multimodal context. There have been several works trying to connect a VLM such as QWEN2.5-VL [4] with a DiT pretrained on T5 space such as Wan [60]. However, such strategy requires a heavy pretraining stage for aligning the feature space of the VLM with the generation space of the DiT. Thus, we choose Hunyuan-T2V-13B [29] as our backbone, as its pretrained model has already aligned with the VLM space (llava-llama-3-8b [12]).</p>
+            <p>Solely relying on an input of semantically sparse textual instructions <span class="math inline">$\mathbf{t}_{ins}$</span> often leads to a less underspecified conditioning signal, causing ambiguity for the subsequent editing process. To address this limitation, we propose augmenting the input by incorporating the first frame <span class="math inline">$\mathbf{I}_{src}$</span> sampled from the source video <span class="math inline">$\mathbf{V}_{src}$</span>. The introduction of <span class="math inline">$\mathbf{I}_{src}$</span> significantly enriches the condition tokens with grounded, fine-grained semantic bias. Consequently, the VLM is better equipped to interpret the intricate relationship between the editing instruction and the source video. This integrated understanding allows the VLM to implicitly distinguish critical elements, such as the intended editing region and the specific editing entity. By providing the DiT with such fine-grained and accurate control signals, our approach effectively overcomes the ambiguity caused by the sparse conditioning inherent in instruction-only designs, ultimately yielding higher fidelity and more controllable video editing. To further support a broader range of multimodal control and enhance the user's flexibility to specify the exact editing outcome, our VLM instructor allows an optional reference image input <span class="math inline">$\mathbf{I}_{ref}$</span>. While the editing instruction dictates what transformation should occur, the reference image explicitly grounds how the edited content should look. This additional visual context takes more advantages of VLM's multimodal understanding and thinking abilities to generate more detailed and accurate editing guidance. We take the last hidden states from the VLM instructor as our multimodal condition tokens <span class="math inline">$\mathbf{x}_{vlm}$</span>:</p>
+            <div class="formula">$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref}). \quad \quad \quad (1)$$</div>
+            
+            <p>===</p>
+            <h3>3.2. Instruction-based Supervised Fine-Tuning</h3>
+            <p>To effectively preserve the multimodal understanding and reasoning capabilities inherent in the VLM, we freeze its parameters throughout the training process, without losing its strong generalization ability. While the pretrained DiT weights of the HunyuanT2V model are already strongly aligned with the VLM's language space, the introduction of additional visual information <span class="math inline">$\mathbf{I}_{src}$</span> and <span class="math inline">$\mathbf{I}_{ref}$</span> requires a careful adaptation strategy. In addition to finetuning the DiT, we introduce and train a lightweight Token Refiner <span class="math inline">$\mathcal{R}$</span> to enhance the DiT's comprehensive responsiveness to the visual conditioning signals, as well as the understanding of the underlying connections between textual and visual conditioning information.</p>
+            <p>To enhance the editing consistency with <span class="math inline">$\mathbf{V}_{src}$</span>, we concatenate it with the noise in the channel dimension. Such design intuitively and effectively introduces a spatially and temporally aligned inductive bias, thereby providing the denoising process with rich and strong contextual guidance of the structure and motion of the source video. Specifically, a VAE latent <span class="math inline">$\mathbf{z}_{src}$</span> of <span class="math inline">$\mathbf{V}_{src}$</span> and a noise latent <span class="math inline">$\mathbf{z}_{noise}$</span> are patchified and unfolded into a 1D sequence of tokens <span class="math inline">$\mathbf{x}_{src} \in \mathbb{R}^{L \times C}$</span> and <span class="math inline">$\mathbf{x}_{noise} \in \mathbb{R}^{L \times C}$</span> seperately. These two sequence of tokens are then channel-concatenated to get <span class="math inline">$[\mathbf{x}_{src}, \mathbf{x}_{noise}] \in \mathbb{R}^{L \times 2C}$</span>. Then the context-aware noisy video tokens can be formulated as</p>
+            <div class="formula">$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c), \quad (2)$$</div>
+            
+            <p>where <span class="math inline">$\mathbf{x}_{video} \in \mathbb{R}^{L \times C}$</span>, <span class="math inline">$\text{Concat}(\cdot, \cdot)^c$</span> represents channel-wise concatenation, <span class="math inline">$\mathbf{P}$</span> is a patchification module, and <span class="math inline">$\mathcal{P}$</span> indicates a trainable projector that aggregates the contextual video information along the channel dimension to align with the feature dimension of the DiT.</p>
+            <p>With the multimodal condition tokens <span class="math inline">$\mathbf{x}_{vlm}$</span> and context-aware video tokens <span class="math inline">$\mathbf{x}_{video}$</span>, we use Flow Matching [36] for model training. In this supervised fine-tuning stage, we train the patchify module <span class="math inline">$\mathbf{P}$</span>, the projector <span class="math inline">$\mathcal{P}$</span>, the token refiner <span class="math inline">$\mathcal{R}$</span>, and the entire DiT on the synthetic paired source/target-video-instruction dataset constructed by ourselves. Due to the inherent scarcity of paired video editing data and the limited range of editing types, we incorporate large-scale image editing data as an supplement through treating an image as a video with one frame. Experiments demonstrate that various editing capabilities within the image domain have effectively been transferred to the video domain, such as global stylization editing, which does not exist in our paired video data.</p>
+            <p>With the mask video <span class="math inline">$M$</span> generated during the data preparation introduced in Section 3.4, we augment the vanilla Rectified Flow loss into a masked version as:</p>
+            <div class="formula">$$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}, \quad (3)$$</div>
+            
+            <p>where <span class="math inline">$w_m$</span> is the mask weight.</p>
+            <p>===</p>
+            <h3>3.3. Edit-GRPO</h3>
+            <p>To further enhance model performance, we design a sophisticated reward system via GRPO, focusing on improving the instruction following ability, source video preservation, and human preference alignment. The overall pipeline of Edit-GRPO is presented in Figure 3.</p>
+            <p><strong>Instruction following.</strong> The accurate and high-quality instruction following ability is the most fundamental metric for evaluating the performance of an instruction-based video editing model. However, since a direct reward model to quantify this does not yet exist, we design the objective as <span class="math inline">$(C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{src}, \mathbf{t}_{edit})) + (C(\mathbf{V}_{src}, \mathbf{t}_{src}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}))$</span>, where <span class="math inline">$\mathbf{t}_{src}$</span> is the source video description, <span class="math inline">$\mathbf{t}_{edit}$</span> is the paired edited video description, <span class="math inline">$\mathbf{V}_{src}$</span> is the source video, <span class="math inline">$\mathbf{V}_{edit}$</span> is the edited video, and <span class="math inline">$C(V, \mathbf{t})$</span> is the Clip similarity between a video and a description. Intuitively, we want <span class="math inline">$\mathbf{V}_{edit}$</span> to be more aligned with <span class="math inline">$\mathbf{t}_{edit}$</span> than <span class="math inline">$\mathbf{V}_{src}$</span>, and <span class="math inline">$\mathbf{V}_{src}$</span> to be more aligned with <span class="math inline">$\mathbf{t}_{src}$</span> than <span class="math inline">$\mathbf{V}_{edit}$</span>.</p>
+            <p>Since <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span> and <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span> are identical for the samples within the group, they make no contribution to the gradient update due to the nature of group relative preference. The instruction following score can then be formulated as:</p>
+            <div class="formula">$$\mathbf{R}_{\text{IF}} = C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}). \quad (4)$$</div>
+            
+            <p><strong>Source video preservation.</strong> A further key metric in video editing is that regions outside the edit should preserve high fidelity to the source video, and the edited content must also be coherent with the source video. We thus propose the following objective to quantify source video preservation reward score:</p>
+            <div class="formula">$$\mathbf{R}_{\text{SP}} = C(\mathbf{V}_{src}, \mathbf{V}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad \quad (5)$$</div>
+            
+            <p><strong>Human preference alignment.</strong> To align video editing results with human preferences, we use Pickscore to comprehensively evaluate the alignment of the edited video with the instruction and its visual quality:</p>
+            <div class="formula">$$\mathbf{R}_{\text{PS}} = \text{Pickscore}(\mathbf{V}_{edit}, \mathbf{t}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad (6)$$</div>
+            
+            <p>Overall, we use a combination of the aforementioned reward scores as the optimization objective to improve the model's capabilities of instruction following, source video preservation, and the human preference alignment.</p>
+            <div class="formula">$$\mathbf{R} = w_{IF}\mathbf{R}_{\text{IF}} + w_{SP}\mathbf{R}_{\text{SP}} + w_{PS}\mathbf{R}_{\text{PS}}, \quad \quad \quad \quad \quad \quad (7)$$</div>
+            
+            <p>where <span class="math inline">$w_{IF}$</span>, <span class="math inline">$w_{SP}$</span>, and <span class="math inline">$w_{PS}$</span> are reward balancing weights. Instead of full fine-tuning, we opt to train a LoRA [22] on the DiT backbone during the Edit-GRPO stage for efficiency. Please refer to the supplementary materials for the detailed LoRA design.</p>
+            <p>===</p>
+            <h3>3.4. Data Preparation</h3>
+            <p>The field currently lacks a publicly available, large-scale, high-quality dataset of paired video editing examples. Existing datasets [2, 75], which often rely on inpainting or first-frame transfer guided by dense control signals (e.g., depth and edges), frequently suffer from visual artifacts, background inconsistencies, and inaccurate instructional alignment. To address this gap, we construct a large-scale video editing dataset comprising 1.5 million pairs, covering diverse local editing types and corresponding instructions.</p>
+            <p>Our data generation process begins with a pre-trained text-to-video foundation model. We augment the MMDiT [15] architecture with an additional branch for video input, which is then fine-tuned on a meticulously designed dataset. This fine-tuned model is subsequently used to synthesize the video pairs. Empirically, we find that adding this dedicated branch significantly outperforms the typically-used ControlNet [72]. We build our dataset following the steps described below, with more details available in the supplementary materials.</p>
+            <p><strong>Object replacement.</strong> We first extract the names of main objects from a detailed video caption. Then, we use Grounding-DINO [41] to detect the object on the first frame and employ SAM 2 [52] to track its mask throughout the video. These masked video pairs are used to train a local inpainting model. Subsequently, we use an LLM to analyze the original video caption, rewrite it to reflect a new object, and use this new caption to inpaint the masked video, thereby synthesizing the editing pair.</p>
+            <p><strong>Object addition and removal.</strong> We introduce random masks onto a video and train an inpainting model to fill these regions. To synthesize an editing pair, we alter the original video’s caption to remove the masked object and use this new caption for video inpainting. We also add the name of the masked object to the negative prompt to prevent a similar object from being inpainted in the masked region.</p>
+            <p><strong>Global content editing.</strong> We extract dense scribbles from the source video and train a model to synthesize new videos conditioned on this structural guidance and a modified caption. These modified captions are automatically generated by an LLM, which alters the original description (e.g., changing the background setting from "day" to "night").</p>
+            <p><strong>Data filtering.</strong> The synthesis process described above is inherently prone to artifacts. Instead of relying on unreliable filtering, we employ a two-stage quality control strat-</p>
+            <p>egy. First, we use a VLM to rewrite the instructions for the synthesized pairs. Second, we task the VLM with labeling whether the synthesized video is free from artifacts. We primarily use the synthesized video as the source and the real video as the target. We randomly choose a synthesized video as the target only when it is labeled as artifact-free. This setup ensures the editing model is not trained on degraded videos. After testing different VLMs, we select Gemini 2.5 Pro to write the detailed editing instructions.</p>
+            <p><strong>Image editing pairs.</strong> In addition, we collect 5.4 million image editing pairs from publicly available datasets [18, 64]. These image pairs are used to jointly train our editing model by treating each image as a single-frame video. We find that incorporating image data substantially enhances the diversity of editing types that the model can handle.</p>
+            <p>===</p>
+            <h2>4. Experiments</h2>
+            <h3>4.1. Implementation Details</h3>
+            <p>We use the pretrained <em>HunyuanVideo-T2V-13B</em> as the DiT backbone and finetune it on our collected paired training data for <span class="math inline">$12,000$</span> steps. We set the learning rate to <span class="math inline">$2 \times 10^{-5}$</span>, with a global batch size of <span class="math inline">$128$</span>. To balance the mixing of image and video data, we sample video data with a probability of <span class="math inline">$0.4$</span> and image data with a probability of <span class="math inline">$0.6$</span>. Please refer to the supplementary materials for details.</p>
+            <p>===</p>
+            <h3>4.2. Experimental Setup</h3>
+            <p><strong>Benchmark and baselines.</strong> To rigorously evaluate our model's instruction-based video editing capabilities, we utilize the VIE-Bench benchmark [46], which comprises 140 high-quality instances across diverse instruction-based editing categories, covering both reference-free and reference-based edits. We compare VIVA with five state-of-the-art instruction-based video editing methods, including four open-sourced ones, ICVE [35], Lucy-Edit-Dev [14], Ditto [3], and InsV2V [10], and one commercial model, Runway Gen-4 Aleph [53].</p>
+            <p><strong>Metrics.</strong> Since standard metrics like CLIP-based text-video alignment and PickScore [28] are tailored for target-prompt-based editing evaluation, they are unable and unsuitable to evaluate the performance of instruction adherence. Therefore, following prior works [2, 25, 46], we employ a VLM evaluator(powered by Gemini-2.5-pro) to assign scores (<span class="math inline">$0-10$</span>) across four critical dimensions: Instruction Following (instruction adherence), Source Preservation (consistency with the source video), Editing Quality (overall video aesthetics), and Subject Similarity (for reference-based edits). As an aiding metric, we also use the VBench [23] evaluation suite to provide quantitative measures of general video quality attributes. We evaluate background consistency and subject consistency by calculating CLIP [49] and DINO [7] feature similarity across frames respectively. Following EditVerse [25], we evaluate the frame-text CLIP [49] feature alignment and video-text ViCLIP [62] feature alignment to reflect both semantics and style consistency. We also evaluate the edited video quality from human preferences perspective by calculating frame-wise PickScore [28].</p>
+            <p>===</p>
+            <h3><strong>4.3. Qualitative Comparisons</strong></h3>
+            <p>We conduct qualitative comparisons from two perspectives: instruction-only video editing and reference-based video editing, to provide a comprehensive evaluation. Figure 4 presents instruction-only video editing results. We select three representative task examples: local material change (“Change the material of the train to ice cubes.”), subject addition (“Add an Asian man wearing a white T-shirt and sitting in the driver’s seat of a vintage car.”), and subject removal (“Remove the boy.”). In the subject addition example, only our model correctly captures the complex semantics of “sitting in the driver’s seat.” In the material change example, Runway fails to properly interpret the instruction, resulting in incomplete and inaccurate edits, modifying only part of the train. In the removal example, only our model successfully preserves the soccer ball, removes the boy, and maintains background consistency with the source video. These comparisons demonstrate that our model consistently outperforms the baselines, exhibiting superior editing capacity and generalization. We attribute this to our VLM instructor, which supplies the editing backbone with sufficiently rich context, enabling the model to comprehend complex editing semantics and to interpret how these semantics should be applied to the source video.</p>
+            <p>Since existing open-source instruction-based video editing models do not support reference-image control, we compare our model only with Runway Gen-4 Aleph. As shown in Figure 1, although Runway responds to the instruction, it fails to accurately align with the reference image. The hat and front label of the teddy bear show noticeable deviations from the reference in the edited results. In contrast, our model correctly understands the intricate relationships among the instruction, the reference image, and the source video, and produces precise editing outcomes. This is enabled by encoding the reference image features into the VLM instructor module, providing ample context to accurately guide our DiT backbone. Please refer to supplementary materials for more results on reference-image controlled video editing.</p>
+            <p>===</p>
+            <h3><strong>4.4. Quantitative Comparisons</strong></h3>
+            <p>As shown in Table 1, the quantitative metrics show consistent results with the qualitative comparisons. Our model achieves superior performance over all open-source baselines across all VLM-based evaluations and delivers results on par with the commercial model Runway, demonstrating our model’s strong and robust video editing capability. Since human judgments are more indicative of real-world effectiveness in video editing, we conducted a comprehensive user study with 14 domain experts across three dimensions, following a setup similar to that used in VLM evaluations: (1) Instruction Following: whether the edit precisely follow the editing instruction; (2) Source Preservation: whether the edit maintains coherence with the original video content; (3) Editing Quality: whether the edited video is visually seamless, natural-looking, and pleasing. We randomly sample 30 instruction-only and 10 reference-image-controlled video editing data. Figure 5 quantifies human preference for comparison of generated video from ours versus baselines. Each comparison is labeled as one of three outcomes: <span class="math inline">$G$</span> (ours preferred), <span class="math inline">$S$</span> (no clear preference / indistinguishable), or <span class="math inline">$B$</span> (baseline preferred). Our method is preferred across all three criteria against five baselines.</p>
+            <p>===</p>
+            <h3>4.5. Ablation Study</h3>
+            <p>We conduct comprehensive ablations on multiple design choices of our model in Table 2. The introduction of the VLM instructor in Section 3.1 significantly improves performance across all evaluation metrics. It delivers decisive gains in correctly and precisely following editing instructions, demonstrating that feeding visual information into the VLM instructor yields context with rich semantics, which then better guides the DiT. The masked loss in Eq. 3 introduces an effective spatial inductive bias, enhancing overall editing capability, speeding up convergence, and producing more accurate responses within the edited regions. The strategy of mixing image-editing data during training leverages the larger scale and broader edit-category coverage of image data to significantly improve both editing ability and visual quality. It also enables the emergence of many complex video editing types for which paired video data are typically difficult to obtain. Our full model, with Edit-GRPO, exhibits comprehensive gains in overall editing performance. With the reward system designed in Section 3.3, the model achieves substantial improvements in instruction following, maintaining consistency with the source video. The higher PickScore [28] indicates that the model trained with Edit-GRPO aligns better with human preferences.</p>
+            <p>===</p>
+            <h2>5. Conclusion</h2>
+            <p>In this work, we present VIVA, a scalable framework for instruction-based video editing that outperforms existing open-source baselines, achieving state-of-the-art results in terms of instruction following, edit quality, and generalization. We introduce a VLM-based instructor that encodes both textual instructions and visual inputs into grounded multimodal tokens, substantially improving semantic disambiguation and edit controllability while preserving coherence with the source video. We also propose Edit-GRPO, which, for the first time, adapts Group Relative Policy Optimization to video editing and yields consistent performance gains.</p>
+            <p>Future work includes expanding the range of supported edit types toward richer and more compositional behaviors, enhancing practical usability by targeting interactive editing, as well as extending to arbitrary resolution and duration. Another promising direction is developing a more general and unified reward model tailored for video editing. Limitations and failure cases are discussed in the supplementary materials.</p>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

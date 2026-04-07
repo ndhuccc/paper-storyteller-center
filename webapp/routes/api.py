@@ -296,6 +296,12 @@ def _build_job_summary(job: Dict) -> Dict:
     result = _as_dict(job.get("result"))
     output = _as_dict(result.get("output"))
     style = str(payload.get("style", "-")).strip() or "-"
+    concise_level = payload.get("concise_level", 6)
+    anti_repeat_level = payload.get("anti_repeat_level", 6)
+    gemini_preflight_enabled = payload.get("gemini_preflight_enabled", True)
+    gemini_preflight_timeout_seconds = payload.get("gemini_preflight_timeout_seconds", 8)
+    gemini_rewrite_timeout_seconds = payload.get("gemini_rewrite_timeout_seconds", 75)
+    rewrite_fallback_timeout_seconds = payload.get("rewrite_fallback_timeout_seconds", 45)
     style_params = payload.get("style_params") if isinstance(payload.get("style_params"), dict) else {}
     rewrite_engine_order = _normalize_engine_order(payload.get("rewrite_engine_order"))
     generation_engine_labels = _engine_label_map("generation")
@@ -318,6 +324,12 @@ def _build_job_summary(job: Dict) -> Dict:
         "style": style,
         "style_label": STYLE_LABELS.get(style, style),
         "style_params": style_params,
+        "concise_level": concise_level,
+        "anti_repeat_level": anti_repeat_level,
+        "gemini_preflight_enabled": gemini_preflight_enabled,
+        "gemini_preflight_timeout_seconds": gemini_preflight_timeout_seconds,
+        "gemini_rewrite_timeout_seconds": gemini_rewrite_timeout_seconds,
+        "rewrite_fallback_timeout_seconds": rewrite_fallback_timeout_seconds,
         "output_path": str(output_path or "-"),
         "output_filename": output_filename,
         "output_paper_id": output_paper_id,
@@ -563,11 +575,23 @@ def submit_job():
             cleanup_result = _cleanup_old_uploaded_pdfs(keep=[target])
         style = request.form.get("style", "storyteller")
         auto_index = _as_bool(request.form.get("auto_index", "true"))
+        concise_level = request.form.get("concise_level", 6)
+        anti_repeat_level = request.form.get("anti_repeat_level", 6)
+        gemini_preflight_enabled = _as_bool(request.form.get("gemini_preflight_enabled", "true"))
+        gemini_preflight_timeout_seconds = request.form.get("gemini_preflight_timeout_seconds", 8)
+        gemini_rewrite_timeout_seconds = request.form.get("gemini_rewrite_timeout_seconds", 75)
+        rewrite_fallback_timeout_seconds = request.form.get("rewrite_fallback_timeout_seconds", 45)
         pdf_path_field = request.form.get("pdf_path", "").strip()
     else:
         data = request.get_json(force=True) or {}
         style = str(data.get("style", "storyteller")).strip()
         auto_index = _as_bool(data.get("auto_index", True))
+        concise_level = data.get("concise_level", 6)
+        anti_repeat_level = data.get("anti_repeat_level", 6)
+        gemini_preflight_enabled = _as_bool(data.get("gemini_preflight_enabled", True))
+        gemini_preflight_timeout_seconds = data.get("gemini_preflight_timeout_seconds", 8)
+        gemini_rewrite_timeout_seconds = data.get("gemini_rewrite_timeout_seconds", 75)
+        rewrite_fallback_timeout_seconds = data.get("rewrite_fallback_timeout_seconds", 45)
         pdf_path_field = str(data.get("pdf_path", "")).strip()
 
     # Parse style_params (JSON-encoded string in multipart, or dict in JSON body)
@@ -610,6 +634,12 @@ def submit_job():
             "pdf_path": resolved_pdf_path or "",
             "style": style,
             "auto_index": auto_index,
+            "concise_level": concise_level,
+            "anti_repeat_level": anti_repeat_level,
+            "gemini_preflight_enabled": gemini_preflight_enabled,
+            "gemini_preflight_timeout_seconds": gemini_preflight_timeout_seconds,
+            "gemini_rewrite_timeout_seconds": gemini_rewrite_timeout_seconds,
+            "rewrite_fallback_timeout_seconds": rewrite_fallback_timeout_seconds,
             "style_params": style_params,
             "model": resolved_engines["primary_model"],
             "rewrite_fallback_chain": resolved_engines["fallbacks"],
