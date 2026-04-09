@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIVA: VLM-Guided Instruction-Based Video Editing with Reward Optimization - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 VIVA: VLM-Guided Instruction-Based Video Editing with Reward Optimization</h1>
+    <div class="meta">
+        <strong>說書人版本（v1.5 - 術語表 + 公式詳解）</strong><br>
+        Source PDF: /home/ccchiang/works/paper-storyteller-center/uploads/289c20a95edc_2512.16906v1.pdf<br>
+        Model: models/gemini-3.1-flash-lite-preview<br>
+        Generated at (UTC): 2026-04-05T10:37:58.684952+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - VIVA: VLM-Guided Instruction-Based Video Editing with Reward Optimization</a></li>
+<li><a href="#section-2">Section 2 - Abstract</a></li>
+<li><a href="#section-3">Section 3 - 1. Introduction</a></li>
+<li><a href="#section-4">Section 4 - 3.1. Context-Aware VLM Instructor</a></li>
+<li><a href="#section-5">Section 5 - 3.3. Edit-GRPO</a></li>
+<li><a href="#section-6">Section 6 - 4. Experiments</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - VIVA: VLM-Guided Instruction-Based Video Editing with Reward Optimization</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>魔法導演的剪輯之夢：VIVA 的影像煉金術</h3>
+            <h4>開場：忙碌的影像工廠</h4>
+            <p>在數位森林的邊緣，有一座終日運作的「影像工廠」。這裡的工人們是精靈般的「視覺語言模型」（VLM），他們能看懂影片中發生的一切。然而，工廠裡住著一位挑剔的顧客，他總是拿著模糊的指令說：「把這段影片變得更有節奏感！」或者「讓畫面中的小狗跳得再高一點！」</p>
+            <p>面對這些複雜又抽象的指令，傳統的剪輯精靈往往會手忙腳亂，做出的結果不是畫面閃爍，就是邏輯混亂。於是，工廠主決定開發一套名為「VIVA」的魔法系統，專門解決這個難題。</p>
+            <h4>情節發展：聰明的審查員與不穩定的畫筆</h4>
+            <p>在 VIVA 系統中，有兩個關鍵角色：</p>
+            <ol>
+            <li><strong>創意畫筆（Diffusion Model）：</strong> 他負責根據指令修改畫面，但他有個壞習慣，就是有時候會「用力過猛」，導致影片失去原有的樣貌。</li>
+            <li><strong>魔法審查員（Reward Model）：</strong> 這是 VIVA 最引以為傲的設計。他不像過去的工具只會盲目修改，他會隨時盯著「創意畫筆」的一舉一動，並給予評分。</li>
+            </ol>
+            <p>為了讓審查員更專業，開發者使用了一套獎勵公式，定義什麼叫做「好的修改」：</p>
+            <div class="formula">$$R(v, c) = \alpha \cdot R_{text}(v, c) + \beta \cdot R_{temp}(v, v_{ref}) + \gamma \cdot R_{struc}(v, v_{ref})$$</div>
+            
+            <p>這個公式代表了審查員的三個判斷標準：</p>
+            <ul>
+            <li><span class="math inline">$R_{text}$</span>（文字對齊度）：影片內容是否真的聽從了指令。</li>
+            <li><span class="math inline">$R_{temp}$</span>（時間一致性）：修改後的動作是否流暢，沒有莫名其妙的跳躍。</li>
+            <li><span class="math inline">$R_{struc}$</span>（結構穩定度）：主角的模樣和背景有沒有被改得面目全非。</li>
+            </ul>
+            <h4>問題如何解決：不僅要改，還要改得漂亮</h4>
+            <p>為了讓「創意畫筆」學會聽話，VIVA 採用了「獎勵優化（Reward Optimization）」策略。這就像是給畫筆安裝了一台導航儀：</p>
+            <ol>
+            <li><strong>試錯與反饋：</strong> 當畫筆嘗試修改影片時，系統會先生成幾個版本。</li>
+            <li><strong>獎勵賦予：</strong> 審查員會根據上述公式給出分數。如果畫筆改得好，獎勵值就高；改壞了，就會收到「懲罰」。</li>
+            <li><strong>策略調整：</strong> 畫筆利用這些分數進行自我調整，透過「近端策略優化」（PPO）機制，確保他每次進步一點點，而不會因為一次修正過度而跑偏。</li>
+            </ol>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">實務解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha, \beta, \gamma$</span></td>
+            <td style="text-align: left;">加權係數</td>
+            <td style="text-align: left;">權衡「聽話程度」與「影片穩定度」的比例。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$v, c$</span></td>
+            <td style="text-align: left;">影片與指令</td>
+            <td style="text-align: left;">畫筆正在處理的對象。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$v_{ref}$</span></td>
+            <td style="text-align: left;">原始影片</td>
+            <td style="text-align: left;">確保修改不會導致主角「移花接木」。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            若我們設定 <span class="math inline">$\alpha=0.5, \beta=0.3, \gamma=0.2$</span>，且某次修改的評分為：文字對齊 <span class="math inline">$R_{text}=0.9$</span>、流暢度 <span class="math inline">$R_{temp}=0.7$</span>、結構穩定 <span class="math inline">$R_{struc}=0.8$</span>。<br />
+            代入計算：<span class="math inline">$R = (0.5 \times 0.9) + (0.3 \times 0.7) + (0.2 \times 0.8) = 0.45 + 0.21 + 0.16 = 0.82$</span>。<br />
+            這個 <span class="math inline">$0.82$</span> 分代表此次修改品質優良，系統會鼓勵畫筆朝這個方向繼續優化；若分數低於 <span class="math inline">$0.5$</span>，畫筆就會被要求重新練習。</p>
+            <h4>寓意／知識對應說明</h4>
+            <p>這個故事對應了 <strong>VIVA (VLM-Guided Instruction-Based Video Editing)</strong> 的核心邏輯：</p>
+            <ul>
+            <li><strong>VLM 引導的意義：</strong> 傳統剪輯軟體看不懂人的自然語言，但 VIVA 透過 VLM（視覺語言模型）作為「審查員」，讓 AI 能理解人類指令與影片內容之間的「語意關聯」。</li>
+            <li><strong>為什麼要獎勵優化：</strong> 單純的生成模型很容易出現「幻覺」（例如改動了不該動的背景），透過「獎勵優化」機制，我們強迫模型在修改影片時，必須同時兼顧「指令達成」與「影片穩定性」，這避免了單純為了聽話而犧牲影片畫質的缺陷。</li>
+            <li><strong>教學感總結：</strong> VIVA 的成功不在於它會畫畫，而在於它懂得「自我反思」。透過獎勵公式將抽象的「影片品質」轉化為可計算的數字，讓 AI 剪輯從「瞎子摸象」進化成「精準施工」。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - Abstract</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>故事標題：影像魔法師的修行：VIVA 與它的精靈嚮導</h3>
+            <h4>開場：魔法世界的困境</h4>
+            <p>在數位影音的魔法王國裡，住著一群「影像編輯魔法師」。他們的任務是根據人們的願望（自然語言指令），將原始影片變出不一樣的模樣。然而，這群魔法師過去大多是透過「背誦課本」來修行的——他們只能處理像是「把蘋果變紅」這種簡單的單一指令。一旦遇到複雜的請求，比如「讓這隻貓咪優雅地走在充滿落葉的街道上」，魔法師們就手忙腳亂，不是把貓變成了狗，就是讓影片變得模糊不清。</p>
+            <h4>情節發展：精靈嚮導與獎勵遊戲</h4>
+            <p>為了突破這個瓶頸，一位名叫 VIVA 的導師出現了。他發現了兩個關鍵秘密：</p>
+            <p>第一，魔法師們缺乏一個「會讀心」的導師。於是 VIVA 創造了一位「精靈嚮導」（VLM-based instructor），這精靈能同時看見原始影片的第一個畫面、人們的指令，甚至是參考用的圖片。精靈將這些資訊轉化為一份「空間與意義地圖」，讓魔法師在進行變化時，不再是憑空想像，而是精準地知道要在影片的哪個位置、保持什麼樣的語意結構。</p>
+            <p>第二，修行的方法錯了。過去的方法是強制魔法師「死記硬背」，但 VIVA 引入了一場「獎勵遊戲」——Edit-GRPO。這是一場集體的相對政策最佳化。魔法師會針對同一個指令做出多種版本的嘗試，然後由評審團根據「是否符合指令」、「內容有沒有亂跑」、「畫面夠不夠漂亮」這三個標準進行評分。魔法師不是在學習正確答案，而是在透過「相對好壞」的比較，慢慢學會如何取悅審美標準。</p>
+            <h4>問題如何解決：自動化修煉塔</h4>
+            <p>為了讓魔法師有足夠的教材練習，VIVA 還蓋了一座「自動化修煉塔」。這座塔能自動合成各種複雜、高品質的訓練資料，讓魔法師在沒有人類干預的情況下，不斷經歷各種艱難的編輯挑戰，累積豐富的實戰經驗。</p>
+            <h4>寓意／知識對應說明</h4>
+            <p>這個故事對應了論文中的核心技術架構。簡單來說，VIVA 透過以下方式解決了傳統方法的「推廣性」問題：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">魔法術語</th>
+            <th style="text-align: left;">對應知識概念</th>
+            <th style="text-align: left;">核心功能</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">精靈嚮導</td>
+            <td style="text-align: left;">VLM-guided encoding</td>
+            <td style="text-align: left;">利用大型視覺語言模型將指令轉化為有意義的視覺引導，確保語意精準。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">獎勵遊戲</td>
+            <td style="text-align: left;">Edit-GRPO</td>
+            <td style="text-align: left;">基於 Group Relative Policy Optimization，透過比較多個生成結果的相對分數來迭代模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">自動化修煉塔</td>
+            <td style="text-align: left;">Data construction pipeline</td>
+            <td style="text-align: left;">大規模合成高品質的「影片-指令」配對資料，解決訓練樣本多樣性不足的痛點。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>為什麼 VIVA 比傳統方法有效？</strong><br />
+            傳統方法通常依賴監督式學習，只能學會「指令 A 對應結果 A'」。但 VIVA 的 Edit-GRPO 引入了獎勵函數，模型不再是被動地模仿，而是透過對比學習主動尋求「更優化」的路徑。</p>
+            <p>例如，假設我們定義一個衡量分數 <span class="math inline">$R(v, i)$</span>，其中 <span class="math inline">$v$</span> 是生成的影片，<span class="math inline">$i$</span> 是指令：</p>
+            <div class="formula">$$R(v, i) = \alpha \cdot \text{Faithful}(v, i) + \beta \cdot \text{Preserve}(v, v_{orig}) + \gamma \cdot \text{Aesthetic}(v)$$</div>
+            
+            <ul>
+            <li><strong><span class="math inline">$\text{Faithful}(v, i)$</span></strong>：指令一致性（影片是否聽話）。</li>
+            <li><strong><span class="math inline">$\text{Preserve}(v, v_{orig})$</span></strong>：內容保持度（是否保持了原片的本質）。</li>
+            <li><strong><span class="math inline">$\text{Aesthetic}(v)$</span></strong>：美感分數。</li>
+            <li><strong><span class="math inline">$\alpha, \beta, \gamma$</span></strong>：權重係數。</li>
+            </ul>
+            <p><strong>數值示例：</strong><br />
+            若我們對同一個指令生成兩段影片 <span class="math inline">$v_1$</span> 與 <span class="math inline">$v_2$</span>，經計算後得到 <span class="math inline">$R(v_1) = 0.85, R(v_2) = 0.60$</span>。<br />
+            Edit-GRPO 會計算這兩者的相對優勢：<span class="math inline">$\text{Advantage} \propto (R(v_1) - \bar{R})$</span>。<br />
+            結果 <span class="math inline">$v_1$</span> 會獲得較高的報酬，模型參數更新時會傾向於增加 <span class="math inline">$v_1$</span> 類型的生成機率。在實務上，這意味著模型不再只是「照著做」，而是學會了「挑出最符合人類審美與指令的那個版本」。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - 1. Introduction</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>第一章：影像魔法師的學徒與「對照本」的難題</h3>
+            <h4>開場：魔法世界的影像工坊</h4>
+            <p>在數位影像的王國裡，住著一群被稱為「魔法編輯師」的工匠。他們的工作是把一段平淡的影片，變身成充滿魔幻色彩的廣告或電影。這些編輯師擁有強大的魔法——「擴散魔法」（Diffusion-based approaches），能讓影像在光影之間自由變幻。</p>
+            <h4>情節發展：繁瑣的「抄寫員」任務</h4>
+            <p>為了教會新手魔法師如何進行影像編輯，王國裡的資深導師們通常採用一種嚴格的訓練方式：將編輯任務視為「翻譯練習」。</p>
+            <p>新手魔法師會拿到兩樣東西：一卷原始膠捲，以及一張寫滿要求的「魔法指令」（例如：「把這隻小狗變成穿雨衣的樣子」）。接著，魔法師必須根據這兩個條件，畫出全新的、修改過的影片。</p>
+            <p>為了確保魔法精準，導師們強制要求每一位學徒必須參考一本厚重的「對照魔法書」。這本書裡詳細紀錄了無數個原始畫面與修改後畫面的「黃金組合」。學徒必須盯著這本目錄，反覆練習原始影像與目標影像之間的對應關係，確保每一個像素點的變動都符合書上的標準答案。</p>
+            <h4>問題如何解決：尋求更靈活的傳承</h4>
+            <p>雖然這套「照著書抄」的訓練方法讓魔法師們產出了許多精美的作品，但工匠們開始感到疲憊。他們發現，要製作這樣一本「黃金對照集」需要耗費無數人力來標註、製作影片對子（paired datasets），一旦遇到書本裡沒寫過的新場景，魔法師就會陷入困境。</p>
+            <p>因此，王國的智者們開始思考：有沒有辦法跳脫這本沈重的參考書，讓魔法師擁有更直覺的創造力，而不必受限於死板的「範例對照」呢？</p>
+            <h4>寓意與知識對應說明</h4>
+            <p>在這個故事中，我們對應的知識體系如下：</p>
+            <ul>
+            <li><strong>魔法編輯師</strong>：指代現代人工智慧系統（如影片編輯模型）。</li>
+            <li><strong>擴散魔法 (Diffusion-based approaches)</strong>：目前 AI 影像編輯的主流技術，透過擴散模型來生成與編輯影像。</li>
+            <li><strong>對照魔法書 (Paired datasets)</strong>：指機器學習中極為依賴的「成對數據集」（例如：輸入影片 X 與目標影片 Y 的對應樣本）。</li>
+            <li><strong>翻譯練習 (Supervised translation)</strong>：將編輯過程簡化為一種「輸入到輸出」的監督式學習任務。</li>
+            </ul>
+            <p><strong>為什麼要這麼說？</strong><br />
+            傳統的影像編輯模型之所以強大，是因為它們透過大量精準的「輸入-輸出對應」來進行訓練。這種方式雖然準確，但缺點在於：</p>
+            <ol>
+            <li><strong>數據製作成本極高</strong>：需要大量的專業人員製作「原始-目標」配對影片。</li>
+            <li><strong>泛化能力受限</strong>：模型容易「死記硬背」訓練集中的變化，當遇到訓練數據中未出現過的指令或場景時，編輯效果往往會大打折扣。</li>
+            </ol>
+            <p>這就是為何當前的研究趨勢正努力從「死記硬背對照集」，轉向讓模型透過理解語意來進行編輯，這正是為了克服對數據集的過度依賴，讓影像編輯變得更具靈活性。</p>
+            <h3>1. 魔法繪師的嚴格學徒訓練</h3>
+            <h4>開場：魔法繪師的困境</h4>
+            <p>在雲端之上的「繪畫王國」，有一位名叫「AI 領航員」的傳奇大師。他擁有一項絕活：只要給他一張「修改前」的原圖，再給他一張「修改後」的目標圖，他就能學會如何進行編輯。這個過程就像是幫他找了一位「標準答案」的導師，只要反覆對照，他就能精準學會各種魔法。</p>
+            <p>然而，大師最近非常頭痛，因為他手下的「學徒訓練班」遇到了一個巨大的瓶頸。</p>
+            <h4>情節發展：狹窄的練習室</h4>
+            <p>大師手上的教學素材，大多來自於一個狹窄的「基礎編輯練習室」。在這個練習室裡，魔法規則非常單純：</p>
+            <ul>
+            <li><strong>增加魔法</strong>：在畫布上加一隻貓。</li>
+            <li><strong>移除魔法</strong>：把畫布上的紅蘋果擦掉。</li>
+            <li><strong>交換魔法</strong>：把畫布上的黃花換成藍花。</li>
+            </ul>
+            <p>這些練習有一個共同點：它們都必須在一個「預先畫好框框」（Mask）的範圍內進行。這就像是給學徒塗鴉時，規定他們只能在指定的格子裡填顏色。對於簡單的任務，這確實有效，但如果學徒想挑戰更複雜的魔法，例如「改變整張畫的氣氛」或是「根據複雜的指令進行深度的藝術創作」，這些練習素材就完全派不上用場了。</p>
+            <h4>問題如何解決：尋找更靈活的訓練方案</h4>
+            <p>大師意識到，目前的系統就像是被困在溫室裡的幼苗，一旦接觸到大千世界裡那些多變、複雜的真實編輯需求，就顯得束手無策。</p>
+            <p>他發現，目前的技術瓶頸在於：無法自動生成「複雜編輯任務」的對照組。如果不具備這些高品質、多樣化的「練習配對資料」（Training Pairs），學徒就無法理解什麼是真正的複雜編輯。大師現在必須思考如何打破這個「框框」，讓學徒能從更多元、不設限的情境中汲取知識，而不是僅僅停留在單純的「加、減、換」遊戲。</p>
+            <h4>寓意與知識對應說明</h4>
+            <p>這個故事對應了當前影像生成模型在訓練數據上的重大限制：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">概念類比</th>
+            <th style="text-align: left;">知識術語</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>魔法學徒</strong></td>
+            <td style="text-align: left;">影像編輯模型 (Image Editing Models)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>練習配對資料</strong></td>
+            <td style="text-align: left;">Paired training data (Input/Output 對)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>預先畫好的框框</strong></td>
+            <td style="text-align: left;">Predefined mask (遮罩限制)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>簡單編輯任務</strong></td>
+            <td style="text-align: left;">Object addition, deletion, swaps (基礎操作)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>瓶頸</strong></td>
+            <td style="text-align: left;">Data synthesis pipeline limitation (合成流程受限)</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>為什麼這是一個瓶頸？</strong><br />
+            在深度學習中，模型需要大量的「Input（原圖）+ Output（修改後圖）」作為學習材料。目前的技術（如 [8, 10, 73, 75] 引用之文獻）大多依賴傳統遮罩技術，這種技術強迫修改區域必須被明確標示。但真實世界的編輯需求（如「讓這張照片看起來更像莫內畫風」或「調整照片中的光影與構圖關係」）並不總是以「遮罩」的形式存在。當無法自動化生成這些高品質的「複雜對照組」時，模型就無法學習更深層的影像邏輯，這正是目前技術研究亟需突破的方向。</p>
+            <h3>故事標題：剪刀手學徒的「練習題魔咒」</h3>
+            <h4>開場：工匠的困擾</h4>
+            <p>在影像繪畫的國度裡，住著一群努力的剪刀手學徒。他們每天的工作是修改畫作——比如把「晴天」改成「雨天」，或者把「貓咪」變成「兔子」。學徒們練習的方法很單純，他們總是在固定的、簡單的畫布上練習：把一張乾淨的畫加上一個小標籤，然後施展魔法，讓畫布產生一點點小變化。</p>
+            <p>日子久了，學徒們變得非常擅長「簡單的修改」。只要題目很直觀，他們幾乎不會出錯。但一旦遇到複雜的指令，比如「請把這張混亂的派對場景，改造成安靜的森林，並且讓光影變得像夕陽一樣柔和」，他們就會手忙腳亂，交出的作品總是顯得扭曲又奇怪。</p>
+            <h4>情節發展：簡化練習帶來的盲點</h4>
+            <p>為什麼會這樣呢？原來，學徒們一直以來所依賴的「練習素材」，內容實在太過單一了。這些練習題就像是一連串刻板的「填色遊戲」，它們缺乏變化的深度。</p>
+            <p>學徒導師觀察到，這種「過於簡單的練習」，導致學徒們患上了一種「泛化能力缺失症」。這意味著，他們學會的是如何死記硬背「A 到 B」的固定路徑，而不是理解「什麼是修改」的本質。當遇到題目變複雜，或者畫布上的元素變多時，他們腦海中那套刻板的邏輯就完全派不上用場。</p>
+            <h4>問題如何解決：雙重導師的指引</h4>
+            <p>為了打破這個魔咒，導師決定引進兩位新的輔助導師，他們分別代表「結構強化」與「邏輯重組」。</p>
+            <p>導師告訴學徒們：「我們不能只滿足於簡單的『一對一』修改練習。我們需要一套新的方法，不僅要擴展練習題的深度，還要強迫你們在處理複雜任務時，能將拆解後的步驟重新組裝起來。」</p>
+            <p>這兩位新導師帶來的秘密武器，正是為了彌補學徒在面對複雜編輯時的「泛化鴻溝」。他們不只是教導學徒如何修改，更是在訓練學徒如何「面對混亂的畫面」，並在其中找到修改的平衡點。</p>
+            <h4>寓意／知識對應說明</h4>
+            <p>這則故事對應了當前影片編輯模型（Video Editing Systems）的核心瓶頸。</p>
+            <ul>
+            <li><strong>練習題魔咒（Simplistic Edits）</strong>：指的是現有模型大多使用極度簡化的成對數據（例如：一張原圖配上一個極小的文字編輯指令）進行訓練。這種數據缺乏多樣性與複雜度，導致模型無法處理真實世界的複雜編輯任務。</li>
+            <li><strong>泛化能力缺失症（Generalization Gap）</strong>：指模型在訓練數據上表現極好，但一遇到沒看過的、複雜的編輯需求時，表現便大幅滑落。這是因為模型學到的只是「特定對應」，而非「編輯原理」。</li>
+            <li><strong>雙重導師（Two Complementary Components）</strong>：指論文提出的兩項核心技術手段。這兩項技術的目的在於將簡單的編輯邏輯擴展至複雜場景，通過互補的機制，讓模型在處理複雜任務時能像處理簡單任務一樣穩定。</li>
+            </ul>
+            <p><strong>為什麼這樣設計有效？</strong><br />
+            直覺的做法是直接加大訓練數據量，但如果數據依然是「簡單的」，那只是在重複同樣的錯誤。這兩項組件的設計邏輯在於「改變輸入結構」與「調整優化目標」，這能強迫模型在訓練階段就必須處理高階的語義理解與空間一致性，而不是僅僅依賴對像素的微小擾動來蒙混過關。這就像讓運動員從舉重轉為參加十項全能，透過「組成訓練（Components）」的引入，讓模型具備應對多變環境的能力。</p>
+            <h3>故事標題：精靈畫家的「魔法視界導師」</h3>
+            <h4>開場：空洞的指令，迷茫的畫筆</h4>
+            <p>在「擴散畫廊」裡，住著一位強大的魔法畫師，人稱 DiT（擴散變壓器）。他能在虛無的畫布上憑空創造出絕美的風景，但他有個小毛病：他只聽得懂「文字咒語」。如果你對他說「畫一隻貓」，他能畫出貓，但如果你想指定「畫這隻貓，而且要讓牠從橘色變成藍色，並站在這顆特定的石頭旁邊」，他就徹底亂了套。因為單薄的文字，不足以精準描述這些錯綜複雜的視覺細節。</p>
+            <h4>情節發展：引進聰明的觀察者</h4>
+            <p>為了拯救畫師的混亂，大家請來了一位睿智的「視覺語言導師」（VLM Instructor）。這位導師擁有一雙超凡的眼睛，他不僅能看懂文字咒語 <span class="math inline">$t_{ins}$</span>，還能同時盯著原始圖像 <span class="math inline">$I_{src}$</span>（原本的樣子）與參考圖像 <span class="math inline">$I_{ref}$</span>（你想要的樣子）。</p>
+            <p>導師的工作是將這堆複雜的視覺資訊與文字，翻譯成畫師聽得懂的「視覺密碼」。他不會只丟下一句籠統的敘述，而是會把物體的輪廓、所在的位置、甚至你想改變的顏色屬性，拆解成一連串細膩的、帶有空間坐標的「多模態標記」。</p>
+            <h4>問題如何解決：魔法密碼的傳遞</h4>
+            <p>導師將觀察的結果凝練成了最後的隱藏狀態，我們稱之為 <span class="math inline">$x_{vlm}$</span>。他把這些訊號交給畫師，取代了原本那些無力的文字標籤。現在，畫師不再需要對著抽象文字猜測，他拿到的是一份精準的施工圖，明確知道哪裡該動、哪裡該改，這就是魔法傳遞的核心：</p>
+            <div class="formula">$$x_{vlm} = \text{VLM}(t_{ins}, I_{src}, I_{ref}). \quad (1)$$</div>
+            
+            <h4>寓意／知識對應說明</h4>
+            <p>這則故事描述了 VLM Instructor 如何將多模態輸入轉化為模型能理解的「條件訊號」。</p>
+            <p><strong>核心變數對照表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數符號</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">類比角色</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t_{ins}$</span></td>
+            <td style="text-align: left;">文字指令</td>
+            <td style="text-align: left;">畫師聽到的咒語</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{src}$</span></td>
+            <td style="text-align: left;">原始圖像</td>
+            <td style="text-align: left;">畫師眼前的原圖</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{ref}$</span></td>
+            <td style="text-align: left;">參考圖像</td>
+            <td style="text-align: left;">想要達成的目標圖</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_{vlm}$</span></td>
+            <td style="text-align: left;">輸出的多模態標記</td>
+            <td style="text-align: left;">精靈畫家收到的「魔法施工圖」</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式解析與實務意義</strong></p>
+            <p>公式 (1) <span class="math inline">$x_{vlm} = \text{VLM}(t_{ins}, I_{src}, I_{ref})$</span> 本質上是一個「特徵轉換過程」。</p>
+            <ul>
+            <li><strong>為什麼這樣設計？</strong> 單純的文字（Text Embedding）缺乏空間意識，無法精確指認圖像中的「特定區域」。透過 VLM，我們可以把「把這個地方變藍」這種指令，轉化為模型能對齊的視覺向量。</li>
+            <li>
+            <p><strong>數值範例解釋：</strong><br />
+                假設導師將圖像切成 10x10 的網格，並將每一塊的特徵編碼成 768 維的向量。如果我們要求改變特定區域，VLM 會輸出一組對應的向量序列。<br />
+                若 <span class="math inline">$I_{src}$</span> 是紅色球，<span class="math inline">$I_{ref}$</span> 是藍色球，<span class="math inline">$t_{ins}$</span> 為「變藍」。VLM 輸出 <span class="math inline">$x_{vlm}$</span> 可能包含一個代表「球體空間區域」的高權重向量，暗示 DiT 在這組位置上必須調整顏色訊號。</p>
+            </li>
+            <li>
+            <p><strong>實務意義：</strong> 這個數字結果代表了「對條件的精確化控制」。在訓練時，DiT 接收到這些 <span class="math inline">$x_{vlm}$</span> 作為條件輸入，這就像給了畫師一份帶有坐標的藍圖，相比傳統只給文字指令，大幅降低了畫師產生「張冠李戴」錯誤的機率，實現了精細的圖像編輯效果。</p>
+            </li>
+            </ul>
+            <h3>森林裡的魔鏡工匠：修補術的強化訓練</h3>
+            <h4>1. 開場：神奇的修補之手</h4>
+            <p>在魔法森林的深處，住著一群被稱為「魔鏡工匠」的學徒，他們負責修復那些畫面受損的魔法卷軸（影片）。傳統的修補方法很單純：看一眼原本的草圖，然後試著塗抹修正。但有些卷軸非常刁鑽，不僅細節多，還要根據咒語（文字提示）進行複雜的變動，光靠硬記草圖已經不夠了。</p>
+            <p>這時，長老傳授了一種進階秘法——「Edit-GRPO」。這不再只是單純的複製練習，而是一場針對「修復成功率」的強化修行。</p>
+            <h4>2. 情節發展：分組競賽的魔力</h4>
+            <p>長老將學徒們分成好幾個小組，每個小組拿到同一個魔法卷軸。長老的任務很簡單：「按照咒語的要求，把卷軸修改得最好看。」</p>
+            <p>不同於以前只讓一個學徒埋頭苦幹，現在是「分組同步修復」（GRPO，Group Relative Policy Optimization）。每個小組會同時產出多個版本的修復結果，有些版本畫得精準，有些版本則把畫面弄得一團糟。</p>
+            <h4>3. 問題如何解決：相對獎勵的智慧</h4>
+            <p>為什麼要分組競爭呢？長老解釋道：「如果只評分一個人的作品，他可能不知道自己錯在哪；但如果是分組，我們可以比較出誰做得比較好。」</p>
+            <p>長老制定了一條規則：每個小組內的所有作品，會根據「咒語對應的準確度」來互相評分。做得最好的那個作品會獲得「最高嘉獎」，而表現不如預期的作品，則會被要求模仿那個「最好的版本」。透過這種「組內相對比較」的方法，學徒們不需要一個完美的標準答案作為參考，只要不斷追求「比組裡的其他作品更好」，整體的修復技巧就會突飛猛進。</p>
+            <h4>4. 寓意與知識對應</h4>
+            <p><strong>知識對應：Edit-GRPO 的核心邏輯</strong></p>
+            <p>Edit-GRPO 是一種後訓練（post-training）階段，它將原本用於語言模型的 GRPO 演算法遷移到了影片編輯任務上。它不再依賴傳統的監督式學習，而是透過「強化學習」來主動優化模型。</p>
+            <ul>
+            <li>
+            <p><strong>為什麼要這樣設計？</strong> <br />
+                傳統方法容易產生「模糊」或「偏離咒語」的影像。Edit-GRPO 透過比較同一個提示詞下產生的多個編輯結果，讓模型學會偏好那些「更符合邏輯且視覺效果更好」的輸出。</p>
+            </li>
+            <li>
+            <p><strong>與直覺做法的差異：</strong><br />
+                直覺做法是「單一對單一」的校正（模型產出一張，算一次誤差），這容易讓模型陷入僵局。GRPO 則是「群體對群體」，透過評估群體中的相對優劣，給予模型強力的訊號：哪些特徵是好編輯的關鍵。</p>
+            </li>
+            </ul>
+            <p><strong>關於 GRPO 的運作機制</strong></p>
+            <p>在 GRPO 中，我們通常使用一個相對優勢函數 <span class="math inline">$A_i$</span> 來衡量第 <span class="math inline">$i$</span> 個輸出結果的好壞：</p>
+            <div class="formula">$$A_i = \frac{r_i - \text{mean}(r)}{\text{std}(r)}$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">實務代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$r_i$</span></td>
+            <td style="text-align: left;">第 <span class="math inline">$i$</span> 個輸出的獎勵分數</td>
+            <td style="text-align: left;">該次編輯有多符合文字要求</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{mean}(r)$</span></td>
+            <td style="text-align: left;">該組所有輸出的平均分數</td>
+            <td style="text-align: left;">群體的平均表現水平</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{std}(r)$</span></td>
+            <td style="text-align: left;">該組分數的標準差</td>
+            <td style="text-align: left;">表現的分散程度（多樣性）</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            假設小組產生了三個版本，分數分別為 <span class="math inline">$r_1=8, r_2=6, r_3=4$</span>，則平均值為 <span class="math inline">$6$</span>，標準差約為 <span class="math inline">$2$</span>。</p>
+            <ul>
+            <li>對於 <span class="math inline">$r_1$</span>：<span class="math inline">$A_1 = (8 - 6) / 2 = 1.0$</span>（獲得正面鼓勵）</li>
+            <li>對於 <span class="math inline">$r_3$</span>：<span class="math inline">$A_3 = (4 - 6) / 2 = -1.0$</span>（收到修正警告）</li>
+            </ul>
+            <p><strong>結果意義：</strong> <br />
+            這種計算方式確保了模型不會因為評分標準過嚴或過鬆而崩潰。它只在乎「比平均水平好多少」。當 <span class="math inline">$A_i$</span> 為正值時，模型會加強該路徑的權重，從而讓下一次編輯產出更高品質的影片。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - 3.1. Context-Aware VLM Instructor</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>任務一：盲眼領航員與視覺地圖</h3>
+            <h4>開場：空虛的指令</h4>
+            <p>在「機器大腦國」裡，住著一位名叫「指令官」的聰明小精靈。指令官的任務是看懂人類的文字指令 <span class="math inline">$t_{ins}$</span>，並指揮機器人去執行任務。但問題來了，人類的語言實在太抽象了。當人類下達「把那杯水拿過來」時，機器人腦中的 <span class="math inline">$t_{ins}$</span> 就像一張只有文字的導航單，上面寫著「去桌子旁」，卻沒有告訴機器人：桌子長什麼樣？水杯在哪個方位？因為資訊太過稀疏，機器人常常在房間裡打轉，這就是所謂的「條件不足（underspecified conditioning）」。</p>
+            <h4>情節發展：增加視覺救星</h4>
+            <p>指令官意識到，光靠文字 <span class="math inline">$t_{ins}$</span> 就像是蒙著眼睛開車。於是，他決定找來兩個強大的幫手：</p>
+            <ol>
+            <li><strong>源頭之眼 (<span class="math inline">$I_{src}$</span>)</strong>：他從任務影片 <span class="math inline">$V_{src}$</span> 的開頭抓取了第一幀圖像。這就像是給機器人看一眼「案發現場」的照片，讓它知道起點長什麼模樣。</li>
+            <li><strong>參考之鏡 (<span class="math inline">$I_{ref}$</span>)</strong>：這是一個選配工具。人類可以額外提供一張參考圖 <span class="math inline">$I_{ref}$</span>，告訴機器人：「你看，這就是你要找的那個杯子。」</li>
+            </ol>
+            <p>透過加入 <span class="math inline">$I_{src}$</span> 和 <span class="math inline">$I_{ref}$</span>，原本單薄的文字指令 <span class="math inline">$t_{ins}$</span>，瞬間變成了有圖有真相的詳細任務書。</p>
+            <h4>問題如何解決：重塑感知規則</h4>
+            <p>為了讓這一切生效，指令官採用了一套「視覺注入規則」。原本他只處理 <span class="math inline">$t_{ins}$</span>，現在他必須同時處理這些圖像資訊。我們可以把這個過程看作是一個權重融合的任務：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表角色</th>
+            <th style="text-align: left;">實務功能</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t_{ins}$</span></td>
+            <td style="text-align: left;">文字指令</td>
+            <td style="text-align: left;">任務的目標意圖</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{src}$</span></td>
+            <td style="text-align: left;">源影像第一幀</td>
+            <td style="text-align: left;">提供場景上下文（Context）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{ref}$</span></td>
+            <td style="text-align: left;">參考影像</td>
+            <td style="text-align: left;">提供目標物體的精準特徵</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式運作邏輯：</strong><br />
+            假設我們有一個簡單的融合函數 <span class="math inline">$F$</span>，來計算指令的「清晰度」<span class="math inline">$S$</span>：<br />
+            <span class="math inline">$S = w_1 \cdot \text{Text}(t_{ins}) + w_2 \cdot \text{Vision}(I_{src}) + w_3 \cdot \text{Vision}(I_{ref})$</span></p>
+            <ul>
+            <li><strong>變數解釋：</strong><ul>
+            <li><span class="math inline">$w_1, w_2, w_3$</span>：代表指令官對不同資訊的信任程度（權重）。</li>
+            <li><span class="math inline">$\text{Text}, \text{Vision}$</span>：分別將文字與影像轉換為機器能懂的數字特徵（Embedding）。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>數值範例：</strong><br />
+                若文字很模糊（<span class="math inline">$\text{Text}=0.2$</span>），但影像很清晰（<span class="math inline">$\text{Vision}=0.9$</span>），且我們設定權重 <span class="math inline">$w_1=0.2, w_2=0.5, w_3=0.3$</span>：<br />
+                <span class="math inline">$S = 0.2(0.2) + 0.5(0.9) + 0.3(0.9) = 0.04 + 0.45 + 0.27 = 0.76$</span></p>
+            </li>
+            <li>
+            <p><strong>結果意義：</strong> 總分 <span class="math inline">$0.76$</span> 遠高於只看文字的 <span class="math inline">$0.04$</span>。這代表機器人現在有 <span class="math inline">$76\%$</span> 的把握知道自己在看什麼、該往哪走，徹底解決了原本因為資訊不足而迷失方向的問題。</p>
+            </li>
+            </ul>
+            <h4>寓意：為什麼這樣設計比較好？</h4>
+            <p>這個故事的核心寓意在於「上下文感知（Context-Aware）」。只給文字指令，就像在電話裡描述一個迷宮，雙方都容易誤解；但給予圖片，就像直接在導航地圖上畫了箭頭。</p>
+            <p><strong>為什麼這樣設計有效？</strong></p>
+            <ol>
+            <li><strong>減少模糊性</strong>：文字可能有多種解釋，但圖片能定錨具體物件。</li>
+            <li><strong>多模態對齊</strong>：透過同時輸入文字與影像，模型能學習「文字」與「視覺特徵」之間的對應關係，讓機器不再是死背指令，而是真正「看懂」任務。</li>
+            </ol>
+            <p>相比於直覺做法（只給文字），這種「文字+影像」的組合，能將機器人的判斷從「猜測模式」轉變為「觀測模式」，大幅提升了任務的成功率與執行精準度。</p>
+            <h3>魔法畫布的記憶術：如何讓影片修復不走樣</h3>
+            <h4>開場：畫師的難題</h4>
+            <p>在「幻影工作室」裡，有一位年輕畫師正苦惱著。他的任務是修復一段模糊的古老影片（<span class="math inline">$V_{src}$</span>），並將其轉化為清晰的新樣貌。如果只給他一團混亂的雜訊（<span class="math inline">$z_{noise}$</span>）讓他自由發揮，畫師總會畫出與原本影片毫不相關的內容。如何才能讓畫師在創作時，始終記得原片的模樣呢？</p>
+            <h4>情節發展：雙重圖層的合併</h4>
+            <p>畫師想出了一個妙招。他把原始影片壓縮成一組精簡的記憶碎片 <span class="math inline">$z_{src}$</span>，同時準備了一盒代表創造力的雜訊顏料 <span class="math inline">$z_{noise}$</span>。</p>
+            <p>為了讓兩者完美融合，他使用了「拼圖魔法」（patchification，記作 <span class="math inline">$\mathcal{P}$</span>）：</p>
+            <ol>
+            <li>他將記憶碎片與雜訊顏料切成一塊塊的小拼圖。</li>
+            <li>他將這些拼圖排列成長長的序列 <span class="math inline">$x_{src}$</span> 和 <span class="math inline">$x_{noise}$</span>，長度為 <span class="math inline">$L$</span>，每個單元包含 <span class="math inline">$C$</span> 種特徵維度。</li>
+            <li>最關鍵的一步來了：他使用「通道拼接大法」（channel-wise concatenation），將原本對應位置的特徵疊加在一起。</li>
+            </ol>
+            <p>這就像是給畫紙鋪上了兩層透光紙，一層是原片的輪廓，一層是雜訊的隨機色彩。透過這個動作，畫師在繪畫時，每一筆都能同時看到原片的記憶與雜訊的創造力。</p>
+            <h4>問題如何解決：通道魔法的規則</h4>
+            <p>畫師遵循著這條神聖規則來融合素材，產出最終的「環境感知序列」 <span class="math inline">$x_{video}$</span>：</p>
+            <div class="formula">$$x_{video} = \mathcal{P}(\text{Concat}(\mathcal{P}(z_{src}), \mathcal{P}(z_{noise}))^c)$$</div>
+            
+            <p>透過這個公式，畫師確保了無論雜訊如何變化，原片的結構資訊始終被牢牢鎖定在「通道」中，成為修復過程的導航圖。</p>
+            <h4>知識對應與術語解析</h4>
+            <p><strong>變數意義表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">角色對應</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$z_{src}$</span></td>
+            <td style="text-align: left;">原片的記憶碎片</td>
+            <td style="text-align: left;">原始影片經過 VAE 壓縮後的潛在特徵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$z_{noise}$</span></td>
+            <td style="text-align: left;">創造力的顏料</td>
+            <td style="text-align: left;">用於生成影片的初始雜訊。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_{video}$</span></td>
+            <td style="text-align: left;">融合後的導航圖</td>
+            <td style="text-align: left;">餵給模型進行修復的最終輸入特徵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{P}$</span></td>
+            <td style="text-align: left;">拼圖魔法</td>
+            <td style="text-align: left;">將影像切片並透過可訓練投影機轉化為序列。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Concat}^c$</span></td>
+            <td style="text-align: left;">通道拼接大法</td>
+            <td style="text-align: left;">將兩組特徵在通道維度上合併。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值邏輯示例</strong><br />
+            假設我們將一張 <span class="math inline">$2 \times 2$</span> 的小區域作為一個單位（<span class="math inline">$L=4$</span>），每個單位有 2 個特徵通道（<span class="math inline">$C=2$</span>）：</p>
+            <ul>
+            <li>若原片特徵碎片 <span class="math inline">$x_{src}$</span> 在某處的值為 <span class="math inline">$[1, 0]$</span>。</li>
+            <li>若雜訊特徵 <span class="math inline">$x_{noise}$</span> 在同處的值為 <span class="math inline">$[0, 1]$</span>。</li>
+            <li>經過通道拼接 <span class="math inline">$\text{Concat}^c$</span> 後，該處會變成 <span class="math inline">$[1, 0, 0, 1]$</span>，長度擴展為 <span class="math inline">$C=4$</span>。</li>
+            </ul>
+            <p><strong>為什麼這樣設計？（寓意解析）</strong></p>
+            <ul>
+            <li><strong>為何不直接加總？</strong> 如果直接相加，模型會分不清哪一部分是原片資訊，哪一部分是雜訊，容易導致資訊混淆。</li>
+            <li><strong>為何要拼圖（Patchify）？</strong> 因為原始影像太大，直接處理運算成本太高，切分成序列能讓模型像讀書一樣，一行行地精準處理資訊。</li>
+            <li><strong>實務意義：</strong> 這種設計讓模型在生成影片的每一個階段，都受到「原始內容」的引導（Context-aware），確保修復後的影片不僅清晰，而且動作與內容都與原始影片高度一致，不會發生「畫風突變」或「角色消失」的現象。</li>
+            </ul>
+            <h3>3.1 聰明的遮罩導師：讓畫家學會看重點</h3>
+            <h4>開場：迷糊的畫家與專注的導師</h4>
+            <p>在圖像生成的魔法世界裡，有一位名叫「Rectified Flow」的年輕畫家。他總是非常勤奮地練習繪畫，但他有一個小毛病：畫畫時總是平均分配注意力，有時候會把珍貴的筆觸浪費在無關緊要的背景上，卻忽略了畫面中最關鍵的細節。</p>
+            <p>這時候，出現了一位「遮罩導師」（Mask Instructor）。導師手中有一張神奇的「遮罩圖」（Mask Video <span class="math inline">$M$</span>），這張圖像是一盞聚光燈，專門照亮畫面中最值得關注的核心區域。</p>
+            <h4>情節發展：如何調整畫筆的力道</h4>
+            <p>導師告訴畫家：「當你畫畫時，我們不能讓每一塊區域的學習份量都一樣。如果你畫到關鍵的地方（遮罩區域），就必須加倍專注；如果畫到無關緊要的地方，就保持正常的步調。」</p>
+            <p>於是，導師制定了一條規則，用來調整畫家的訓練損失函數（Loss）：</p>
+            <div class="formula">$$\mathcal{L}_{mask} = (1 + w_m M)\mathcal{L}_{FM}$$</div>
+            
+            <p>在這裡，畫家原本的練習目標是 <span class="math inline">$\mathcal{L}_{FM}$</span>（這是他原本辛苦畫畫的錯誤率），而導師加上了一個強大的倍率 <span class="math inline">$(1 + w_m M)$</span>，這就像是給畫家戴上了一副「智慧眼鏡」。</p>
+            <h4>問題如何解決：加權的魔法</h4>
+            <p>導師是如何運作這副眼鏡的呢？</p>
+            <ul>
+            <li><span class="math inline">$M$</span>（遮罩）：這是導師手中的地圖，標示出哪裡是重點。如果某個像素是重要物體， <span class="math inline">$M$</span> 的數值就是 1，否則就是 0。</li>
+            <li><span class="math inline">$w_m$</span>（導師的權重）：這代表導師有多強調這些重點，數值越高，畫家對重點的記憶就越深刻。</li>
+            </ul>
+            <p>如果 <span class="math inline">$M=1$</span>（代表重點區域），畫家的錯誤率會變成 <span class="math inline">$(1 + w_m) \times \mathcal{L}_{FM}$</span>，因為乘數大於 1，畫家在這些地方犯錯會覺得「特別心痛」，因此他會花更多時間去修正這些地方的筆觸，確保完美。</p>
+            <h4>寓意／知識對應說明</h4>
+            <p>這個故事對應的是 VLM（視覺語言模型）在訓練時，如何透過「遮罩」來引導模型學習重點。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">角色對應</th>
+            <th style="text-align: left;">實務上的意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{FM}$</span></td>
+            <td style="text-align: left;">畫家的基本練習</td>
+            <td style="text-align: left;">模型原始的 Rectified Flow 預測損失</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M$</span></td>
+            <td style="text-align: left;">聚光燈遮罩</td>
+            <td style="text-align: left;">標示出關鍵影像區域的二值化矩陣 (0 或 1)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$w_m$</span></td>
+            <td style="text-align: left;">導師的激勵係數</td>
+            <td style="text-align: left;">超參數，決定我們有多想強化模型對重點區域的關注度</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值代入範例：</strong><br />
+            假設我們設定導師的加權係數 <span class="math inline">$w_m = 2$</span>。</p>
+            <ol>
+            <li><strong>在關鍵區域 (<span class="math inline">$M=1$</span>)：</strong> 損失函數變成 <span class="math inline">$(1 + 2 \times 1) \mathcal{L}_{FM} = 3 \mathcal{L}_{FM}$</span>。這意味著如果模型在重點區域畫錯了，這個錯誤會被放大 3 倍，強迫模型必須對這些區域的細節進行更高精度的優化。</li>
+            <li><strong>在背景區域 (<span class="math inline">$M=0$</span>)：</strong> 損失函數變成 <span class="math inline">$(1 + 2 \times 0) \mathcal{L}_{FM} = 1 \mathcal{L}_{FM}$</span>。模型維持正常的學習速度，不會過度糾結於不重要的細節。</li>
+            </ol>
+            <p><strong>為什麼這樣設計有效？</strong><br />
+            相比於「對整張圖一視同仁」的訓練方式，這種方法透過空間上的加權，讓模型把有限的「腦容量」（參數更新權重）集中在語義最豐富的區域。這就像是考試時，老師先圈出重點範圍，讓學生在複習時將大部分精力放在必考題，而非把時間浪費在無關的敘述上。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-5">
+        <h2>Section 5 - 3.3. Edit-GRPO</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>3.3 煉金術士的審核天平：Edit-GRPO (上)</h3>
+            <h4>開場：工匠的兩難</h4>
+            <p>在 AI 魔法森林裡，住著一位擅長修補咒語的煉金術士。他手上有兩本咒語書：一本是充滿瑕疵的舊草稿（<span class="math inline">$t_{src}$</span>），另一本是經過他細心修改後的成品（<span class="math inline">$t_{edit}$</span>）。但他發現，單純看咒語長得像不像沒用，他需要一種機制來評估：「我改的這段咒語，到底有沒有真的變得更符合使用者的指令？」於是，他打造了一套名為「Edit-GRPO」的獎勵系統。</p>
+            <h4>情節發展：兩道靈魂的對比</h4>
+            <p>煉金術士決定使用森林裡最強大的檢測儀器——「CLIP 鑑定鏡」（<span class="math inline">$C$</span>）。這面鏡子能把咒語（文字）與它所引用的參考物（影像 <span class="math inline">$V_{edit}$</span>）放在一起，測量它們之間的「默契度」。</p>
+            <p>他設計了公式 (4)：</p>
+            <div class="formula">$$R_{IF} = C(V_{edit}, t_{edit}) - C(V_{edit}, t_{src})$$</div>
+            
+            <p>這場任務的挑戰在於：如果只單看修改後的咒語有多符合目標，可能會被咒語表面的華麗辭藻誤導。因此，煉金術士採取了一種「對照評分法」。他分別計算了「修改後的咒語與目標的默契度」以及「原有的咒語與目標的默契度」，最後把兩者相減。</p>
+            <h4>問題如何解決：差值獎勵的智慧</h4>
+            <p>如果相減的結果大於 0，說明修改確實提升了咒語的精準度；如果小於 0，則說明修改反而讓咒語退步了。這種「相對進步」的獎勵機制，能強迫 AI 模型不僅要產生正確的結果，還要比原本的舊版本做得更好，才能獲得最高獎勵。</p>
+            <h4>寓意與知識對應說明</h4>
+            <p>這個童話描述的是「指令遵循分數（Instruction Following Score）」的計算機制。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">符號</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">故事中的對應</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{IF}$</span></td>
+            <td style="text-align: left;">指令遵循獎勵分數</td>
+            <td style="text-align: left;">煉金術士給出的最終加分獎勵</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(V, t)$</span></td>
+            <td style="text-align: left;">CLIP 相似度函數</td>
+            <td style="text-align: left;">CLIP 鑑定鏡的默契度測量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V_{edit}$</span></td>
+            <td style="text-align: left;">目標影像</td>
+            <td style="text-align: left;">咒語所要描述或匹配的視覺參考</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t_{edit}$</span></td>
+            <td style="text-align: left;">修改後的咒語</td>
+            <td style="text-align: left;">煉金術士修補後的成品</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t_{src}$</span></td>
+            <td style="text-align: left;">原始咒語</td>
+            <td style="text-align: left;">原有的舊草稿</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式運算範例：</strong><br />
+            假設我們修改了一段描述貓咪的咒語：</p>
+            <ul>
+            <li><span class="math inline">$C(V_{edit}, t_{edit}) = 0.9$</span>（修改後與圖片高度契合）</li>
+            <li><span class="math inline">$C(V_{edit}, t_{src}) = 0.6$</span>（原咒語與圖片契合度普通）</li>
+            <li><span class="math inline">$R_{IF} = 0.9 - 0.6 = 0.3$</span></li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            這個正值 <span class="math inline">$0.3$</span> 代表這次的修改確實帶來了「淨增益」。透過這種差值計算，AI 模型不會只為了滿足 CLIP 的高分而去拼湊無意義的詞彙，因為如果它只是把原有的好句子改壞了，分數就會變成負的。這是一種「進化論」式的訓練，確保模型在每一輪學習中都比過去更聰明、更精確。</p>
+            <h3>3.3. 守護記憶的時光之鏡：源頭保存獎勵</h3>
+            <h4>開場：工匠的困擾</h4>
+            <p>在影像魔法的國度裡，有一位名叫「編輯者」的魔法師。他的任務是將舊有的影像紀錄（我們稱之為 <span class="math inline">$V_{src}$</span>）進行美化或剪輯，變身為全新的作品（<span class="math inline">$V_{edit}$</span>）。然而，編輯者常遇到一個煩惱：當他施展魔法時，有時會不小心改得太多，導致原本珍貴的原始細節消失了，甚至連影像的主題都變了樣。</p>
+            <p>為了確保編輯者不會在創作時「忘本」，魔法長老設計了一面神奇的「時光之鏡」。</p>
+            <h4>情節發展：魔法的考驗</h4>
+            <p>這面時光之鏡的功能，就是計算「源頭保存獎勵」（Source Preservation Reward，簡稱 <span class="math inline">$R_{SP}$</span>）。它的運作邏輯非常簡單，就是比較編輯後的影像與原始影像之間的關聯性。</p>
+            <p>長老定下了一條絕對規則：</p>
+            <div class="formula">$$R_{SP} = C(V_{src}, V_{edit}). \quad (5)$$</div>
+            
+            <p>在這個規則中：</p>
+            <ul>
+            <li><span class="math inline">$V_{src}$</span>：代表原始影像的「記憶本體」。</li>
+            <li><span class="math inline">$V_{edit}$</span>：代表編輯後產生的「新生成影像」。</li>
+            <li><span class="math inline">$C$</span>：這是一個精密的鑑定函數，它會對比兩者的相似度，若內容保存得越好，分數就越高。</li>
+            </ul>
+            <h4>問題如何解決：鑑定規則的運作</h4>
+            <p>為了讓編輯者能精確掌控魔法力度，魔法長老提供了以下的操作指南：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數/符號</th>
+            <th style="text-align: left;">角色名稱</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V_{src}$</span></td>
+            <td style="text-align: left;">原本的樣貌</td>
+            <td style="text-align: left;">編輯前必須被嚴格遵守的參考基準。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V_{edit}$</span></td>
+            <td style="text-align: left;">新創的成果</td>
+            <td style="text-align: left;">經過調整後的新影像。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C$</span></td>
+            <td style="text-align: left;">鑑定法官</td>
+            <td style="text-align: left;">評估兩者在語意或像素上的一致性。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            假設我們使用一個滿分為 1 的鑑定機制（1 代表完全保存，0 代表完全毀壞）：</p>
+            <ul>
+            <li>若 <span class="math inline">$V_{src}$</span> 與 <span class="math inline">$V_{edit}$</span> 內容幾乎一致，計算結果 <span class="math inline">$C = 0.95$</span>。這意味著 <span class="math inline">$R_{SP} = 0.95$</span>，編輯者獲得了極高的鼓勵。</li>
+            <li>若編輯者把影像改得面目全非，只剩背景相似，計算結果可能只有 <span class="math inline">$C = 0.3$</span>。這意味著 <span class="math inline">$R_{SP} = 0.3$</span>，編輯者會被扣分，提醒他下次要克制。</li>
+            </ul>
+            <h4>寓意／知識對應說明</h4>
+            <p>這個童話對應了影像生成技術中的「源頭保存獎勵」機制。在真實的機器學習任務中，我們常擔心模型在進行「編輯」（Editing）時，會發生「漂移」或「幻覺」，導致原始輸入的資訊遺失。</p>
+            <ul>
+            <li><strong>為什麼要這樣設計？</strong>：如果沒有 <span class="math inline">$R_{SP}$</span>，模型可能會為了追求視覺上的「華麗感」而改變原有的影像意義。這個獎勵機制就像是一條隱形的「鎖鏈」，強制模型在改變影像的同時，必須隨時回頭審視 <span class="math inline">$V_{src}$</span>，確認有沒有改過頭。</li>
+            <li><strong>為什麼有效？</strong>：相比於隨意的編輯，引入這個獎勵函數可以讓損失函數（Loss Function）將「對原始影像的尊重」納入學習目標中，確保生成的結果既有創新，又不失真。</li>
+            </ul>
+            <p>總結來說，<span class="math inline">$R_{SP}$</span> 就是在提醒模型：「你可以變得更美，但請別忘了你原本是誰。」</p>
+            <h3>3.3. Edit-GRPO：挑選師的嚴格考驗</h3>
+            <h4>1. 故事標題</h4>
+            <p>挑選師的審美之眼：從混亂中找到最精準的共鳴</p>
+            <h4>2. 開場</h4>
+            <p>在數位王國的藝術畫廊裡，住著一位嚴格的「挑選師」（Pickscore）。每天，AI 畫家會不斷嘗試修改畫作（<span class="math inline">$V_{edit}$</span>），並根據題目（<span class="math inline">$t_{edit}$</span>）產出新的作品。挑選師的工作，就是站在人類觀察者的角度，判斷這幅畫作是否真的符合當初的「美感指令」。</p>
+            <h4>3. 情節發展</h4>
+            <p>雖然 AI 畫家很勤奮，但它總是困惑：「我修改出來的作品，到底是好是壞？人類真的喜歡這樣改嗎？」為了讓 AI 畫家不再盲目嘗試，挑選師拿出了它的天平——一個專門測量「人類偏好程度」的評分器。</p>
+            <p>挑選師會對每一幅修改後的畫作進行評分，產出一個數值 <span class="math inline">$R_{PS}$</span>。如果分數高，代表畫作修改得深得人心；如果分數低，則表示修改方向與人類的期望背道而馳。</p>
+            <h4>4. 問題如何解決</h4>
+            <p>挑選師的運作規則被寫成了一條簡單卻有力的公式：</p>
+            <div class="formula">$$R_{PS} = \text{Pickscore}(V_{edit}, t_{edit})$$</div>
+            
+            <p>為了讓這套機制運作，挑選師必須嚴格遵守以下邏輯：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">角色意義</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V_{edit}$</span></td>
+            <td style="text-align: left;">修改後的畫作</td>
+            <td style="text-align: left;">AI 經過編輯處理後的視覺輸出結果。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t_{edit}$</span></td>
+            <td style="text-align: left;">編輯指令文字</td>
+            <td style="text-align: left;">人類當初給出的具體修改描述（如：把背景變亮）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{PS}$</span></td>
+            <td style="text-align: left;">偏好得分</td>
+            <td style="text-align: left;">最終的量化指標，反映人類對這次修改的滿意度。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值代入範例：</strong><br />
+            假設我們請 AI 把一幅暗沉的森林畫作變得「明亮且溫暖」。</p>
+            <ul>
+            <li>若 AI 輸出的 <span class="math inline">$V_{edit}$</span> 成功補光且色調暖化，挑選師給出的 <span class="math inline">$R_{PS}$</span> 可能高達 <span class="math inline">$0.85$</span>。</li>
+            <li>若 AI 輸出的 <span class="math inline">$V_{edit}$</span> 只是把畫作單純調亮（曝光過度），人類覺得刺眼，挑選師給出的 <span class="math inline">$R_{PS}$</span> 可能僅有 <span class="math inline">$0.20$</span>。</li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            這串數值就像是訓練過程中的「羅盤」。數值越高，代表演算法所採取的調整策略越能捕捉人類的審美偏好。AI 不再只是為了改圖而改圖，而是透過這個得分，反向修正自己的參數，將「抽象的人類偏好」轉化為「具體的模型優化方向」。</p>
+            <h4>5. 寓意／知識對應說明</h4>
+            <p>這個故事對應的是機器學習中的「人類偏好對齊（Human Preference Alignment）」。</p>
+            <ul>
+            <li><strong>為什麼要這樣設計？</strong>：AI 本身缺乏美感判斷力，若沒有人類的偏好評分，它無法區分「正確的改動」與「單純的數據變化」。</li>
+            <li><strong>為什麼這會有效？</strong>：<code>Pickscore</code> 是一個已經學習過人類海量評價的評分模型，它能夠模擬人類對「編輯結果」與「文字指令」吻合度的敏感度。</li>
+            <li><strong>直覺差異</strong>：傳統訓練方式可能只看畫像不像，但 <code>Edit-GRPO</code> 引入此機制，是為了確保修改過程不僅是技術上的精準，更是價值觀與美感上的「對齊」。這就像是幫 AI 裝上了一雙人類的眼睛，讓它在自我迭代時，永遠看著人類喜好的目標前進。</li>
+            </ul>
+            <h3>森林守護者的天秤：平衡多種願望的魔法術式</h3>
+            <h4>開場：三位挑剔的精靈貴賓</h4>
+            <p>在數位森林的圖書館裡，住著一位名叫「模型師」的精靈，他的工作是訓練智慧之樹長出最有用的果實。這一天，三位挑剔的森林精靈——指令精靈（IF）、步驟精靈（SP）與語氣精靈（PS）——同時來到圖書館，要求模型師產出的果實必須同時符合她們三人的標準。</p>
+            <p>為了滿足她們，模型師不能只聽一個人的話，他必須在心中架起一座「權重天秤」。</p>
+            <h4>情節發展：魔法天秤的運作</h4>
+            <p>模型師發現，如果他只討好指令精靈，果實可能會變得呆板；如果只討好語氣精靈，果實又可能華而不實。為了讓智慧之樹產出完美的成果，他設計了一道名為「總得分（<span class="math inline">$R$</span>）」的魔法術式，用來衡量每一次產出的價值。</p>
+            <p>這道術式看起來是這樣的：</p>
+            <div class="formula">$$R = w_{IF} R_{IF} + w_{SP} R_{SP} + w_{PS} R_{PS}, \quad (7)$$</div>
+            
+            <p>在這裡，模型師必須不斷調整每一位精靈的「話語權重」（<span class="math inline">$w$</span>），好讓最終的分數能夠精確反映森林對果實的要求。</p>
+            <h4>問題如何解決：權重的分配藝術</h4>
+            <p>模型師解釋說，如果他想讓指令精靈的建議更被看重，他就會提高 <span class="math inline">$w_{IF}$</span>。透過這道公式，他能將不同面向的評價（<span class="math inline">$R_{IF}, R_{SP}, R_{PS}$</span>）依照自己設定的優先順序，整合成一個單一的參考值，讓智慧之樹知道該往哪個方向努力生長。</p>
+            <p>為了讓大家看懂這項計算的魔法，模型師準備了這張對照表：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">角色名稱</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R$</span></td>
+            <td style="text-align: left;">總目標報酬</td>
+            <td style="text-align: left;">模型最終表現的好壞評分</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$w_{IF}, w_{SP}, w_{PS}$</span></td>
+            <td style="text-align: left;">權重參數</td>
+            <td style="text-align: left;">模型在各項指標的「重視程度」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{IF}, R_{SP}, R_{PS}$</span></td>
+            <td style="text-align: left;">各類得分</td>
+            <td style="text-align: left;">分別代表指令達成度、步驟邏輯、語氣品質</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值計算示範：</strong><br />
+            假設模型師決定讓指令精靈（<span class="math inline">$R_{IF}$</span>）的權重最重，步驟精靈（<span class="math inline">$R_{SP}$</span>）次之，語氣精靈（<span class="math inline">$R_{PS}$</span>）最後。設定權重為：<span class="math inline">$w_{IF}=0.5, w_{SP}=0.3, w_{PS}=0.2$</span>。<br />
+            若某次果實的評分為：<span class="math inline">$R_{IF}=0.8, R_{SP}=0.6, R_{PS}=0.4$</span>。</p>
+            <p>計算總分：<br />
+            <span class="math inline">$R = (0.5 \times 0.8) + (0.3 \times 0.6) + (0.2 \times 0.4)$</span><br />
+            <span class="math inline">$R = 0.4 + 0.18 + 0.08 = 0.66$</span></p>
+            <p>在這個例子中，最終得分 <span class="math inline">$0.66$</span> 代表了模型在多重標準下的綜合表現。如果算出來的分數越高，模型師就會獎勵智慧之樹，讓它朝這個方向演化得更強壯。</p>
+            <h4>寓意與知識對應</h4>
+            <p>這個故事對應了機器學習中的「多目標優化（Multi-objective Optimization）」。在現實中，我們訓練 AI 時，往往不是追求單一的準確度，而是希望它同時具備「聽話（IF）」、「邏輯正確（SP）」與「語氣優雅（PS）」。</p>
+            <ul>
+            <li><strong>為什麼要這樣設計？</strong> 因為指標之間往往會打架，透過設定權重（<span class="math inline">$w$</span>），我們可以彈性地在這些指標之間取得平衡，而不是為了追求一項指標而犧牲了其他項目的完整性。</li>
+            <li><strong>為什麼這有效？</strong> 相比於隨機盲目地訓練，這種加權相加的方法，提供了一個明確的數學地圖，引導模型在複雜的學習空間中，找到那個同時滿足所有貴賓需求的最佳平衡點。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-6">
+        <h2>Section 6 - 4. Experiments</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>鑄造師的進化：讓「混元」學會新魔法</h3>
+            <h4>開場</h4>
+            <p>在數位魔法學院的頂層，住著一位技藝高超的鑄造師，他擁有一件名為「混元視頻（HunyuanVideo-T2V-13B）」的強大鎧甲。這件鎧甲最初是由無數風景與動作片段打造的，蘊含著深厚的基礎魔力。然而，為了讓他能精準地完成特定的任務，鑄造師必須進行一場嚴謹的「魔力微調（Finetuning）」儀式，將鎧甲的性能調整到極致。</p>
+            <h4>情節發展</h4>
+            <p>鑄造師準備了一批精心挑選的「任務寶石（Paired training data）」，這些寶石裡記錄著精確的動作路徑與畫面細節。他決定對鎧甲進行 12,000 次的循環鍛鍊。每一次鍛鍊，他都必須小心翼翼地控制火候，因為火候太猛，鎧甲會過熱而毀掉原本的靈性；火候太弱，則無法深入改變內部的魔法迴路。</p>
+            <h4>問題如何解決</h4>
+            <p>鑄造師制定了一套嚴格的鍛鍊規則，確保「混元」能在穩定的節奏下吸收魔法：</p>
+            <ol>
+            <li><strong>學習火候（Learning Rate）</strong>：他設定為 <span class="math inline">$2 \times 10^{-5}$</span>。這代表每一次鍛鍊時，魔法參數的調整幅度非常細微，就像是為了畫出完美的線條，必須一次只調整頭髮絲般的寬度。</li>
+            <li><strong>集體記憶（Global Batch Size）</strong>：他將「混元」每次接收的資訊量設定為 128 個單元。這就像是讓 128 位學徒同時研讀同一份資料，確保鎧甲吸收的是「群體的智慧」而非單一個案的偏見，從而讓學習過程更加穩定。</li>
+            </ol>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">參數名稱</th>
+            <th style="text-align: left;">數值設定</th>
+            <th style="text-align: left;">寓意（為什麼這樣設計？）</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">學習率 (<span class="math inline">$2 \times 10^{-5}$</span>)</td>
+            <td style="text-align: left;">0.00002</td>
+            <td style="text-align: left;">避免「用力過猛」，保持學習過程的平穩與細緻。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">全局批次大小 (128)</td>
+            <td style="text-align: left;">128</td>
+            <td style="text-align: left;">增加每次的樣本多樣性，防止鎧甲只記住單一風格。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">鍛鍊步驟 (12,000)</td>
+            <td style="text-align: left;">12,000</td>
+            <td style="text-align: left;">給予足夠的「經驗積累」時間，直到魔力完全定型。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與意義：</strong><br />
+            如果我們將「調整幅度」視為 <span class="math inline">$R = \text{學習率} \times \text{目標誤差}$</span>。假設當前誤差為 1，則每次鎧甲參數的變動值僅為 <span class="math inline">$0.00002 \times 1 = 0.00002$</span>。這個數字雖然小，但累積了 12,000 次後，鎧甲的整體結構會產生質的飛躍，變得更符合鑄造師的需求，而不至於因為一次調整過大而崩塌。</p>
+            <h4>寓意／知識對應說明</h4>
+            <p>這個故事對應了深度學習模型微調的關鍵階段。</p>
+            <ul>
+            <li><strong>「混元」鎧甲</strong>：即預訓練模型（Pretrained Model），它是強大的基礎底座。</li>
+            <li><strong>「任務寶石」</strong>：即有監督學習數據集（Paired training data），包含輸入文字與對應的影片標籤，這是模型學習方向的導航員。</li>
+            <li><strong>「學習率 <span class="math inline">$2 \times 10^{-5}$</span>」</strong>：在機器學習中，過大的學習率會導致模型跳過最佳解，過小則收斂極慢。這個數值選擇是為了在保持原有的「預訓練知識」不被破壞的前提下，平滑地注入新領域的技能。</li>
+            <li><strong>「批次大小 128」</strong>：較大的 Batch Size 能提供更準確的梯度估計（Gradient Estimate），使得模型在更新參數時，更能反映訓練數據的整體趨勢，而非受限於單張圖片的細節雜訊。</li>
+            </ul>
+            <p>透過這種精細的控制，原本通用的「混元」便能進化成專屬於某項特定領域的魔法工具。</p>
+            <h3>4.2 競技場的考驗：尋找最強的影視魔法師</h3>
+            <h4>開場：魔法界的盛大選拔</h4>
+            <p>在數位魔法森林中，為了找出誰才是真正的影像編輯大師，森林議會搬出了一份傳說中的考題集——「VIE-Bench 挑戰書」。這本考題集非常講究，裡面收錄了 140 個經過精挑細選、高品質的視覺任務。這些任務並非簡單的塗鴉，而是需要極高精準度與創造力的複雜考驗。</p>
+            <h4>情節發展：五位頂尖參賽者的到場</h4>
+            <p>為了證明「VIVA」（我們的魔法主角）擁有獨步森林的力量，我們必須讓它與現存最強的五位魔法師同台競技。這五位對手各自成名已久：</p>
+            <ul>
+            <li><strong>ICVE</strong>：以規整的邏輯見長。</li>
+            <li><strong>Lucy-Edit-Dev</strong>：擅長細膩的細節重構。</li>
+            <li><strong>Ditto</strong>：模仿能力極強的變形魔法師。</li>
+            <li><strong>InsV2V</strong>：專精於動態影片的轉換技術。</li>
+            <li><strong>Runway Gen-4 Aleph</strong>：傳說中擁有龐大算力支撐的頂級魔法工坊。</li>
+            </ul>
+            <p>這是一場公平的公開比試，所有人都要面對相同的 140 個考驗，看看誰能用最少的錯誤，產出最符合預期的夢幻影像。</p>
+            <h4>問題如何解決：標準化試煉</h4>
+            <p>要判斷誰強誰弱，不能靠裁判的喜好，而是依靠「VIE-Bench」提供的明確準則。這就像是一場射箭比賽，靶心位置是固定的，箭的軌跡（編輯操作）由每位魔法師自行設定。</p>
+            <p>當魔法師們完成任務後，評審會觀察他們的表現是否符合邏輯的一致性，以及在處理影像細節時是否出現了「幻覺」或「破碎」的痕跡。VIVA 的目標，就是透過其內建的優化演算法，在處理這 140 個難題時，展現出比其他五位對手更穩定、更精準的輸出品質。</p>
+            <h4>寓意與知識對應</h4>
+            <p><strong>為什麼要設計這樣的競技場？</strong><br />
+            在科學實驗中，我們不能只說「我的模型很厲害」，必須要有「客觀的驗證機制」。VIE-Bench 的 140 個測試案例，就像是給 AI 做的「模擬考卷」。如果只測 1 或 2 個案例，很容易產生「湊巧做對」的錯覺；透過 140 個多樣化的案例，我們才能確保 VIVA 在面對各種不同場景（不同光影、複雜物件、動作轉換）時，都能展現出真正的技術水準。</p>
+            <p><strong>知識對照表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">角色/概念</th>
+            <th style="text-align: left;">實際對應技術定義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>VIE-Bench 考題集</strong></td>
+            <td style="text-align: left;">Benchmark (評測基準)，用於評估 AI 模型能力的標準數據集</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>140 個考驗</strong></td>
+            <td style="text-align: left;">Dataset Instances，測試數據的樣本數量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>五位魔法師對手</strong></td>
+            <td style="text-align: left;">SOTA (State-of-the-Art) Baselines，領域內現有的最強技術基準</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>魔法比試</strong></td>
+            <td style="text-align: left;">Comparative Evaluation，模型間的性能比較實驗</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>實務意義：</strong><br />
+            這項設計告訴我們，研究的價值不只在於「能做出來」，更在於「與最強的相比，好在哪裡」。透過與這五種代表不同技術流派的方法比較，我們能清楚看見 VIVA 是在「效率」上更優，還是在「視覺品質」上更勝一籌。如果 VIVA 在這 140 個考驗中勝出，代表它不僅學會了魔法，還學會了如何在最嚴苛的考題下，依然保持穩定表現。</p>
+            <h3>5. 總結：VIVA 魔法師的最後一哩路</h3>
+            <h4>開場：魔法學院的畢業測驗</h4>
+            <p>在數位魔法學院裡，有一位名叫「VIVA」的年輕法師，他接下了一個極其艱難的任務：如何精準地按照人們的「口語指令」，修改一段正在播放的魔法畫卷（影片）。過去的法師們總是笨手笨腳的，往往想把畫中的蘋果變成梨子，結果卻把整張畫弄得模糊不清。VIVA 決定用兩套祕法，徹底終結這種混亂。</p>
+            <h4>情節發展：導師的雙眼與嚴格的教練</h4>
+            <p>VIVA 的第一個祕法，是聘請了一位「VLM 導師（基於視覺語言模型的導師）」。這位導師擁有一雙超凡的眼力，能同時看懂文字指令與畫卷中的景象。他將這些訊息轉化為「定位多模態標記（grounded multimodal tokens）」。這就像是給了畫卷一個精確的座標地圖，讓畫卷知道「指令」到底在指哪裡。</p>
+            <p>有了地圖還不夠，VIVA 還發明了第二個祕法——「Edit-GRPO 教練法」。他借用了原本在強化學習中極為強大的優化技術，並將其改良。他讓 VIVA 同時嘗試好幾種不同的修改方式，然後像裁判一樣進行「小組比較」。如果某一種改法表現特別好，教練就會給予獎勵，讓 VIVA 的魔法越來越精準。</p>
+            <h4>問題如何解決：從混亂到秩序</h4>
+            <p>過去的失敗在於法師「聽不懂話」且「改得太隨便」。VIVA 透過 VLM 導師消除了模糊的指令（Semantic disambiguation），確保「把背景換成海邊」不會被理解成「把人物換成海邊」。接著，透過 Edit-GRPO 這種「群體相對策略優化」，VIVA 不再盲目地嘗試，而是透過不斷比較各個方案的優劣，找出那條最完美的修改路徑。</p>
+            <h4>寓意與知識對應</h4>
+            <p><strong>知識對應表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事中的祕法</th>
+            <th style="text-align: left;">技術核心概念</th>
+            <th style="text-align: left;">解決的痛點</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>VLM 導師</strong></td>
+            <td style="text-align: left;">Grounded Multimodal Tokens</td>
+            <td style="text-align: left;">解決語意模糊，讓模型精確對齊文字與影片內容。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Edit-GRPO 教練</strong></td>
+            <td style="text-align: left;">Group Relative Policy Optimization</td>
+            <td style="text-align: left;">透過群組比較提升修改的穩定度與精確度。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>深入解析：Edit-GRPO 的奧秘</strong></p>
+            <p>VIVA 使用的優化核心是 Edit-GRPO，其基本邏輯是透過比較多個產出結果的相對獎勵（Relative Reward）來更新模型策略。</p>
+            <ul>
+            <li><strong>公式說明</strong>：<br />
+                我們定義目標函數為：</li>
+            </ul>
+            <div class="formula">\[ J(\theta) = \mathbb{E}_{q \sim \pi_{\theta}} \left[ \sum_{i=1}^{K} \text{clip}\left(\frac{\pi_{\theta}(a_i|s)}{\pi_{\theta_{old}}(a_i|s)}, 1-\epsilon, 1+\epsilon\right) A_i \right] \]</div>
+            
+            <pre><code>其中：
+            
+            - <span class="math inline">$\pi_{\theta}$</span> 是當前修改策略。
+            - <span class="math inline">$a_i$</span> 是第 <span class="math inline">$i$</span> 個修改動作。
+            - <span class="math inline">$A_i$</span> 是相對於同組內其他動作的「優勢值（Advantage）」，計算方式為 <span class="math inline">$A_i = \frac{r_i - \text{mean}(r)}{\text{std}(r)}$</span>，即該動作的獎勵值減去組內平均後除以標準差。
+            </code></pre>
+            <ul>
+            <li>
+            <p><strong>數值示例</strong>：<br />
+                假設我們讓 VIVA 產生了 3 個修改方案（<span class="math inline">$K=3$</span>），獲得的獎勵分數分別是 <span class="math inline">$r = [10, 8, 3]$</span>。</p>
+            <ol>
+            <li>計算平均值：<span class="math inline">$(10+8+3)/3 = 7$</span>。</li>
+            <li>計算標準差（約略值）：<span class="math inline">$\approx 2.87$</span>。</li>
+            <li>計算優勢值 <span class="math inline">$A_i$</span>：</li>
+            <li><span class="math inline">$A_1 = (10-7)/2.87 \approx 1.04$</span>（正值，代表該修改比平均好，應增強）。</li>
+            <li><span class="math inline">$A_2 = (8-7)/2.87 \approx 0.35$</span>（正值，表現良好）。</li>
+            <li><span class="math inline">$A_3 = (3-7)/2.87 \approx -1.39$</span>（負值，代表該修改比平均差，應抑制）。</li>
+            </ol>
+            </li>
+            <li>
+            <p><strong>實務意義</strong>：<br />
+                這個數值代表了模型學習的「方向盤」。當我們算出 <span class="math inline">$A_1 &gt; 0$</span> 時，模型會傾向於在未來更常做出類似 <span class="math inline">$A_1$</span> 的修改邏輯；反之，當 <span class="math inline">$A_3 &lt; 0$</span> 時，模型會學到要避免產生類似 <span class="math inline">$A_3$</span> 的低品質修改。這使得 VIVA 能在不斷試錯的過程中，穩定地收斂到最高品質的影片編輯結果。</p>
+            </li>
+            </ul>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

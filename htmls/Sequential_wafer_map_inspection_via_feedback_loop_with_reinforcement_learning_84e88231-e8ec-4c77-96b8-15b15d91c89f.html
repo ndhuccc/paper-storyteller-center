@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sequential wafer map inspection via feedback loop with reinforcement learning - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 Sequential wafer map inspection via feedback loop with reinforcement learning</h1>
+    <div class="meta">
+        <strong>說書人版本（v1.5 - 術語表 + 公式詳解）</strong><br>
+        Source PDF: /home/ccchiang/works/paper-storyteller-center/uploads/4b387a43999e_Sequential_wafer_map_inspection_via_feedback_loop_with_reinforcement.pdf<br>
+        Model: models/gemini-3.1-flash-lite-preview<br>
+        Generated at (UTC): 2026-04-05T00:27:49.399161+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - Sequential wafer map inspection via feedback loop with reinforcement learning</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - Sequential wafer map inspection via feedback loop with reinforcement learning</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <p>Aleksandr Dekhovich <span class="math inline">$^{a,*}$</span>, Oleg Soloviev <span class="math inline">$^{a,b}$</span>, Michel Verhaegen <span class="math inline">$^{a}$</span></p>
+            <h3>探索工業現場的幕後推手：研究基地介紹</h3>
+            <p>想像一下，當我們走進一家尖端科技工廠，看到晶圓片（半導體製造過程中使用的矽晶圓）在機器間高速穿梭，我們不禁會好奇，這背後的技術革新是誰在推動的？</p>
+            <p>這篇論文的研究誕生於兩個重要的節點：一個是學術殿堂，負責提供最前沿的演算法智慧；另一個則是工業前線，負責將技術落地並解決實際的生產痛點。這兩者的結合，就是讓「晶圓檢查」變得更聰明、更有效率的核心動力。</p>
+            <p>我們來看看這場技術合作的「發源地」：</p>
+            <ul>
+            <li><strong>Delft Center for Systems and Control (DCSC)</strong>：位於荷蘭的台夫特理工大學，這是一個專注於「系統與控制」的研究中心。你可以把它想像成一個精密的大腦，這裡的專家研究如何指揮複雜的系統（就像指揮一整個自動化晶圓廠），讓它們穩定又精準地運作。</li>
+            <li><strong>Flexible Optical B.V.</strong>：這是一家深耕業界的公司。如果說學術單位是負責設計藍圖的建築師，那麼這家公司就是負責蓋房子的工程隊，他們直接面對晶圓檢測中的現實挑戰，確保這些理論能轉化為真實的生產力。</li>
+            </ul>
+            <p>為什麼要介紹這兩個單位呢？因為這代表了這篇論文不是「紙上談兵」，而是一個「理論與實踐對話」的過程。只有當聰明的數學演算法碰上了硬邦邦的生產設備，我們才能真正解決晶圓檢測耗時又昂貴的問題。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Wafer (晶圓)</strong></td>
+            <td style="text-align: left;">半導體晶片製作的基礎材料，看起來像一片薄薄的圓形鏡子。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Systems and Control (系統與控制)</strong></td>
+            <td style="text-align: left;">專門研究如何自動指揮機械或系統，讓它們按照指令精確運行的一門技術。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Wafer map inspection (晶圓圖檢測)</strong></td>
+            <td style="text-align: left;">透過檢查晶圓上的缺陷分佈圖，來判斷生產過程是否正常、是否有異常區域的過程。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h2>當晶圓檢測遇上「精打細算」：聰明的掃描策略</h2>
+            <p>想像一下，你是一位工廠裡的品管主管，眼前有一大片晶圓（Wafer，半導體製造的核心基礎材料），你的任務是檢查上面有沒有瑕疵。這片晶圓就像一幅巨大的地圖，如果你要把整張地圖看得清清楚楚，掃描儀器必須一小塊一小塊地掃，這非常耗時且昂貴。</p>
+            <p><strong>如果我們不用把整張圖看完，也能精準判斷出這批貨有沒有問題，那該有多好？</strong></p>
+            <p>這就是我們今天要探討的目標：透過「有限的觀測」來進行「準確的判斷」。我們不再像傳統做法那樣盲目地掃描整張晶圓，而是設計了一個聰明的<strong>回饋迴路（Feedback loop）</strong>——它像是一個導航員，會先看一眼關鍵區域，再根據看到的線索決定下一個該看哪裡，最後綜合這些碎片資訊，給出最可能的瑕疵診斷。</p>
+            <h3>為什麼這樣設計更有效？</h3>
+            <p>傳統做法通常會把整張晶圓圖丟進 <strong>卷積神經網路（CNN）</strong>。這就像是強迫員工把整幅拼圖拼完才准下班，哪怕有些拼圖對判定結果根本不重要。</p>
+            <p>我們的做法核心邏輯如下：</p>
+            <ol>
+            <li><strong>動態採樣</strong>：利用 <strong>強化學習（Reinforcement Learning）</strong>，讓演算法像玩遊戲一樣，學會「在什麼位置看一眼最划算」。</li>
+            <li><strong>記憶力加持</strong>：使用 <strong>循環神經網路（RNN）</strong>，它具備「記憶功能」，能把過去看到的碎片資訊串聯起來，而不是只看單一影像。</li>
+            <li><strong>群體智慧</strong>：採用 <strong>整合學習（Ensemble technique）</strong>，把多個模型的建議綜合起來，就像請好幾位專家聯合會診，大幅提升診斷準確率。</li>
+            </ol>
+            <p>這種方法最迷人的地方在於，它成功地在公共數據集 WM-811k 上，將掃描需求量降低了 38%，同時還比傳統 CNN 模型更準確。這不僅省下了昂貴的時間成本，更證明了「聰明看局部」遠勝於「傻傻看全部」。</p>
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓（Wafer）</strong></td>
+            <td style="text-align: left;">半導體晶片製造的基礎圓形基板，上面會刻印許多電路。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>回饋迴路（Feedback loop）</strong></td>
+            <td style="text-align: left;">一種系統設計，將輸出的結果再反饋回輸入端，用以修正並優化未來的決策。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>卷積神經網路（CNN）</strong></td>
+            <td style="text-align: left;">一種特別擅長處理「影像」的 AI 模型，能自動抓取圖片中的特徵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>強化學習（Reinforcement Learning）</strong></td>
+            <td style="text-align: left;">一種讓 AI 透過「嘗試與錯誤」來學習，並根據獲得的回饋（獎勵）優化決策的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>循環神經網路（RNN）</strong></td>
+            <td style="text-align: left;">一種具備「時序記憶」的神經網路，適合處理像影片或接龍般的順序資料。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>整合學習（Ensemble technique）</strong></td>
+            <td style="text-align: left;">將多個不同的 AI 模型預測結果合併，以追求比單一模型更穩定的預測效果。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>WM-811k</strong></td>
+            <td style="text-align: left;">公開的晶圓缺陷影像數據集，是研究晶圓檢測技術的重要標準參考資料。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h2>當人工智慧遇上晶圓生產：為什麼我們需要 AI 視覺檢測？</h2>
+            <p>想像一下，你正在經營一家製作高階晶片的高科技工廠。每一片<strong>晶圓</strong>（半導體製造的核心基底，像是一塊印滿微小電路的圓形薄片）都價值連城。如果上面出現了缺陷，整個生產線可能就報銷了。過去，我們靠資深工程師用顯微鏡一張一張看，但現代產能這麼大，這簡直是不可能的任務。</p>
+            <p>這就是為什麼「工業 4.0」如此重要——我們要把這些重複、枯燥且高壓力的檢測工作，交給電腦來處理。</p>
+            <h3>為什麼 AI 是我們的救星？</h3>
+            <p>現在的<strong>人工智慧 (AI)</strong>，特別是其中的<strong>深度學習 (DL)</strong>，就像是一位練就了「火眼金睛」的學徒。過去幾年，深度學習在各個領域展現了驚人的學習力，特別是在「視覺」這件事上。</p>
+            <p>我們可以把這個過程想像成訓練一位工廠品管員：</p>
+            <ol>
+            <li><strong>影像分類</strong>：讓 AI 看一眼，判斷這片晶圓是「合格」還是「瑕疵品」。</li>
+            <li><strong>物體偵測</strong>：如果發現瑕疵，AI 能精準地在晶圓圖（Wafer map）上把壞掉的點位「圈出來」。</li>
+            <li><strong>影像生成</strong>：甚至能模擬出各種可能發生的缺陷樣貌，讓 AI 的「腦袋」裝滿各種故障案例。</li>
+            </ol>
+            <p>正是因為<strong>深度神經網絡 (DNN)</strong> 在這些領域進步神速，現代工廠才敢大膽採用這類自動化視覺系統。這些系統就像是全天候守在生產線上的監視器，利用強大的神經網絡技術，即時分析晶圓上的圖樣，確保每一片出廠的晶片品質都穩定可靠。</p>
+            <p>這段介紹之所以重要，是因為它點出了現代製造業的轉型核心：我們不再只是「監控」生產線，而是透過這些聰明的演算法，主動去「理解」與「判斷」生產狀況。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>人工智慧 (AI)</strong></td>
+            <td style="text-align: left;">讓電腦展現出像人類一樣思考、學習與解決問題能力的技術總稱。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>深度學習 (DL)</strong></td>
+            <td style="text-align: left;">AI 的一種進階方法，透過模仿人類大腦神經元結構，讓電腦能處理複雜的資訊（如圖像）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>工業 4.0</strong></td>
+            <td style="text-align: left;">工廠轉型升級的代名詞，強調利用智慧技術（如聯網、大數據、AI）來自動化生產。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓</strong></td>
+            <td style="text-align: left;">製造積體電路（IC）的基礎材料，通常是一片圓形的矽薄片，上面會切割出許多晶片。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓圖 (Wafer map)</strong></td>
+            <td style="text-align: left;">一種視覺化的地圖，用來標示晶圓上哪些區域是正常運作的，哪些區域出現了缺陷。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>深度神經網絡 (DNN)</strong></td>
+            <td style="text-align: left;">深度學習的核心結構，由多層人工神經元組成，擅長從數據中挖掘隱藏的規律。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>影像分類</strong></td>
+            <td style="text-align: left;">電腦視覺的一種任務，旨在判斷一張圖屬於哪種類別（例如：貓或狗、合格或瑕疵）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>物體偵測</strong></td>
+            <td style="text-align: left;">電腦視覺的一種任務，除了判斷圖中是什麼，還能精確定位出目標物的位置（用框框圈起來）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>影像生成</strong></td>
+            <td style="text-align: left;">透過 AI 創造出原本不存在的影像，常用於擴充數據庫讓模型練習。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>晶圓檢測的新視角：CNN 的強大與它的「甜蜜負擔」</h3>
+            <p>想像一下，你是一位工廠的品質檢驗員，手邊有成千上萬張「晶圓圖」（Wafer map，記錄半導體晶片在製程中缺陷位置的影像）。你的任務是找出哪裡壞了。過去，我們習慣請專家盯著每一張圖看，但現在，我們有了更厲害的助手——<strong>卷積神經網路 (CNN)</strong>。</p>
+            <h4>為什麼 CNN 是目前的「當紅炸子雞」？</h4>
+            <p>CNN 就像是一個受過專業訓練的偵探，在識別晶圓圖的失敗模式（例如刮痕、環狀缺陷）上表現極佳。研究顯示，這些模型不僅準確，而且因為近年來有不少公開的晶圓資料庫，讓這些深度學習模型有足夠的「教材」可以學習，表現甚至能達到目前業界的頂尖水準（State-of-the-art）。</p>
+            <p>此外，最近還有更聰明的<strong>大型視覺語言模型 (LVLM)</strong> 加入戰局，它們就像是博學多聞的顧問，能將原本應用於工業檢測的技術基礎進一步優化。</p>
+            <h4>CNN 的痛點：它是個「完美主義者」</h4>
+            <p>雖然 CNN 很準，但它有個致命傷：它一定要把整張圖「掃描」過一遍才肯罷休。</p>
+            <p>請想像一張晶圓圖，缺陷可能只佔了不到 5% 的面積，剩下的 95% 都是完美的。CNN 的習慣是：「不管你給我什麼，我都要把整張圖從左上角掃到右下角，全部計算一遍。」這就導致了「無效的成本」——我們花費了大量的算力去計算那些根本沒意義的空白區域。</p>
+            <p>這就像是為了找一根針，你卻把整座倉庫的地板都翻了一遍，即便那根針只在角落的一個小盒子裡。</p>
+            <h4>為了克服困難，我們如何優化它？</h4>
+            <p>因為 CNN 的參數非常多（我們稱之為<strong>過度參數化 (Overparameterized)</strong>），這意味著如果你的訓練資料不夠多，模型很容易學偏，或是根本訓練不起來。</p>
+            <p>為了讓它變得更好用，科學家們用了兩招：</p>
+            <ol>
+            <li><strong>預訓練 (Pretraining)</strong>：先讓模型看過海量的通用圖片，建立基礎認知。</li>
+            <li><strong>遷移學習 (Transfer learning)</strong>：再把這個「有基礎的腦袋」帶到晶圓廠，專注學習如何識別晶圓缺陷。</li>
+            </ol>
+            <p>這就像是先請一位基礎紮實的工程師，再讓他去上晶圓檢測的職前訓練班，這樣效率最高，也最能解決資料不足的問題。</p>
+            <hr />
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>卷積神經網路 (CNN)</strong></td>
+            <td style="text-align: left;">一種專門處理影像的 AI 模型，擅長從圖片中提取特徵來辨識物體。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓圖 (Wafer map)</strong></td>
+            <td style="text-align: left;">紀錄晶圓片上每一個晶片是否正常的影像，是檢測缺陷的核心資料。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>大型視覺語言模型 (LVLM)</strong></td>
+            <td style="text-align: left;">一種能同時理解影像與文字的模型，像是一個看過網路上所有圖片的聰明 AI。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>過度參數化 (Overparameterized)</strong></td>
+            <td style="text-align: left;">指模型內部擁有的調整開關（參數）太多，導致需要大量資料才能調整到完美狀態。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>預訓練 (Pretraining)</strong></td>
+            <td style="text-align: left;">在進行特定任務前，讓模型先學習大量一般性知識的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>遷移學習 (Transfer learning)</strong></td>
+            <td style="text-align: left;">將模型在某個領域學到的知識，應用到另一個相似領域的方法。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>當量產遇上「測量瓶頸」：為什麼我們需要更靈活的監控系統？</h3>
+            <p>想像你在經營一家頂級的晶圓廠，每一片晶圓都價值連城。為了確保品質，你需要頻繁地進行「晶圓檢測」。但問題來了：測量設備也是要花錢、花時間的。如果你測得太少，可能會漏掉瑕疵品；如果你測得太多，生產線就會塞車，產量（Throughput）直接掉下來。</p>
+            <p>這就像你在廚房做菜，為了檢查湯的味道，如果你每一秒鐘都拿湯匙去試喝，你根本沒時間烹飪；但如果你隔一小時才試喝，湯可能早就燒焦了。這中間的「平衡點」，就是工程師每天都在煩惱的 <strong>P/T Ratio（精密度與容許公差比）</strong>。</p>
+            <h4>為什麼傳統方法卡住了？</h4>
+            <p>目前的頂尖技術，大多還停留在「固定的檢測清單」。想像一下，無論今天的湯是清淡的還是濃郁的，你都嚴格按照「第 1 分鐘試喝、第 3 分鐘試喝、第 5 分鐘試喝」這樣的既定劇本走。這聽起來很嚴謹，但卻非常死板。</p>
+            <p>為什麼這會是個挑戰？因為每一片晶圓的狀況都不一樣。有些晶圓可能一眼就能看出完美無缺，有些則需要多測幾個點才能放心。若我們能讓監測系統擁有「自我判斷能力」，根據當下的測量結果，動態決定「還要不要再測下一點」，就能省下大量寶貴的檢測時間，同時保住品質。這正是目前半導體產業努力想突破的關鍵——如何擺脫一成不變的檢測順序，賦予機台真正的「靈活度」。</p>
+            <h4>關鍵指標的背後：P/T Ratio</h4>
+            <p>在半導體產業中，我們用 <span class="math inline">$P/T$</span> 比值來衡量測量系統的好壞。簡單來說，它代表了「測量的精確度」與「產品規格容許範圍」的比例。</p>
+            <div class="formula">$$ \frac{P}{T} = \frac{\text{測量系統的誤差範圍}}{\text{產品的容許公差範圍}} $$</div>
+            
+            <ul>
+            <li><strong>P (Precision)</strong>：指測量系統的誤差（重複測量多次的波動程度）。</li>
+            <li><strong>T (Tolerance)</strong>：指產品規格允許的誤差範圍（比如正負 0.01 毫米）。</li>
+            </ul>
+            <p><strong>數值示例：</strong><br />
+            假設你的晶圓誤差容許範圍（<span class="math inline">$T$</span>）是 10 個單位，而你的測量設備誤差（<span class="math inline">$P$</span>）是 2 個單位。<br />
+            那麼 <span class="math inline">$P/T = 2 / 10 = 0.2$</span>。<br />
+            這代表什麼？這告訴我們：你的測量系統佔用了 20% 的公差空間。如果這個數字太高，代表你的測量設備太「粗糙」，連產品好壞都分不清楚；如果這個數字太低，代表你的設備雖然精準，但可能太慢了。我們的目標就是：<strong>在維持相同的 P/T 水準下，用最少的測量次數，做出最準確的判斷。</strong></p>
+            <h4>為什麼這段內容很重要？</h4>
+            <p>這段內容指出了產業轉型的一個核心矛盾：我們不能只追求「測得準」，更要追求「測得聰明」。透過將「測量序列」變成一個「動態決策過程」，我們不僅僅是提升了檢測技術，更是直接優化了整座晶圓廠的生產效率。</p>
+            <hr />
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Throughput</strong></td>
+            <td style="text-align: left;">產量或處理速度，指單位時間內能完成的產品數量。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>P/T Ratio</strong></td>
+            <td style="text-align: left;">精密度與容許公差比，用來衡量測量設備是否「精準且適當」的指標。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓檢測 (Wafer Map Inspection)</strong></td>
+            <td style="text-align: left;">對半導體晶圓進行表面掃描或測量，以確認其製程品質的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>P (Precision)</strong></td>
+            <td style="text-align: left;">測量系統本身的精準程度，數值越小代表測量越穩定。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>T (Tolerance)</strong></td>
+            <td style="text-align: left;">產品規格的容許範圍，指晶圓製作誤差在多少以內都算合格。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Sequential</strong></td>
+            <td style="text-align: left;">循序式的，指按照順序執行一連串的操作。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h2>像偵探一樣抽絲剝繭：用回饋機制串連決策過程</h2>
+            <p>想像一下，你是一位正在工廠檢查晶圓（半導體生產中的基板）品質的偵探。你面前有成千上萬個微小的晶圓區塊需要檢查，但顯微鏡檢測非常花時間又昂貴，你不可能每一塊都仔細看。</p>
+            <p>這時候，你會怎麼做？你肯定會採取「先看幾片關鍵區域，根據線索決定下一步」的策略，對吧？這就是我們這篇研究想解決的問題：如何建立一個高效的<strong>回饋迴路（Feedback loop）</strong>，讓檢查流程能像聰明的偵探一樣，自己決定接下來該檢查哪裡，以及什麼時候該收工。</p>
+            <h3>為什麼這是一個挑戰？</h3>
+            <p>如果你只是機械式地按順序檢查，那效率太低了。我們真正的目標是：在每個時間點，都能挑選出「含金量最高」（資訊量最豐富）的樣本給分類器（負責判斷好壞的 AI 模型）看。</p>
+            <p>當分類器看過一個樣本後，它會給你一個初步判斷。根據這個回饋，你得馬上思考：「這已經夠清楚了嗎？我可以判斷這塊晶圓是好是壞了嗎？」如果資訊不足，就選擇下一個最值得看的點；如果資訊充足，就果斷停止。</p>
+            <h3>為什麼選擇強化學習？</h3>
+            <p>為了處理這種「選擇—回饋—再選擇」的連續決策問題，我們引入了 <strong>強化學習（Reinforcement Learning, RL）</strong>。</p>
+            <p>為什麼選它？因為強化學習的本質就是「在互動中學習策略」。你可以把 RL 想像成在教一個學徒：</p>
+            <ul>
+            <li><strong>環境</strong>：晶圓的檢查現場。</li>
+            <li><strong>Agent（智慧體）</strong>：負責決策的檢查系統。</li>
+            <li><strong>目標</strong>：用最少的檢測次數，獲得最高的判斷準確度。</li>
+            </ul>
+            <p>這種方法最棒的地方在於，它不需要我們預先寫死規則，而是讓系統透過與分類器的互動，自己摸索出什麼樣的順序最有效率。</p>
+            <h3>不只要準，還要「心裡有數」</h3>
+            <p>除了決定下一步要看什麼，我們還有另一個重點：<strong>不確定性量化（Uncertainty Quantification）</strong>。</p>
+            <p>為什麼這很重要？因為 AI 有時候會「自信地胡說八道」。如果我們檢查完一個區塊，分類器給出的答案信心度極低，代表它其實在「猜」。這時，我們就不能隨便停止，必須繼續檢測，直到對預測結果有足夠的信賴度為止。</p>
+            <p>我們重新檢視了分類問題中的不確定性測量技巧，目的是確保系統不只會給出結果，還會告訴你：「嘿，我對這個結果有多大把握。」</p>
+            <h3>總結</h3>
+            <p>這一節其實就是在為我們的檢查系統定調：我們不只是想做一個單純的分類工具，而是要打造一套動態的決策邏輯。透過「強化學習」來規劃檢測路徑，並透過「不確定性量化」來檢查 AI 的自信心，確保我們在節省成本的同時，還能維持最高的判斷品質。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>回饋迴路 (Feedback loop)</strong></td>
+            <td style="text-align: left;">一種循環機制，系統根據輸出的結果來調整下一步的輸入，不斷自我修正。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓 (Wafer)</strong></td>
+            <td style="text-align: left;">電腦晶片製造的基底，像是一張畫滿電路的矽餅。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>分類器 (Classifier)</strong></td>
+            <td style="text-align: left;">一種 AI 模型，專門負責將輸入的資料（如影像）分類為特定的類別（如正常或故障）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>強化學習 (Reinforcement Learning)</strong></td>
+            <td style="text-align: left;">一種機器學習方法，讓系統像小孩學走路一樣，透過嘗試與錯誤，從回饋中習得最佳決策策略。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>不確定性量化 (Uncertainty Quantification)</strong></td>
+            <td style="text-align: left;">用數據評估 AI 對於預測結果的「信心程度」，避免盲目相信模型的判斷。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Agent (智慧體)</strong></td>
+            <td style="text-align: left;">在強化學習中，負責做出決策並與環境互動的實體。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>2.1. 強化學習的基本功：用 MDP 拆解決策難題</h3>
+            <p>想像你在經營一家全自動化的晶圓檢測廠，你必須指揮一台檢測儀器在滿是晶圓的盤面上進行掃描。這不僅是「掃描」這個動作，更是一場關於「如何在有限時間內，抓到最多瑕疵」的策略遊戲。為了讓機器學會這種決策，我們引入了<strong>強化學習 (Reinforcement Learning, RL)</strong>。</p>
+            <p>在學術上，我們將這類問題歸納為<strong>馬可夫決策過程 (Markov Decision Process, MDP)</strong>。你可以把它理解為一套「決策劇本」，由七個核心零件組成：<span class="math inline">$(\mathcal{S}, \mathcal{A}, P(s&#x27;|s, a), R(s, a), \rho_0(s), \gamma, T)$</span>。</p>
+            <h4>劇本的七個零件</h4>
+            <p>我們用「導航檢測器」來類比：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">零件</th>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{S}$</span></td>
+            <td style="text-align: left;"><strong>狀態空間</strong></td>
+            <td style="text-align: left;">機器目前看到的畫面，包含掃過哪些位置、發現了什麼瑕疵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{A}$</span></td>
+            <td style="text-align: left;"><strong>動作空間</strong></td>
+            <td style="text-align: left;">機器可以做的選擇，例如「往左移」、「跳過這個點」、「深入放大檢測」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$P(s&#x27;|s, a)$</span></td>
+            <td style="text-align: left;"><strong>轉移機率</strong></td>
+            <td style="text-align: left;">當機器做了動作 <span class="math inline">$a$</span> 後，環境發生變化的機率，例如你往右移，下一刻真的到了右邊的機率。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R(s, a)$</span></td>
+            <td style="text-align: left;"><strong>獎勵函數</strong></td>
+            <td style="text-align: left;">機器做完某動作後的「評分」，抓到瑕疵給正分，浪費時間給負分。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\rho_0(s)$</span></td>
+            <td style="text-align: left;"><strong>初始狀態分佈</strong></td>
+            <td style="text-align: left;">機器剛開機時，最常從哪個狀態開始出發。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\gamma$</span></td>
+            <td style="text-align: left;"><strong>折扣因子</strong></td>
+            <td style="text-align: left;">對未來的重視程度（0 到 1 之間），越小越只看眼前，越大越在意長遠規劃。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$T$</span></td>
+            <td style="text-align: left;"><strong>任務期限</strong></td>
+            <td style="text-align: left;">整個檢測流程總共能進行幾次動作，時間一到強制結束。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h4>核心目標：讓總收益最大化</h4>
+            <p>機器透過<strong>策略 (Policy, <span class="math inline">$\pi(a|s)$</span>)</strong> 來運作，這就像是機器的大腦：看到狀態 <span class="math inline">$s$</span>，就決定該採取什麼動作 <span class="math inline">$a$</span>。我們希望這套大腦能最大化未來的「總分」，公式如下：</p>
+            <div class="formula">$$\mathbb{E}_{\pi} \left[ \sum_{t=0}^{T-1} \gamma^t R(s_t, a_t) \right]$$</div>
+            
+            <p><strong>公式拆解：</strong></p>
+            <ul>
+            <li><span class="math inline">$\mathbb{E}_{\pi}$</span>：代表這是一個「期望值」，因為過程有隨機性，我們看的是長期的平均表現。</li>
+            <li><span class="math inline">$\gamma^t$</span>：這是為了讓獎勵「折現」。例如 <span class="math inline">$\gamma=0.9$</span>，在第 10 步拿到 100 分，價值只剩 <span class="math inline">$100 \times 0.9^{10} \approx 34.8$</span> 分。</li>
+            <li><strong>為什麼要這樣設計？</strong> 因為在現實中，我們鼓勵機器優先處理眼前的急迫任務，同時保持對長遠目標的規畫。</li>
+            </ul>
+            <p><strong>數值範例：</strong><br />
+            假設檢測器在第 0 秒 (<span class="math inline">$t=0$</span>) 找到一個重大瑕疵，獲得獎勵 <span class="math inline">$R=10$</span>。若 <span class="math inline">$\gamma=0.9$</span>，則該次獎勵對總分的貢獻為 <span class="math inline">$10 \times 0.9^0 = 10$</span>。<br />
+            若在第 3 秒 (<span class="math inline">$t=3$</span>) 才找到同等級瑕疵，貢獻則變為 <span class="math inline">$10 \times 0.9^3 = 7.29$</span>。<br />
+            這代表模型會傾向「越快發現瑕疵越好」，因為拖越久、獎勵折損越大，這正符合產線「追求效率」的核心邏輯。</p>
+            <hr />
+            <h4>洞察：為什麼要用 MDP？</h4>
+            <p>為什麼我們不直接寫死程式碼？因為晶圓檢測的環境太複雜了。透過定義 MDP，我們將「掃描」這個動作抽象化為數學機率問題。這使得機器不再是死板地跟隨路徑，而是根據當下的環境回饋（State）與過往經驗（Reward），自主調整路徑。這就是為什麼強化學習在處理不確定性（如各種隨機分佈的瑕疵）時，比傳統固定路徑檢測更具彈性與適應力的關鍵原因。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>強化學習 (RL)</strong></td>
+            <td style="text-align: left;">一種讓機器在「錯誤中學習」的訓練方式，透過不斷嘗試與獲得獎勵，找到最佳策略。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>馬可夫決策過程 (MDP)</strong></td>
+            <td style="text-align: left;">一套用於描述「決策過程」的數學框架，確保決策只與當前狀態有關，不被久遠的過去干擾。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>狀態空間 (<span class="math inline">$\mathcal{S}$</span>)</strong></td>
+            <td style="text-align: left;">機器對環境的認知範圍。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>動作空間 (<span class="math inline">$\mathcal{A}$</span>)</strong></td>
+            <td style="text-align: left;">機器所有可以執行的指令集合。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>轉移機率 (<span class="math inline">$P$</span>)</strong></td>
+            <td style="text-align: left;">從當前狀態執行動作後，進入下一個狀態的機率。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>獎勵函數 (<span class="math inline">$R$</span>)</strong></td>
+            <td style="text-align: left;">告訴機器什麼行為是「對的」，什麼行為是「錯的」之評分機制。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>折扣因子 (<span class="math inline">$\gamma$</span>)</strong></td>
+            <td style="text-align: left;">一種權重參數，決定機器是該貪圖眼前小利，還是追求未來大利。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>任務期限 (<span class="math inline">$T$</span>)</strong></td>
+            <td style="text-align: left;">一次完整任務結束前可以動作的步數限制。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>策略 (<span class="math inline">$\pi$</span>)</strong></td>
+            <td style="text-align: left;">機器的大腦模型，定義了「當看到這種狀況，我該採取什麼動作」。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>讓 AI 學會「看」晶圓：從反饋中自我改進的決策策略</h3>
+            <p>想像一下，你是一位訓練機器人去檢查晶圓瑕疵的教練。你不可能把每一種可能的情況都教給它，所以最好的方法是：給它一套「策略」，讓它在嘗試錯誤中自己變強。但問題來了，當它採取行動後，我們要怎麼告訴它：「你這次做得不錯」或「這裡要改進」？這就是今天我們要探討的核心：如何透過<strong>強化學習</strong>（Reinforcement Learning）讓機器人自動找出最佳檢查策略。</p>
+            <h4>為什麼我們需要「策略參數化」？</h4>
+            <p>我們希望能找到一個最強的策略，稱之為 <span class="math inline">$\pi^*$</span>（最佳策略）。但在現實中，這個策略太複雜了，無法直接寫出來。所以，聰明的做法是先建立一個「近似模型」 <span class="math inline">$\pi_\theta$</span>，透過調整裡面的參數 <span class="math inline">$\theta$</span>（就像調整音響的旋鈕，試圖找到最佳音質）來接近那個理想狀態。</p>
+            <p>我們使用一種叫「梯度上升」的方法。你可以把它想像成登山：我們不斷查看哪邊的地勢比較高，然後往那個方向跨出一小步，直到我們爬上獲利回報最高的山頂。</p>
+            <h4>核心公式拆解：REINFORCE 算法</h4>
+            <p>為了實現這種登山式的學習，著名的 <strong>REINFORCE 算法</strong> 為我們提供了一套計算公式。我們先來拆解它的獲利計算公式：</p>
+            <p><span class="math inline">$G_t = \sum_{k=t}^{T-1} \gamma^{k-t} R(s_k, a_k)$</span></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G_t$</span></td>
+            <td style="text-align: left;">從現在開始到任務結束，總共能賺到多少「分數」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R(s_k, a_k)$</span></td>
+            <td style="text-align: left;">在狀態 <span class="math inline">$s$</span> 下執行行動 <span class="math inline">$a$</span> 後，獲得的立即報酬（比如抓到瑕疵給 1 分，漏掉扣 5 分）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\gamma$</span></td>
+            <td style="text-align: left;">折扣因子（介於 0 到 1 之間），代表我們多看重「現在的獎勵」勝過「未來的獎勵」。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數字範例：</strong><br />
+            假設我們現在執行了兩個步驟。當前報酬 <span class="math inline">$R=10$</span>，下一步報酬 <span class="math inline">$R=5$</span>，折扣因子 <span class="math inline">$\gamma=0.9$</span>。<br />
+            計算 <span class="math inline">$G_0 = 10 \times 0.9^0 + 5 \times 0.9^1 = 10 + 4.5 = 14.5$</span>。<br />
+            這代表在考慮未來預期下，我們這次行動的綜合價值是 14.5 分。</p>
+            <p>接著，更新參數的指引方向是：<br />
+            <span class="math inline">$\nabla_\theta \ln \pi_\theta(a_t|s_t) G_t$</span></p>
+            <p>這其實是在說：如果 <span class="math inline">$G_t$</span> 很大（這次行動帶來了高額獎勵），我們就大幅增加發生該行動的機率；如果 <span class="math inline">$G_t$</span> 很小，我們就減少機率。</p>
+            <h4>為什麼要加入「基線（Baseline）」？</h4>
+            <p>在訓練時，我們常遇到一個挑戰：報酬的變異性太大，導致模型很難學會重點，就像一個人運氣好時亂做也會得分，運氣不好時認真做卻得低分。為了讓學習更穩定，我們引入了 <strong>基線（Baseline）</strong> <span class="math inline">$b(s_t)$</span>。</p>
+            <p>更新公式變成了：<br />
+            <span class="math inline">$\nabla_\theta \ln \pi_\theta(a_t|s_t) (G_t - b(s_t))$</span></p>
+            <p><strong>關鍵洞察：</strong><br />
+            <span class="math inline">$(G_t - b(s_t))$</span> 是什麼意思？它代表「這次表現與平均預期之間的差距」。</p>
+            <ul>
+            <li>如果差距是正的（<span class="math inline">$G_t &gt; b(s_t)$</span>）：代表這步棋比平時平均表現更好，我們應該強化它！</li>
+            <li>如果差距是負的（<span class="math inline">$G_t &lt; b(s_t)$</span>）：代表這步棋低於平均，我們應該減少發生機率。</li>
+            </ul>
+            <p>加入這個基線，就像是在給機器人一個基準分，讓它學會分辨「這真的是好棋」還是「只是運氣好」。這能大幅降低梯度計算的「雜訊」，讓機器人的學習速度變快，目標也更明確。</p>
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">強化學習</td>
+            <td style="text-align: left;">一種讓機器透過「試錯」與「獎勵」來學習如何做決策的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">策略 (<span class="math inline">$\pi$</span>)</td>
+            <td style="text-align: left;">機器人執行任務時的行為準則，決定在什麼狀態下該做什麼動作。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">參數 (<span class="math inline">$\theta$</span>)</td>
+            <td style="text-align: left;">模型內部的數值，調整這些數值能改變模型的思考邏輯。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">梯度上升</td>
+            <td style="text-align: left;">一種數學優化方法，透過不斷往回報增加的方向調整，找到最佳解。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">REINFORCE</td>
+            <td style="text-align: left;">一種根據「總報酬」來更新策略的強化學習基礎演算法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">報酬 (<span class="math inline">$R$</span>)</td>
+            <td style="text-align: left;">機器人執行任務後得到的獎勵或懲罰，用來評判行為好壞。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">折扣因子 (<span class="math inline">$\gamma$</span>)</td>
+            <td style="text-align: left;">用來權衡當下利益與未來預期利益的比例，數值越小越看重短期結果。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">基線 (Baseline)</td>
+            <td style="text-align: left;">一個預期報酬的參照值，用來扣除掉環境隨機性，讓學習更精準。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>2.2 不確定性估計與集成學習：模型知道自己「心虛」嗎？</h3>
+            <p>想像一下，你是一位剛入行的晶圓檢查員。主管丟給你一片晶圓，問你：「這裡面有瑕疵嗎？」如果你回答「絕對沒有」，但其實你心裡一點底都沒有，這就是所謂的「盲目自信」。在深度學習模型中，這種「過度自信」其實是個嚴重的問題。</p>
+            <h4>為什麼模型會「裝懂」？</h4>
+            <p>深度神經網路就像是一個很愛表現的學生，不管題目多難，它都敢給出一個肯定的答案。即便它錯了，它給出的信心指數（Confidence Score）往往還是高得嚇人。但在晶圓檢測這種精密工業中，如果模型無法判斷「我這張預測到底準不準」，我們就無法決定是否要交給人工複檢。因此，我們需要一套機制，讓模型在交出答案的同時，也能吐露：「嘿，這個判斷其實我心裡很毛，建議你再去檢查一下。」</p>
+            <p>這就是我們引入 <strong>不確定性估計 (Uncertainty Estimation)</strong> 的原因——它是指讓模型在給出預測的同時，量化自己對該預測的信任程度。</p>
+            <h4>如何讓模型學會謙虛？</h4>
+            <p>為了改善這種「不懂裝懂」的壞毛病，我們採用了 <strong>集成學習 (Ensemble)</strong> 的策略。這招的概念很簡單：不要只聽一個專家的話。</p>
+            <p>我們可以想像一下，如果不只請一位專家來判斷瑕疵，而是請五位獨立思考的專家（五個獨立訓練的深度學習模型），結果會如何？</p>
+            <ul>
+            <li>如果五位專家都說「這是瑕疵」，那信心值就很高。</li>
+            <li>如果三位說「是」，兩位說「不是」，這時模型就會產生困惑，這就是一種不確定性的體現。</li>
+            </ul>
+            <p>透過這種方式，我們不再依賴單一模型的預測，而是觀察多個模型預測的「分歧程度」。如果模型們意見不合，系統就會自動亮起紅燈，告訴操作員：「這裡有風險，請人工介入！」</p>
+            <h4>關鍵洞察：為什麼這樣設計有效？</h4>
+            <p>這套做法的核心在於：<strong>減少對單一隨機性的依賴</strong>。單一模型可能會因為訓練資料的一點點雜訊，就認定某個奇怪的紋路是瑕疵。但當我們訓練一組模型（Ensembles），且每個模型初始參數都不同時，它們會從不同的角度看問題。如果它們對某個區域的判斷依然劇烈分歧，這就給了我們一個極佳的指標——這代表模型目前對於該區域的資訊掌握度不足，需要更進一步的探索（例如啟動我們的反饋迴路）。</p>
+            <p>這段設計的重要性在於，它賦予了機器「自省」的能力。在晶圓檢測這樣高成本的流程中，這不僅僅是為了提高準確率，更是為了建立一套具備「自我防護」機制的自動化流程。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>深度學習 (Deep Learning)</strong></td>
+            <td style="text-align: left;">一種模仿人類大腦結構的機器學習技術，擅長從大量的圖像或數據中提取特徵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>不確定性估計 (Uncertainty Estimation)</strong></td>
+            <td style="text-align: left;">模型用來評估自己對預測結果有多大把握的一種衡量指標。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>集成學習 (Ensemble)</strong></td>
+            <td style="text-align: left;">將多個模型組合起來，透過綜合這些模型的意見，以獲得比單一模型更穩健、更準確的結果。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>深度神經網路 (Deep Neural Networks)</strong></td>
+            <td style="text-align: left;">深度學習的核心架構，由多層計算節點組成，能處理複雜的模式識別任務。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>過度自信 (Overconfident)</strong></td>
+            <td style="text-align: left;">指模型在錯誤的預測下，卻給出極高的信心分數，讓使用者誤以為模型非常準確。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h2>智慧掃描：從「全盤檢查」到「精準預測」</h2>
+            <p>想像一下，你是一位工廠的品質檢測員，面前放著一張巨大的晶圓圖（Wafer Map）。這張圖非常細緻，如果要把整張圖放大看清楚，不僅耗時，還會拖慢整條生產線的效率。那有沒有一種方法，可以不用把整張圖看完，就能精準判斷晶圓有沒有瑕疵呢？</p>
+            <p>這就是我們今天要拆解的技術核心：透過<strong>順序性掃描（Sequential Inspection）</strong>，用最少的力氣，抓出最重要的瑕疵。</p>
+            <h3>拆解核心：拼圖式的資料收集</h3>
+            <p>我們將整張晶圓圖定義為 <span class="math inline">$X \in \mathbb{R}^{N_1 \times N_2}$</span>。你可以把它想成一張巨大的馬賽克照片。為了檢測，我們不能一次看完整張，而是規定檢測工具每次只能掃描一小塊區域，稱為 <span class="math inline">$x_t \in \mathbb{R}^{n_1 \times n_2}$</span>。</p>
+            <p>這裡有個關鍵前提：我們把大圖切成很多個不重疊的小塊，直到掃描完 <span class="math inline">$T$</span> 個小塊後，等於看完了整張圖，且 <span class="math inline">$T = \frac{N_1 N_2}{n_1 n_2}$</span>。</p>
+            <p>我們的目標很明確：<strong>不需要看完所有 <span class="math inline">$T$</span> 個小塊</strong>。我們希望在收集到第 <span class="math inline">$t^*$</span> 個小塊時，就透過模型 <span class="math inline">$\mathcal{F}_w$</span>（這是一個帶有參數 <span class="math inline">$w$</span> 的分類器）做出判斷 <span class="math inline">$\hat{y}_{t^*}$</span>。</p>
+            <h3>公式的數學翻譯機</h3>
+            <p>我們用一個簡單的例子來對應這些變數：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">數學意義</th>
+            <th style="text-align: left;">生活化比喻</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$X$</span></td>
+            <td style="text-align: left;">整個 <span class="math inline">$N_1 \times N_2$</span> 的晶圓矩陣</td>
+            <td style="text-align: left;">整張巨大的拼圖</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_t$</span></td>
+            <td style="text-align: left;">第 <span class="math inline">$t$</span> 次掃描的 <span class="math inline">$n_1 \times n_2$</span> 區域</td>
+            <td style="text-align: left;">拼圖中的一小塊拼片</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$y$</span></td>
+            <td style="text-align: left;">晶圓的瑕疵分類 (1 到 <span class="math inline">$K$</span>)</td>
+            <td style="text-align: left;">拼圖完成後的正確答案 (例如：合格/刮痕/汙漬)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{F}_w$</span></td>
+            <td style="text-align: left;">帶有參數 <span class="math inline">$w$</span> 的分類函數</td>
+            <td style="text-align: left;">看到目前拼片後，猜測圖案的專家</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            假設晶圓總大小 <span class="math inline">$N_1=100, N_2=100$</span>（共 10,000 像素），而我們每次掃描的小塊是 <span class="math inline">$n_1=10, n_2=10$</span>（共 100 像素）。<br />
+            那麼 <span class="math inline">$T = \frac{100 \times 100}{10 \times 10} = 100$</span>。這意味著總共有 100 片拼圖。<br />
+            如果我們在第 <span class="math inline">$t^*=20$</span> 個小塊時，模型就準確判斷出瑕疵類型，我們就省下了 80% 的掃描時間！</p>
+            <h3>為什麼這樣設計？</h3>
+            <p>這套方法的設計精髓在於「及時止損」。在傳統工業檢測中，我們往往習慣「看完所有數據再做判斷」。但在現代高產能工廠，時間就是金錢。透過這種設定，我們讓模型變成一個具備<strong>主動學習（Active Learning）</strong>潛力的智慧系統，它會根據已經看到的資訊，嘗試在最短的時間內給出可信的預測。</p>
+            <p>這個階段的重點在於定義了「遊戲規則」：我們不是在處理靜態的完整圖片，而是在處理一段隨時間變化的資訊流。只要模型夠聰明，在資訊量達到閾值時就能提前「搶答」，這正是提升生產力最關鍵的一步。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Wafer Map (晶圓圖)</strong></td>
+            <td style="text-align: left;">記錄晶片生產過程中，每一顆晶片狀態的二維分佈圖。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Sequential Inspection (順序性掃描)</strong></td>
+            <td style="text-align: left;">一步步收集資訊，而不是一次取得完整資料的檢測過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>One-hot encoded (獨熱編碼)</strong></td>
+            <td style="text-align: left;">將分類標籤轉化為計算機易讀的數值向量（例如：標籤 2 變成 [0, 1, 0]）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Classifier (分類器)</strong></td>
+            <td style="text-align: left;">負責判斷輸入資料屬於哪一種類型的演算法模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Learnable parameters (可學習參數)</strong></td>
+            <td style="text-align: left;">模型中會隨著訓練不斷優化的權重數值，決定了模型的判斷能力。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong><span class="math inline">$\mathcal{F}_w$</span></strong></td>
+            <td style="text-align: left;">代表一個擁有學習能力「w」的函數，用來將影像特徵轉換為分類結果。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>像偵探一樣抓出瑕疵：何時才能喊「我找到了！」？</h3>
+            <p>想像你在工廠裡檢查成千上萬片的晶圓，每一片上面都有細小的電路圖（我們稱之為晶圓圖，Wafer Map）。這項任務就像在沙灘上找特定的細沙，你必須一片片、一小區塊地看。</p>
+            <p>但有個問題：要在什麼時候停下來？是看過所有區域才宣告結果？還是只要掃描到關鍵證據就立刻結案？這段內容就在定義這個「最聰明的停損點」。</p>
+            <hr />
+            <h3>拆解核心：最快找到答案的機制</h3>
+            <p>我們把晶圓的檢測過程拆解成一連串的時間點 <span class="math inline">$t$</span>。定義如下：</p>
+            <ul>
+            <li><strong>當前判斷 <span class="math inline">$\hat{y}_t$</span></strong>：這是我們在時間點 <span class="math inline">$t$</span> 時，根據目前累積看到的資訊（從第 1 個區塊到第 <span class="math inline">$t$</span> 個區塊，記作 <span class="math inline">$x_1, \dots, x_t$</span>），所做出的「這片晶圓有沒有缺陷」的判斷。</li>
+            <li><strong>正確答案 <span class="math inline">$y$</span></strong>：這片晶圓實際上真實的狀態（正常或有缺陷）。</li>
+            <li><strong>關鍵時間點 <span class="math inline">$t^*$</span></strong>：這是在所有可能的檢查順序下，我們能「最快」準確命中正確答案的那個時間點。</li>
+            </ul>
+            <h4>為什麼要這樣定義？</h4>
+            <p>這就像是在玩拼圖，你並不需要拼完所有碎片才能知道圖案是什麼。透過定義 <span class="math inline">$t^*$</span> 為「最小時間步長」，我們強迫模型練習：<strong>如何在資訊有限的情況下，以最少的檢查次數，做出最精準的判斷。</strong> 這能大幅減少不必要的檢查時間，提高產線效率。</p>
+            <h4>數值範例：抓出瑕疵的瞬間</h4>
+            <p>假設晶圓被分成 10 個區塊（<span class="math inline">$T=10$</span>）。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">時間點 <span class="math inline">$t$</span></th>
+            <th style="text-align: left;">你看到的區塊資訊</th>
+            <th style="text-align: left;">模型判斷 <span class="math inline">$\hat{y}_t$</span></th>
+            <th style="text-align: left;">是否等於真實答案 <span class="math inline">$y$</span>？</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t=1$</span></td>
+            <td style="text-align: left;">區塊 3</td>
+            <td style="text-align: left;">正常</td>
+            <td style="text-align: left;">否</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t=2$</span></td>
+            <td style="text-align: left;">區塊 3, 7</td>
+            <td style="text-align: left;">正常</td>
+            <td style="text-align: left;">否</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t=3$</span></td>
+            <td style="text-align: left;">區塊 3, 7, 1</td>
+            <td style="text-align: left;"><strong>缺陷</strong></td>
+            <td style="text-align: left;"><strong>是！(<span class="math inline">$t^* = 3$</span>)</strong></td>
+            </tr>
+            </tbody>
+            </table>
+            <p>在這次檢查中，雖然總共有 10 個區塊，但你在第 3 個區塊就已經掌握到決定性的證據，因此 <span class="math inline">$t^* = 3$</span>。如果我們換一種檢查順序（改變排列組合 <span class="math inline">$\sigma$</span>），可能會更早或更晚發現，而 <span class="math inline">$t^*$</span> 就是要在所有可能的順序中，找到那個「冠軍速度」。</p>
+            <hr />
+            <h3>洞察：為什麼這對人工智慧很重要？</h3>
+            <p>這段邏輯背後的精髓在於<strong>效率優化</strong>。在強化學習（Reinforcement Learning）的應用中，我們不只是要模型學會「認出瑕疵」，還要學會「判斷何時可以收手」。</p>
+            <p>如果模型過早下判斷，容易誤判；過晚下判斷，則浪費成本。透過定義 <span class="math inline">$t^*$</span> 這個基準，我們實際上是在訓練 AI 培養一種「直覺」：<strong>這點線索夠不夠？夠了，立刻判斷，下一題！</strong> 這正是工業自動化中最珍貴的能力。</p>
+            <hr />
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Wafer Map（晶圓圖）</strong></td>
+            <td style="text-align: left;">晶圓表面的檢測資料圖，用來標示晶圓上是否有瑕疵區域。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Patch（區塊）</strong></td>
+            <td style="text-align: left;">將完整的晶圓影像切割成的小區塊，作為 AI 檢測的最小單位。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Permutation（排列組合）</strong></td>
+            <td style="text-align: left;">這裡指檢查晶圓區塊的先後順序，不同的順序可能會影響判斷速度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Time step（時間步長）</strong></td>
+            <td style="text-align: left;">指每進行一次檢查動作（如看一個區塊）的計數單位。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Reinforcement Learning（強化學習）</strong></td>
+            <td style="text-align: left;">一種機器學習方法，讓 AI 透過不斷嘗試與獲得獎勵，學習如何做出最優決策。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>用最少的資源，找出最大的瑕疵：目標設定</h3>
+            <p>想像一下，你是一位工廠的品質檢測員，負責檢查晶圓（半導體製造過程中的基板）。每一片晶圓上都有成千上萬個微小的晶片，如果要把每一個地方都檢查一遍，不僅耗時，還會讓昂貴的檢測設備過勞。</p>
+            <p>我們真正想要做的，是設計一套「聰明檢測法」：如何在掃描最少量的區塊（Patches，即晶圓上的小片段區域）的情況下，依然能準確判斷晶圓有沒有瑕疵？這就像是玩「猜謎遊戲」，你不想把整本百科全書讀完才猜答案，而是想透過翻開最關鍵的幾頁，就拼湊出真相。</p>
+            <p>為了衡量我們有多「會省力」，我們定義了一個關鍵指標 <strong>節省率 (Ratio of non-scanned patches, <span class="math inline">$R$</span>)</strong>：</p>
+            <div class="formula">$$R = (1 - \frac{t^*}{T}) \cdot 100\%$$</div>
+            
+            <h4>公式拆解與數值範例</h4>
+            <p>我們來拆解一下這個公式裡的變數：</p>
+            <ul>
+            <li><span class="math inline">$T$</span>：這片晶圓被切分成總共多少個區塊（總數）。</li>
+            <li><span class="math inline">$t^*$</span>：我們實際掃描了多少個區塊（測量次數）。</li>
+            </ul>
+            <p><strong>舉個例子：</strong><br />
+            假設一片晶圓被分成 100 個區塊（<span class="math inline">$T=100$</span>），而我們的模型很聰明，只掃描了 10 個區塊（<span class="math inline">$t^*=10$</span>）就做出了準確判斷。<br />
+            將數字代入公式：<span class="math inline">$R = (1 - \frac{10}{100}) \cdot 100\% = 90\%$</span>。</p>
+            <p><strong>這代表什麼意義？</strong><br />
+            這代表我們成功省下了 90% 的檢測工作量！在這個指標下，數值越高越好，因為這意味著我們能用更少的「測量次數」達到同樣的監控效果。這不僅僅是為了省錢，更是在晶圓製造這種分秒必爭的產業中，搶下產能與效率的關鍵。</p>
+            <p>為了達成這個目標，我們提出了一套由三個核心模型組成的檢測系統，接下來我們將一起揭開它們的面紗。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓 (Wafer)</strong></td>
+            <td style="text-align: left;">半導體晶片製造的基底，上面佈滿了許多電路圖案。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>區塊 (Patches)</strong></td>
+            <td style="text-align: left;">將整片晶圓切割後，最小的檢查單位。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>節省率 (R)</strong></td>
+            <td style="text-align: left;">用來衡量檢測系統「偷懶」程度的指標，代表省下了多少檢查比例。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>測量次數 (Measurements)</strong></td>
+            <td style="text-align: left;">模型在進行最終判斷前，實際掃描了多少個晶圓區塊。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>打造晶圓檢測的「大腦與眼睛」：三個關鍵組件</h3>
+            <p>想像一下，你正在經營一家晶圓廠，成千上萬片的晶圓就像是一張張精密的地圖。為了找出瑕疵，你不能也不必把整張地圖檢查一遍，你只需要挑選幾個關鍵位置查看，就能判斷這片晶圓是好是壞。為了達成這個高效率的目標，我們設計了三位「檢測員」，它們就像是一個精密的決策團隊。</p>
+            <p>我們一起來拆解這個團隊是如何運作的：</p>
+            <h4>1. 分類器（Classifier <span class="math inline">$\mathcal{F}_w$</span>）：總結現場狀況的專家</h4>
+            <p>這台分類器 <span class="math inline">$\mathcal{F}_w$</span> 就像是一位經驗豐富的資深工程師。它的任務是接收我們從晶圓上收集到的幾片「拼圖」（也就是局部檢測影像，我們稱之為 <strong>Patches</strong>），並根據這些拼圖判斷這片晶圓的類型。</p>
+            <p>最特別的是，它具有「順序無關性」（Invariant to order）。這代表什麼呢？想像你拼拼圖時，先拼左上角還是先拼右下角，對於這台分類器來說完全沒差，只要最後收集到的資訊夠多，它都能準確地拼湊出結果。</p>
+            <h4>2. 置信度估計器（Confidence estimator <span class="math inline">$c_\omega$</span>）：判斷什麼時候該收手</h4>
+            <p>有了分類器，我們還需要一個像「鬧鐘」一樣的組件。這就是置信度估計器 <span class="math inline">$c_\omega$</span>。它的工作是監督分類器的信心：</p>
+            <ul>
+            <li><strong>問自己：</strong> 「我現在的預測夠準確了嗎？」</li>
+            <li><strong>做決定：</strong> 如果信心爆棚，它會喊「停！這片晶圓的結果已經確定了」；如果信心不足，它會要求系統繼續檢測下一個點。</li>
+            </ul>
+            <p>這就是我們實務上減少檢查成本的關鍵——不盲目檢查，而是「檢查到足夠為止」。</p>
+            <h4>3. 主動式選取器（Active patch selector <span class="math inline">$\pi_\theta$</span>）：精明的調查員</h4>
+            <p>最後是我們的指揮官，主動式選取器 <span class="math inline">$\pi_\theta$</span>。它的目標非常明確：用最少的測量次數，達到最可靠的預測。它負責決定下一步要查看晶圓上的哪一個位置（選取哪一個 Patch），以提供最關鍵的資訊給分類器。</p>
+            <hr />
+            <h3>公式拆解：決策的代價與獎勵</h3>
+            <p>在這個系統中，我們希望最小化測量次數，同時最大化準確率。假設我們設定一個目標函數：</p>
+            <div class="formula">\[ \text{Total Cost} = \sum_{t=1}^{T} (\text{Measurement Cost}_t) + \alpha \cdot \text{Loss}(\mathcal{F}_w) \]</div>
+            
+            <ul>
+            <li><strong>變數解釋：</strong><ul>
+            <li><span class="math inline">$\sum_{t=1}^{T} (\text{Measurement Cost}_t)$</span>：代表到第 <span class="math inline">$T$</span> 步為止，我們花費的所有測量成本。</li>
+            <li><span class="math inline">$\alpha$</span>：調整成本與準確度重要性的權重參數。</li>
+            <li><span class="math inline">$\text{Loss}(\mathcal{F}_w)$</span>：分類器的預測錯誤率（這數值越低越好）。</li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>數值示例：</strong><br />
+            假設檢查一片晶圓的成本是 1 元，若 <span class="math inline">$\alpha = 10$</span>。</p>
+            <ul>
+            <li>情境 A：檢查 3 個點後判斷正確，錯誤率為 0.05。總成本 = <span class="math inline">$(3 \times 1) + 10 \times 0.05 = 3.5$</span>。</li>
+            <li>情境 B：檢查 10 個點後判斷正確，錯誤率為 0.01。總成本 = <span class="math inline">$(10 \times 1) + 10 \times 0.01 = 10.1$</span>。</li>
+            </ul>
+            <p><strong>結果解讀：</strong> 在這個權重設定下，情境 A 明顯更划算。這說明了為什麼系統需要 <span class="math inline">$\pi_\theta$</span> 和 <span class="math inline">$c_\omega$</span> 來動態平衡——我們在尋找「成本」與「精確」之間的甜蜜點（Sweet spot）。</p>
+            <hr />
+            <h3>為什麼這樣的設計有效？</h3>
+            <p>這套機制的核心在於「適應性」。傳統的檢測方式通常是「全檢」或「隨機抽檢」，但我們的設計模仿人類專家的思維：</p>
+            <ol>
+            <li><strong>分類器</strong>負責提取特徵。</li>
+            <li><strong>選取器</strong>負責鎖定關鍵資訊來源。</li>
+            <li><strong>估計器</strong>負責管控風險。</li>
+            </ol>
+            <p>將三者結合，系統就不再是死板地執行指令，而是一個能不斷回饋、自我校正的智慧循環，這正是工業自動化中最渴望的高效率流程。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Classifier <span class="math inline">$\mathcal{F}_w$</span></strong></td>
+            <td style="text-align: left;">分類器，用來從局部影像判斷整片晶圓瑕疵類型的模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Patches</strong></td>
+            <td style="text-align: left;">補丁，指將晶圓切分成多個較小的局部影像區塊。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Confidence estimator <span class="math inline">$c_\omega$</span></strong></td>
+            <td style="text-align: left;">置信度估計器，用來評估目前模型預測結果有多準確的機制。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Active patch selector <span class="math inline">$\pi_\theta$</span></strong></td>
+            <td style="text-align: left;">主動式選取器，負責決定下一步要查看哪個位置，以最小化檢測次數。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Invariant</strong></td>
+            <td style="text-align: left;">不變性，指模型對輸入資訊的排列順序不敏感。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>3.1. 像大腦一樣記憶的分類器：GRU 模型</h3>
+            <p>想像一下，你是一位負責檢查晶圓良率的工程師，如果你每次看一張晶圓圖（Wafer Map）都是「失憶」狀態，完全不記得上一張圖長什麼樣，那檢查效率一定很差。因為很多缺陷是連續發生的，比如某個製程參數漂移了，可能會連續幾張晶圓都出現同樣的異常。</p>
+            <p>為了讓 AI 具備「看過往經歷」的能力，我們引入了 <strong>GRU（閘門循環單元）</strong>。它就像是 AI 的短期記憶系統，能把處理當前晶圓的資訊與之前的記憶結合起來。我們一起來看看這個過程是如何發生的。</p>
+            <h4>核心公式拆解</h4>
+            <p>這個過程就像是把一張複雜的地圖，經過三道工序轉換成最後的判斷結果：</p>
+            <p><strong>第一步：展平並嵌入資訊</strong></p>
+            <div class="formula">$$z_t^{(0)} = \text{MLP}(\text{flattened}(x_t)) + E_{i_t}$$</div>
+            
+            <ul>
+            <li><strong>白話解釋</strong>：把一張平面的晶圓圖 <span class="math inline">$x_t$</span> 拉成一條長長的數據線（Flattened），交給一個叫 <strong>MLP（多層感知器）</strong> 的處理器進行初步特徵提取，最後加上一個代表目前處理步驟的「標籤」<span class="math inline">$E_{i_t}$</span>。</li>
+            <li><strong>變數意義</strong>：<ul>
+            <li><span class="math inline">$x_t$</span>：第 <span class="math inline">$t$</span> 張晶圓的影像數據。</li>
+            <li><span class="math inline">$z_t^{(0)}$</span>：轉換後進入記憶模組的初始特徵。</li>
+            <li><span class="math inline">$E_{i_t}$</span>：位置編碼（告訴模型這張圖是第幾張）。</li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>第二步：透過 GRU 進行記憶堆疊</strong></p>
+            <div class="formula">$$h_t^{(l)} = \text{GRU}\left(h_{t-1}^{(l)}, z_t^{(l-1)}\right), \quad l = 1, 2, \dots, L$$</div>
+            
+            <ul>
+            <li><strong>白話解釋</strong>：這是 AI 的「大腦摺疊」過程。GRU 接收了上一張晶圓留下的記憶 <span class="math inline">$h_{t-1}$</span> 和當前的資訊 <span class="math inline">$z_t$</span>，透過 <span class="math inline">$L$</span> 層的神經網路進行深層處理，算出新的記憶 <span class="math inline">$h_t$</span>。</li>
+            <li><strong>類比</strong>：就像讀小說，你腦中的劇情進度 <span class="math inline">$h_t$</span> 等於「上一章的印象」加上「這一章的內容」。</li>
+            </ul>
+            <p><strong>第三步：做出最終分類判斷</strong></p>
+            <div class="formula">$$\hat{y}_t = \text{Softmax}(\text{MLP}(h_t^{(L)}))$$</div>
+            
+            <div class="formula">$$\hat{y}_t = \text{arg max}_{k=1,2,\dots,K} \{\hat{y}_{t,k}\} \in \{1, 2, \dots, K\}$$</div>
+            
+            <ul>
+            <li><strong>白話解釋</strong>：最後，模型把累積的記憶 <span class="math inline">$h_t$</span> 轉換成一個機率分布，告訴你這張圖屬於哪一種缺陷類型。</li>
+            <li><strong>數值範例</strong>：假設有 3 種缺陷類型（<span class="math inline">$K=3$</span>）。經過 Softmax 計算後，模型輸出機率為 <span class="math inline">$[0.1, 0.7, 0.2]$</span>。<span class="math inline">$\text{arg max}$</span> 函數會挑出機率最高的值，也就是第 2 個類別。在實務上，這代表 AI 很有信心地判定該晶圓屬於「第 2 類典型缺陷」。</li>
+            </ul>
+            <h4>為什麼這樣設計？</h4>
+            <p>傳統的分類器通常是「一次性處理」，給它什麼就判斷什麼。但晶圓檢測是一個「序列過程」，如果我們只看單張影像，很容易因為局部雜訊而誤判。<strong>GRU 的設計優勢在於它能保留時序關聯性（Temporal dependency）</strong>，這意味著如果前面已經連續發現異常，當前影像即使看起來稍微模糊，模型也能因為「歷史脈絡」而做出更準確的修正。這不僅提高了穩定性，更模擬了資深工程師依據過往經驗判斷當前異常的直覺。</p>
+            <p>📖 <strong>本節術語表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>GRU</strong></td>
+            <td style="text-align: left;">一種擁有記憶能力的神經網路，專門處理有前後順序的數據。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>MLP</strong></td>
+            <td style="text-align: left;">最基礎的神經網路結構，負責把原始資訊轉化為特徵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Flattened</strong></td>
+            <td style="text-align: left;">將二維的影像矩陣「拉直」成一串數據，方便電腦處理。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Softmax</strong></td>
+            <td style="text-align: left;">一種計算方法，把輸出的數值轉化為總和為 1 的「機率百分比」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>arg max</strong></td>
+            <td style="text-align: left;">從一堆機率中挑出最大值，用來決定最終結果屬於哪一類。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>位置編碼 (E)</strong></td>
+            <td style="text-align: left;">賦予數據一個順序標籤，讓 AI 知道處理順序的先後。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>3.2. 信心估計器：如何在過程中判斷「我夠準了嗎？」</h3>
+            <p>想像你在玩一個「快問快答」的遊戲，題目是一張晶圓圖（Wafer Map）。題目越來越難，而你可以在看完整張圖之前，隨時喊「停」並給出答案。問題來了：你怎麼知道自己在這一刻喊停，給出的答案是可靠的呢？</p>
+            <p>這就是我們引入<strong>信心估計器（Confidence Estimator）</strong>的原因。</p>
+            <h4>為什麼需要信心估計器？</h4>
+            <p>在自動化檢查系統中，我們希望機器能「見好就收」。如果模型只看了部分的影像資訊（在時間點 <span class="math inline">$t &lt; T$</span>），就已經有極高的把握能判斷晶圓的瑕疵類型，我們就沒必要浪費後續的計算資源繼續看下去。為了實現這個目標，我們建構了一個名為 <span class="math inline">$c_\omega$</span> 的<strong>信心網路（Confidence Network）</strong>，它的任務就是：在目前的檢查進度下，預測模型目前給出的答案，與正確答案一致的機率有多大。</p>
+            <h4>公式拆解：信心網路在算什麼？</h4>
+            <p>我們用以下公式來定義它的目標：</p>
+            <div class="formula">$$P(y = y^* | X, w)$$</div>
+            
+            <ul>
+            <li><strong><span class="math inline">$P$</span></strong>：代表機率（Probability）。</li>
+            <li><strong><span class="math inline">$y = y^*$</span></strong>：表示模型預測的類別（<span class="math inline">$y$</span>）等於真實的瑕疵類別（<span class="math inline">$y^*$</span>）。</li>
+            <li><strong><span class="math inline">$X$</span></strong>：代表我們目前看到的晶圓影像片段。</li>
+            <li><strong><span class="math inline">$w$</span></strong>：代表目前的檢查狀態（或是已經累積的資訊權重）。</li>
+            </ul>
+            <p>簡單來說，這個公式就是在問：「根據目前看到的影像 <span class="math inline">$X$</span> 以及累積的觀察狀態 <span class="math inline">$w$</span>，我們預測正確的機率是多少？」</p>
+            <h4>數值範例：怎麼讀這個結果？</h4>
+            <p>假設現在有三個不同的檢查時間點，信心網路輸出的數值如下：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">時間點</th>
+            <th style="text-align: left;">信心數值 <span class="math inline">$P(y = y^*)$</span></th>
+            <th style="text-align: left;">實務上的意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">第 2 秒</td>
+            <td style="text-align: left;">0.45</td>
+            <td style="text-align: left;">信心不足，這可能是猜的，繼續檢查。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">第 5 秒</td>
+            <td style="text-align: left;">0.82</td>
+            <td style="text-align: left;">信心不錯，但還不到完全放心，建議再看一點。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">第 8 秒</td>
+            <td style="text-align: left;">0.98</td>
+            <td style="text-align: left;">信心極高！可以停止檢查，節省後續資源。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p>在這個例子中，如果你設定的「停止門檻」是 0.95，那麼到了第 8 秒，信心網路就會告訴你：「你可以停下來了，我不僅判斷準確，而且有 98% 的把握你是對的。」</p>
+            <h4>為什麼這樣設計有效？</h4>
+            <p>這種設計將「決策過程」與「判斷準確度」拆開。我們不需要強迫分類器（Classifier）自己說「我很有把握」（因為分類器往往會過度自信），而是透過一個獨立的信心網路 <span class="math inline">$c_\omega$</span>，專門學習判斷當前的資訊量是否足夠支撐正確的分類。這就像是在隊伍中安插了一個「品質管理員」，專門評估當前的分析成果是否達標，讓整個檢查過程既靈活又可靠。</p>
+            <h4>重點回顧</h4>
+            <p>本節介紹的信心估計器，是整套系統能實現「動態調整」的核心機制。它讓機器學會了「自我評估」，不再是盲目地跑完全程，而是根據當下的資訊品質，即時決定是否要停止工作。這不僅大幅提升了檢查效率，更確保了在資訊不足時，系統會乖乖地繼續挖掘細節，不會隨意給出錯誤的答案。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>信心估計器</strong> (Confidence Estimator)</td>
+            <td style="text-align: left;">一種專門用來判斷模型目前判斷結果有多可靠的工具。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>信心網路</strong> (Confidence Network)</td>
+            <td style="text-align: left;">以神經網路構成的模組，負責預測分類結果正確的機率。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>真實類別機率</strong> (True Class Probability, TCP)</td>
+            <td style="text-align: left;">模型所做的預測，與實際情況完全符合的機率值。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>分類器</strong> (Classifier)</td>
+            <td style="text-align: left;">負責判斷晶圓瑕疵類型的機器學習模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓圖</strong> (Wafer Map)</td>
+            <td style="text-align: left;">用來顯示晶片製造過程中，瑕疵分佈狀況的影像圖。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>3.3. 主動式修補選取器：讓 AI 學會「看哪裡最重要」</h3>
+            <p>想像你在工廠裡檢查一大片晶圓，由於晶圓上的晶片實在太多了，你不可能每一顆都用顯微鏡仔細看，那樣太花時間。你必須學會一個策略：先挑幾顆關鍵的看，如果發現有問題，再決定下一顆要檢查哪裡。</p>
+            <p>在我們的研究中，這個「決定下一顆檢查哪裡」的決策者，就是我們稱為<strong>主動式修補選取器 (Active patch selector)</strong> 的核心腦袋。</p>
+            <h4>我們如何定義 AI 的「大腦狀態」？</h4>
+            <p>AI 要做出決定，就像人下棋一樣，必須先看懂「現在的局勢」。我們將這個局勢定義為 <span class="math inline">$s_t$</span>，它由兩部分組成：</p>
+            <ol>
+            <li><strong><span class="math inline">$h_t^{(L)}$</span></strong>：這是 <strong>GRU (閘門循環單元)</strong> 最後一層的隱藏狀態。你可以把它想成 AI 對於「目前為止已經看到的晶片狀況」的短暫記憶。</li>
+            <li><strong><span class="math inline">$m_t$</span></strong>：這是一個<strong>遮罩 (Mask)</strong>，紀錄了還有哪些晶片區域還沒被檢查過。</li>
+            </ol>
+            <p>AI 透過策略函數 <span class="math inline">$\pi_\theta$</span> 把這些資訊轉化為下一步行動 <span class="math inline">$a_t$</span>（也就是決定要檢查哪個具體區域）。</p>
+            <h4>獎勵機制：它做對了嗎？</h4>
+            <p>為了訓練 AI，我們需要給它「獎勵」。我們定義總回報 <span class="math inline">$G$</span> 為所有步驟獎勵的加總：</p>
+            <div class="formula">$$G = \sum_{t=0}^{T-1} \gamma^t r_{t+1}$$</div>
+            
+            <p>這裡的 <span class="math inline">$\gamma$</span> 是一個介於 0 到 1 的數值，稱為<strong>折扣因子</strong>，它用來平衡「現在立刻找到瑕疵」和「未來長遠的掃描效率」。</p>
+            <p>最核心的獎勵 <span class="math inline">$r_t$</span> 其實非常簡單直覺：</p>
+            <div class="formula">$$r_t = \begin{cases} 1, &amp; \text{if } \hat{c}_t \ge 0.5 \\ 0, &amp; \text{otherwise} \end{cases}$$</div>
+            
+            <p><strong>這代表什麼意思呢？</strong><br />
+            我們設定了一個門檻值 0.5。如果 AI 挑選的那個區域，預測出有瑕疵的機率 <span class="math inline">$\hat{c}_t$</span> 超過 0.5，AI 就會得到 1 分的獎勵；否則就是 0 分。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$s_t$</span></td>
+            <td style="text-align: left;">當前狀態，AI 腦中對晶圓掃描局勢的理解</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$h_t^{(L)}$</span></td>
+            <td style="text-align: left;">GRU 的隱藏狀態，代表 AI 對之前掃描內容的記憶</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$m_t$</span></td>
+            <td style="text-align: left;">遮罩，標示哪些區域還沒掃過，像是一張待辦清單</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\pi_\theta$</span></td>
+            <td style="text-align: left;">決策策略，AI 的大腦，決定下一步怎麼走</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">總回報，AI 達成目標獲得的積分總額</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\gamma$</span></td>
+            <td style="text-align: left;">折扣因子，權衡眼前利潤與長遠目標的比例</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$r_t$</span></td>
+            <td style="text-align: left;">即時獎勵，做對選擇後得到的得分</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{c}_t$</span></td>
+            <td style="text-align: left;">模型預測該區域有瑕疵的機率</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>數值範例：AI 決策瞬間</h4>
+            <p>假設在某一次掃描中：</p>
+            <ul>
+            <li>AI 選定了一個區域 <span class="math inline">$a_t$</span>。</li>
+            <li>模型分析該區域後的瑕疵預測機率 <span class="math inline">$\hat{c}_t = 0.85$</span>。</li>
+            <li>因為 <span class="math inline">$0.85 \ge 0.5$</span>（大於門檻），所以該次行動獎勵 <span class="math inline">$r_t = 1$</span>。</li>
+            <li><strong>實務意義</strong>：這表示 AI 成功命中了一塊真正有問題的區域，系統會獎勵它，鼓勵它未來繼續優先選擇這類看起來「有問題」的區域進行檢查。</li>
+            </ul>
+            <h4>為什麼這樣設計最有效？</h4>
+            <p>這個設計的核心洞察在於<strong>效率</strong>。與其漫無目的地搜尋，透過定義 <span class="math inline">$s_t$</span> 並設置獎勵 <span class="math inline">$r_t$</span>，我們強迫 AI 學習「路徑規劃」。它不再是隨機亂看，而是會根據已知的記憶（GRU 狀態）和剩餘的目標（遮罩），主動選擇最有機會抓到瑕疵的位置。這種「帶著目的去檢查」的設計，能讓晶圓廠在檢測時省下大量的時間與成本。</p>
+            <p>📖 <strong>本節術語表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Active patch selector</strong></td>
+            <td style="text-align: left;">主動式修補選取器，負責決定下一步該檢查哪塊晶片區域的 AI 模組</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>GRU</strong></td>
+            <td style="text-align: left;">閘門循環單元，一種擅長處理時間序列資料的神經網絡，用於記住掃描過程的歷史資訊</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Mask</strong></td>
+            <td style="text-align: left;">遮罩，一種過濾機制，用來告訴 AI 哪些區域尚未檢查，避免重複掃描</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Policy</strong></td>
+            <td style="text-align: left;">策略，AI 根據當前情況決定下一步行動的一套邏輯規則</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Discount factor (<span class="math inline">$\gamma$</span>)</strong></td>
+            <td style="text-align: left;">折扣因子，決定 AI 是看重現在的獎勵，還是更看重未來的長遠效益</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Reward</strong></td>
+            <td style="text-align: left;">獎勵，給予 AI 的分數，用來引導其行為往正確方向修正</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>3.4 集成預測：三個臭皮匠，勝過一個諸葛亮</h3>
+            <p>想像一下，你今天想去評估一片晶圓（wafer，半導體製程中的圓形矽基板）是否壞了，但只聽一個專家的意見可能會有風險——萬一他今天心情不好、看錯了呢？最穩妥的做法，就是多找幾位專家一起看，最後把大家的結論「平均」一下。這在 AI 的世界裡，我們稱之為<strong>集成學習（Ensembling）</strong>。</p>
+            <h4>為什麼要這麼做？</h4>
+            <p>單一模型就像一個剛入行的學徒，雖然認真，但偶爾會判斷失準。透過合併多個模型的觀點，我們能消除個別模型的「偏見」，讓整體的判斷更穩定、更不容易出錯。</p>
+            <h4>如何操作：平均大法</h4>
+            <p>假設我們訓練了 <span class="math inline">$M$</span> 個不同的 <strong>GRU（門控循環單元，一種擅長處理時間序列數據的深度學習模型）</strong> 模型，分別記作 <span class="math inline">$\mathcal{F}_w^{(1)}, \mathcal{F}_w^{(2)}, \dots, \mathcal{F}_w^{(M)}$</span>。當它們針對同一個時間點 <span class="math inline">$t$</span> 進行預測時，每個人都會給出一個「出錯機率」或「分類機率」，我們標記為 <span class="math inline">$\hat{y}_t^{(1)}, \hat{y}_t^{(2)}, \dots, \hat{y}_t^{(M)}$</span>。</p>
+            <p>最後的決策公式長這樣：</p>
+            <div class="formula">$$\hat{y}_t = \frac{1}{M} \sum_{j=1}^M \hat{y}_t^{(j)}$$</div>
+            
+            <p><strong>公式拆解：</strong></p>
+            <ul>
+            <li><span class="math inline">$\hat{y}_t$</span>：這是我們最後綜合後的結果，也就是這台機器最終的判斷。</li>
+            <li><span class="math inline">$M$</span>：代表總共有多少個模型參與投票。</li>
+            <li><span class="math inline">$\sum_{j=1}^M \hat{y}_t^{(j)}$</span>：這是把所有模型給出的機率值全部加總起來。</li>
+            <li><span class="math inline">$\frac{1}{M}$</span>：這是取平均值，把總分除以人數，確保結果落在 0 到 1 的機率範圍內。</li>
+            </ul>
+            <p><strong>來算算看：</strong><br />
+            假設我們有 3 個模型（<span class="math inline">$M=3$</span>）在時間 <span class="math inline">$t$</span> 給出的壞品機率預測分別是：</p>
+            <ul>
+            <li>模型 A (<span class="math inline">$\hat{y}_t^{(1)}$</span>) = 0.8</li>
+            <li>模型 B (<span class="math inline">$\hat{y}_t^{(2)}$</span>) = 0.6</li>
+            <li>模型 C (<span class="math inline">$\hat{y}_t^{(3)}$</span>) = 0.7</li>
+            </ul>
+            <p>計算過程：<span class="math inline">$\hat{y}_t = (0.8 + 0.6 + 0.7) / 3 = 2.1 / 3 = 0.7$</span>。</p>
+            <p><strong>實務意義：</strong><br />
+            雖然個別模型給出的數值高低不一，但我們綜合後的結果 0.7，代表在這一刻，系統有 70% 的信心認為這片晶圓有問題。透過平均，我們可以過濾掉某些模型過於激進或過於保守的誤差，讓最終判斷更接近真實情況。</p>
+            <p>這就是為什麼在工業檢測中，我們會採用這種「群策群力」的方法，確保晶圓檢查的品質滴水不漏。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">集成學習 (Ensembling)</td>
+            <td style="text-align: left;">結合多個模型的預測結果，以取得更準確且穩定的最終結論。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">GRU</td>
+            <td style="text-align: left;">一種能記住歷史資訊的 AI 模型，適合用來分析像晶圓檢測這樣有時間先後順序的數據。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">時間序列數據</td>
+            <td style="text-align: left;">隨著時間順序不斷產生的一連串數據。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">模型預測機率 (<span class="math inline">$\hat{y}_t$</span>)</td>
+            <td style="text-align: left;">AI 模型對於某個事件（如晶圓故障）發生的可能性評估，範圍通常在 0 到 1 之間。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h2>4.1. 實驗準備：我們要驗證的模型在哪裡受訓？</h2>
+            <p>想像一下，你是一位訓練有素的「晶圓檢測員」，要練就一身好功夫，光看幾張照片是不夠的，你需要海量的「教材」來訓練自己的眼光。在這一章節，我們就要來看看作者是怎麼挑選教材，以及如何讓這些教材符合我們模型的需求。</p>
+            <p>為了驗證我們的演算法是否真的聰明，我們選用了業界非常有名的 <strong>WM-811 資料集</strong>。這就像是檢測員的「考古題庫」，裡面收藏了總共 811,000 張晶圓圖（Wafer Map）。這些晶圓圖被分類成 9 種不同的缺陷型態，就像是我們在工廠裡會遇到的 9 種常見故障樣式。</p>
+            <h3>為什麼要做統一的調整？</h3>
+            <p>你可能會問，為什麼要把這些晶圓圖全都重新縮放成 <span class="math inline">$64 \times 64$</span> 的大小呢？</p>
+            <p>這其實就像是為了比賽規則一致。想像一下，如果我們給模型看有些圖是高清解析度，有些卻模糊不清，模型就會在「認出圖案」這件事上感到混亂。將所有圖片統一調整為 <span class="math inline">$64 \times 64$</span> 的像素大小，是為了讓模型在輸入資訊時，能夠以相同的規格快速處理每一張圖。</p>
+            <div class="formula">$$ \text{Input Size} = 64 \times 64 = 4096 \text{ pixels} $$</div>
+            
+            <p>如果我們有一張原始照片是 <span class="math inline">$256 \times 256$</span>，透過縮放公式將其調整為 <span class="math inline">$64 \times 64$</span>，這代表我們將原本的資訊量壓縮到了原本的 <span class="math inline">$1/16$</span>。雖然資訊量減少了，但這有助於降低模型的計算負擔，讓它可以更專注地抓出晶圓圖上的「關鍵特徵」（缺陷的形狀與分佈）。</p>
+            <h3>這對實驗有什麼影響？</h3>
+            <p>這一步驟之所以重要，是因為它為整個實驗打下了公平的基礎。如果輸入資料的規格不統一，模型就必須花額外的力氣去「猜測」圖片的比例，而不是專注於「判斷」這塊晶圓到底有沒有問題。有了這 811k 張標準化的圖片，我們的模型就能夠像經過嚴格軍事訓練的衛兵，穩定地守護每一片晶圓的品質。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>WM-811 資料集</strong></td>
+            <td style="text-align: left;">一個公開的晶圓圖影像資料庫，包含超過 80 萬張真實的晶圓瑕疵影像。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓圖 (Wafer Map)</strong></td>
+            <td style="text-align: left;">晶圓製造過程中，記錄晶圓表面缺陷分佈的視覺化圖像。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>像素 (Pixel)</strong></td>
+            <td style="text-align: left;">構成影像的最小單位，我們將圖片設為 64x64，代表長寬各由 64 個點組成。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>特徵 (Feature)</strong></td>
+            <td style="text-align: left;">指的是影像中能幫助我們分辨「哪裡有壞掉」的關鍵圖案或資訊。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>如何判斷模型的「好壞」：準確度與 F1 分數的藝術</h3>
+            <p>想像一下，你正在工廠裡負責檢測晶圓（半導體製造過程中的薄片）。有些晶圓是好的，有些則是瑕疵品。如果好的晶圓佔了 99%，而瑕疵品只佔 1%，那如果你偷懶，直接把所有晶圓都說成「是好的」，準確率竟然高達 99%！但這種「瞎猜」對工廠來說是災難，因為我們漏掉了那 1% 致命的缺陷。</p>
+            <p>為了避免這種「數字陷阱」，我們不能只看準確度，還需要一個更公平的評分標準，也就是 <span class="math inline">$F_1$</span>-score（F1 分數）。</p>
+            <hr />
+            <h4>1. 準確度（Accuracy）：全面體檢表</h4>
+            <p>準確度就是最直觀的總分，計算的是「模型判斷對的數量」占「總數量」的比例。</p>
+            <div class="formula">$$\text{ACC} = \frac{\text{TP} + \text{TN}}{\text{TP} + \text{FP} + \text{TN} + \text{FN}}$$</div>
+            
+            <ul>
+            <li><strong>變數小字典：</strong><ul>
+            <li><strong>TP (True Positive)</strong>：模型說是瑕疵，實際也是瑕疵（抓對了！）。</li>
+            <li><strong>TN (True Negative)</strong>：模型說是正常，實際也正常（放行正確！）。</li>
+            <li><strong>FP (False Positive)</strong>：模型說是瑕疵，實際卻是正常（誤殺好人）。</li>
+            <li><strong>FN (False Negative)</strong>：模型說是正常，實際卻是瑕疵（漏網之魚）。</li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>【數值小例子】</strong><br />
+            假設有 100 個晶圓，模型抓對 80 個瑕疵（TP=80），判斷對 10 個正常（TN=10），誤判 5 個（FP=5），漏掉 5 個（FN=5）。<br />
+            <span class="math inline">$\text{ACC} = \frac{80+10}{80+5+10+5} = \frac{90}{100} = 0.9$</span>。代表模型有 90% 的機率給出正確的判斷。</p>
+            <hr />
+            <h4>2. F1 分數：防守與進攻的平衡點</h4>
+            <p>當數據像前面提到的那樣「嚴重失衡」（正常品遠多於瑕疵品），我們需要 <strong><span class="math inline">$F_1$</span>-score</strong>。它結合了兩個指標：</p>
+            <ul>
+            <li><strong>Precision（精確率）</strong>：模型說「這是有瑕疵」的，裡面有多少是真的瑕疵？（避免誤殺）。</li>
+            <li><strong>Recall（召回率）</strong>：所有真實的瑕疵中，模型找出了多少？（避免漏網）。</li>
+            </ul>
+            <p>公式如下：</p>
+            <div class="formula">$$F_1 = 2 \cdot \frac{\text{Recall} \times \text{Precision}}{\text{Recall} + \text{Precision}}$$</div>
+            
+            <p><strong>【為什麼要這樣算？】</strong><br />
+            這是一個「調和平均數」。它會嚴格懲罰那些「只重一方面」的模型。如果 Recall 或 Precision 其中一個很低，F1 分數就會直接掉下來，這迫使模型必須同時具備「不亂殺無辜」與「不放過壞人」的雙重能力。</p>
+            <p><strong>【數值小例子】</strong><br />
+            沿用上面的數字：</p>
+            <ul>
+            <li><span class="math inline">$\text{Precision} = \frac{TP}{TP+FP} = \frac{80}{80+5} \approx 0.94$</span></li>
+            <li><span class="math inline">$\text{Recall} = \frac{TP}{TP+FN} = \frac{80}{80+5} \approx 0.94$</span></li>
+            <li><span class="math inline">$F_1 = 2 \cdot \frac{0.94 \times 0.94}{0.94 + 0.94} = 0.94$</span><br />
+            這個 0.94 的結果代表模型在檢測瑕疵的任務上表現非常穩定，既不會漏掉太多瑕疵，也不會把正常的晶圓誤認為損壞。</li>
+            </ul>
+            <hr />
+            <h4>洞察：為什麼這很重要？</h4>
+            <p>在晶圓檢測這種高精密工業中，漏掉一個瑕疵（FN）可能會導致整批產品報廢，成本極高。因此，單看準確度會掩蓋漏檢的風險。透過 <strong><span class="math inline">$F_1$</span>-score</strong>，我們能確保模型不僅是「總分高」，而且是「真正在關鍵時刻抓得住瑕疵」的強大幫手。這就是為什麼在處理數據不平衡問題時，我們總是優先參考這兩個指標。</p>
+            <hr />
+            <h4>📖 本節術語表</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>ACC (Accuracy)</strong></td>
+            <td style="text-align: left;">準確度，即所有判斷中，判斷正確的比例。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>F1-score</strong></td>
+            <td style="text-align: left;">將精確率與召回率結合後的綜合得分，能有效評估數據不平衡時的模型表現。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>TP (True Positive)</strong></td>
+            <td style="text-align: left;">真陽性，模型判斷為瑕疵，且實際確實為瑕疵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>TN (True Negative)</strong></td>
+            <td style="text-align: left;">真陰性，模型判斷為正常，且實際確實為正常。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>FP (False Positive)</strong></td>
+            <td style="text-align: left;">假陽性，模型誤把正常的晶圓判斷為瑕疵（誤殺）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>FN (False Negative)</strong></td>
+            <td style="text-align: left;">假陰性，模型誤把瑕疵晶圓判斷為正常（漏網）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Precision</strong></td>
+            <td style="text-align: left;">精確率，模型判斷為瑕疵的晶圓中，真正有瑕疵的比例。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Recall</strong></td>
+            <td style="text-align: left;">召回率，所有實際有瑕疵的晶圓中，模型成功找出來的比例。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Data imbalance</strong></td>
+            <td style="text-align: left;">數據不平衡，指資料中不同類別的數量差異巨大（如正常品遠多於瑕疵品）。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h2>5. 總結：晶圓檢測的聰明轉身</h2>
+            <p>想像一下，你是一位工廠的品質檢測員，面前有成千上萬片晶圓（半導體製造的核心基礎材料）需要檢查。每一片都要掃描耗費大量的時間與金錢，如果能用最少的掃描區域，精準抓出上面的瑕疵模式，那該有多好？這正是我們這項研究的核心目標。</p>
+            <h3>從「全盤檢查」到「精準出擊」</h3>
+            <p>傳統的檢測往往像是不計成本的地毯式搜索，但這太昂貴了。在這項工作中，我們提出了一套<strong>適應性連續測量（Adaptive Sequential Measurement）</strong>架構，這就像是給檢測系統裝上了大腦：它不再盲目掃描全圖，而是透過<strong>強化學習（Reinforcement Learning）</strong>——一種讓機器透過不斷嘗試錯誤來學習如何做最佳決策的方法——自動判斷哪裡最值得看。</p>
+            <p>這種方法最迷人的地方在於「聰明地省錢」。我們成功將掃描區域減少了 38%，這意味著工廠可以用更低廉的成本，維持甚至提升原本的檢測水準。</p>
+            <h3>為什麼這套機制更可靠？</h3>
+            <p>除了省錢，我們還引入了<strong>信心分數（Confidence Score）</strong>。這就像是檢測系統給出預測後的「內心話」。當系統給你一個答案時，它同時會告訴你：「我有九成把握」或是「我對這片晶圓有點猶豫，請人工再複查一下」。</p>
+            <p>這種「預測 + 信心值」的雙重機制，解決了半導體製造最痛的點：因為晶圓製程價值極高，容錯率極低。這套架構不僅能告訴你哪裡有問題，還能區分出哪些預測是絕對可靠的，哪些是需要人為介入的「可疑案例」。</p>
+            <h3>總結來說，為什麼這很重要？</h3>
+            <p>這項研究把「自動化視覺檢測」從單純的分類工具，變成了一個懂得平衡成本與風險的「管理員」。透過減少 38% 的無效掃描，它讓晶圓廠在保持高準確率的前提下，實現了製程的精簡與智慧化。我們不再是為了檢測而檢測，而是為了價值而檢測。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>晶圓 (Wafer)</strong></td>
+            <td style="text-align: left;">用來製作晶片的一片薄圓形矽片，是半導體的雛形。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>自動化視覺檢測</strong></td>
+            <td style="text-align: left;">利用影像識別技術，自動判斷產品是否有外觀瑕疵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>適應性連續測量</strong></td>
+            <td style="text-align: left;">不是一次把所有資訊看完，而是根據已經看到的資訊，決定下一步該看哪裡。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>強化學習</strong></td>
+            <td style="text-align: left;">一種訓練機器的技術，透過獎勵或懲罰機制，讓機器學會如何做出最賺錢或最省力的決策。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>信心分數</strong></td>
+            <td style="text-align: left;">模型對於自己做出的判斷有多確定的數值指標。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

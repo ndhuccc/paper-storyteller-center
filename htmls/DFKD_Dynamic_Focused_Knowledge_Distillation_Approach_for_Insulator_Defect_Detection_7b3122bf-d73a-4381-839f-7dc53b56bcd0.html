@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFKD_Dynamic_Focused_Knowledge_Distillation_Approach_for_Insulator_Defect_Detection - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 DFKD_Dynamic_Focused_Knowledge_Distillation_Approach_for_Insulator_Defect_Detection</h1>
+    <div class="meta">
+        <strong>說書人版本（v1.5 - 術語表 + 公式詳解）</strong><br>
+        Source PDF: /home/ccchiang/works/paper-storyteller-center/uploads/9bd6930c71b5_DFKD_Dynamic_Focused_Knowledge_Distillation_Approach_for_Insulator_Defect_Detection.pdf<br>
+        Model: models/gemini-3.1-flash-lite-preview<br>
+        Generated at (UTC): 2026-04-05T06:49:46.422536+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - Bao Liu and Wenqiang Jiang</a></li>
+<li><a href="#section-2">Section 2 - I. Introduction</a></li>
+<li><a href="#section-3">Section 3 - Ii. Existing Distillation Methods</a></li>
+<li><a href="#section-4">Section 4 - A. Basic Framework of KD</a></li>
+<li><a href="#section-5">Section 5 - Iii. Proposed Method</a></li>
+<li><a href="#section-6">Section 6 - A. ISF for Distillation Samples Matching Mechanism</a></li>
+<li><a href="#section-7">Section 7 - B. TDL for Distillation Temperature Selection Mechanism</a></li>
+<li><a href="#section-8">Section 8 - C. DFKD-MP-YOLO for the Lightweight Model Combining KD and MP</a></li>
+<li><a href="#section-9">Section 9 - Iv. Experimental Results And Analysis</a></li>
+<li><a href="#section-10">Section 10 - V. Conclusion</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - Bao Liu and Wenqiang Jiang</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>主題：動態聚焦知識蒸餾 (DFKD) 於絕緣子缺陷偵測之應用</h3>
+            <hr />
+            <h3>學習目標</h3>
+            <ol>
+            <li>理解深度學習模型在邊緣設備部署時面臨的「輕量化與準確度」矛盾。</li>
+            <li>掌握 <strong>知識蒸餾 (Knowledge Distillation, KD)</strong> 的核心價值與改進方向。</li>
+            <li>解析動態聚焦機制如何透過樣本權重與對抗訓練提升模型學習效率。</li>
+            </ol>
+            <hr />
+            <h3>背景與問題意識</h3>
+            <p>在電力系統的絕緣子缺陷（Insulator Defect, ID）偵測任務中，我們通常需要將模型部署在運算資源有限的「邊緣設備」（如無人機或手持終端）。</p>
+            <ul>
+            <li><strong>現狀與困境</strong>：現有的輕量化技術，如 <strong>模型剪枝 (Model Pruning, MP)</strong> 與 <strong>模型量化 (Model Quantization)</strong>，雖然成功降低了模型體積與運算負擔，但往往會導致偵測準確度顯著下降。</li>
+            <li><strong>問題本質</strong>：如何在維持模型輕盈的同時，不犧牲偵測性能？</li>
+            </ul>
+            <hr />
+            <h3>核心概念與定義</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話定義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>知識蒸餾 (KD)</strong></td>
+            <td style="text-align: left;">一種教師-學生學習架構。由龐大、精準的「教師模型」引導較小、較快的「學生模型」，讓學生學會老師的知識。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>動態聚焦 (Dynamic-Focused)</strong></td>
+            <td style="text-align: left;">根據訓練階段與樣本難度，主動調整模型「關注點」的機制。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>絕緣子缺陷偵測</strong></td>
+            <td style="text-align: left;">電腦視覺任務，旨在識別輸電線路上絕緣子的破損、髒污等異常狀況。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>原理或機制：DFKD 的兩大支柱</h3>
+            <h4>1. 重要樣本聚焦機制 (Important Sample Focusing)</h4>
+            <p>此機制旨在讓學生模型「挑食」，而非囫圇吞棗：</p>
+            <ul>
+            <li><strong>雙重聚焦權重因子</strong>：量化樣本的重要性，過濾低質量的簡單樣本。</li>
+            <li><strong>自適應樣本匹配</strong>：系統性地引導學生模型將算力集中在「高品質的困難樣本」上，從而提升對難點的識別能力。</li>
+            </ul>
+            <h4>2. 溫度動態學習機制 (Temperature Dynamic Learning)</h4>
+            <p>這是一個基於 <strong>對抗訓練 (Adversarial Training)</strong> 的策略：</p>
+            <ul>
+            <li><strong>運作邏輯</strong>：透過調整蒸餾過程的「溫度參數」（Temperature），動態改變軟標籤（Soft Labels）的難度。</li>
+            <li><strong>學習目標</strong>：隨著訓練進行，讓學生模型從學習淺層知識，過渡到掌握複雜的「高階特徵」，增強泛化能力。</li>
+            </ul>
+            <hr />
+            <h3>例子與直觀理解：以「師徒授課」為類比</h3>
+            <p>想像一位頂尖教授（教師模型）要訓練一位新手學生（學生模型）：</p>
+            <ol>
+            <li><strong>重要樣本聚焦</strong>：如果教授讓學生整天練習基礎的 1+1=2（簡單樣本），學生永遠無法應付困難的微積分（絕緣子裂紋檢測）。DFKD 就像是篩選器，讓學生直接針對「易錯的難題」進行刻意練習。</li>
+            <li><strong>溫度動態學習</strong>：學習初期，教授給出簡單易懂的筆記（高溫設定，平滑標籤）；等學生基礎穩固後，教授開始給出難度更高的挑戰（動態降低溫度，尖銳標籤），迫使學生思考更深層的解題邏輯。</li>
+            </ol>
+            <hr />
+            <h3>比較、限制與實務應用</h3>
+            <h4>比較分析</h4>
+            <p>與傳統方法相比，本篇提出的 DFKD-MP-YOLO 具備顯著優勢：</p>
+            <ul>
+            <li><strong>結構面</strong>：比 BiFusion-YOLOv3 等現有方法更輕量。</li>
+            <li><strong>效能面</strong>：在準確度與運算速度上均達到更佳平衡。</li>
+            <li><strong>適用性</strong>：專門針對邊緣設備的運算限制進行了優化。</li>
+            </ul>
+            <h4>限制與注意事項</h4>
+            <ul>
+            <li><strong>訓練複雜度</strong>：由於引入了動態聚焦與對抗訓練，初始訓練過程比標準蒸餾需要更多參數調整。</li>
+            <li><strong>硬體依賴</strong>：雖然部署後輕量，但開發階段仍需具備一定算力的設備來運行教師模型與訓練過程。</li>
+            </ul>
+            <hr />
+            <h3>重點整理</h3>
+            <ol>
+            <li><strong>解決痛點</strong>：克服了模型剪枝與量化導致準確度下降的貿易關係 (Trade-off)。</li>
+            <li><strong>核心創新</strong>：<ul>
+            <li>透過「樣本聚焦」篩選高品質學習對象。</li>
+            <li>透過「動態溫度調節」控制知識傳遞的難度梯度。</li>
+            </ul>
+            </li>
+            <li><strong>實務成效</strong>：DFKD-MP-YOLO 證實了結合蒸餾與剪枝，能同時兼顧偵測的速度與準確度，是工業巡檢 AI 部署的理想路徑。</li>
+            </ol>
+            <h3>主題：電力傳輸線絕緣體缺陷檢測技術架構</h3>
+            <h3>學習目標</h3>
+            <ol>
+            <li>理解「絕緣體缺陷檢測 (Insulator Defect Detection, ID)」在電力巡檢中的重要性。</li>
+            <li>掌握知識蒸餾 (Knowledge Distillation) 與輕量化模型 (Model Light weighting) 在工業 AI 應用中的角色。</li>
+            </ol>
+            <h3>背景與問題意識</h3>
+            <p>在電力傳輸線的維護中，確保絕緣體（Insulator）狀態完好至關重要，因為絕緣體失效可能導致嚴重的電力中斷事故。傳統人工巡檢耗時且危險，因此導入自動化檢測技術已是產業趨勢。然而，在實際部署時面臨兩大核心挑戰：</p>
+            <ul>
+            <li><strong>計算資源受限</strong>：巡檢無人機或邊緣裝置運算能力有限，無法運行龐大的深度學習模型。</li>
+            <li><strong>檢測精度要求高</strong>：模型必須在極小的尺寸下，仍能精準捕捉絕緣體表面的微小瑕疵（如裂縫、掉瓷）。</li>
+            </ul>
+            <h3>核心概念與定義</h3>
+            <ol>
+            <li><strong>絕緣體缺陷檢測 (Insulator Defect (ID) detection)</strong>：利用電腦視覺技術，自動識別並定位電力線絕緣體上的損壞或異常區域。</li>
+            <li><strong>知識蒸餾 (Knowledge Distillation)</strong>：一種模型壓縮技術。透過讓一個小型模型（學生模型）學習大型且高準確度模型（教師模型）的輸出分佈，使小型模型在不犧牲過多準確度的情況下，獲得與大型模型相當的效能。</li>
+            <li><strong>模型輕量化 (Model Light weighting)</strong>：透過架構優化、剪枝或知識蒸餾等手段，減少模型的參數數量與運算複雜度（FLOPs），使其能運行於邊緣運算設備上。</li>
+            <li><strong>傳輸線巡檢 (Transmission Line Inspection)</strong>：利用無人機或影像系統對高壓電塔及傳輸線進行自動化健康檢查的應用場域。</li>
+            </ol>
+            <h3>原理或機制</h3>
+            <p>本技術的核心架構結合了「高精度識別」與「輕量化部署」：</p>
+            <ul>
+            <li><strong>運作邏輯</strong>：<ol>
+            <li><strong>階段一（訓練）</strong>：訓練一個複雜且強大的教師模型，學習複雜的特徵提取。</li>
+            <li><strong>階段二（蒸餾）</strong>：將教師模型的知識「濃縮」傳遞給學生模型，強制學生模型模仿教師對缺陷的分類判定與特徵圖 (Feature Map) 分佈。</li>
+            <li><strong>階段三（推理）</strong>：實際部署時，僅執行輕量化的學生模型，以達到高即時性的檢測效果。</li>
+            </ol>
+            </li>
+            <li><strong>為什麼有效？</strong>：單純訓練小模型容易陷入過擬合（Overfitting）或欠擬合，而知識蒸餾引入了教師模型的「軟標籤（Soft labels）」，提供了類別之間的相關性資訊，讓小模型能以更少的參數捕捉到核心判斷邏輯。</li>
+            </ul>
+            <h3>例子與直觀理解</h3>
+            <p>想像「資深電力工程師（教師模型）」帶領「新手實習生（學生模型）」的過程：</p>
+            <ul>
+            <li><strong>傳統做法</strong>：實習生直接看教科書（原始數據），效果有限。</li>
+            <li><strong>蒸餾做法</strong>：資深工程師直接告訴實習生：「這個瑕疵的判斷邏輯是 A，那個正常部位與瑕疵的細微差距在 B」。實習生透過模仿專家的判斷思維（而不只是看最終答案），能在更短時間內具備專業水準。</li>
+            </ul>
+            <h3>限制與補充</h3>
+            <ul>
+            <li><strong>限制</strong>：若教師模型的表現不佳，或學生模型架構過於簡單（容載量不足），蒸餾效果會大幅下降。</li>
+            <li><strong>補充</strong>：在傳輸線巡檢場景中，由於環境背景複雜（如樹木、天空干擾），如何讓模型聚焦在絕緣體區域，通常還需配合注意力機制 (Attention Mechanism) 輔助。</li>
+            </ul>
+            <h3>重點整理</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">定義簡述</th>
+            <th style="text-align: left;">核心作用</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>ID Detection</strong></td>
+            <td style="text-align: left;">識別絕緣體瑕疵</td>
+            <td style="text-align: left;">確保輸電系統安全</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Knowledge Distillation</strong></td>
+            <td style="text-align: left;">師徒制模型訓練</td>
+            <td style="text-align: left;">將大模型知識轉移至小模型</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Model Light weighting</strong></td>
+            <td style="text-align: left;">簡化模型架構</td>
+            <td style="text-align: left;">降低邊緣運算硬體需求</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Transmission Inspection</strong></td>
+            <td style="text-align: left;">電力巡檢場景</td>
+            <td style="text-align: left;">提供檢測應用的真實任務需求</td>
+            </tr>
+            </tbody>
+            </table>
+            <ul>
+            <li><strong>關鍵結論</strong>：透過知識蒸餾達成模型輕量化，是解決「高效能電力缺陷檢測」與「邊緣硬體限制」矛盾的最佳路徑。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - I. Introduction</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>主題：電力系統中輸電線路檢測之挑戰與轉型</h3>
+            <h4>1. 學習目標</h4>
+            <ul>
+            <li>理解輸電線路在電力系統中的基礎地位。</li>
+            <li>掌握目前輸電線路維護面臨的主要技術障礙。</li>
+            <li>分析從「人工巡檢」轉向「自動化檢測」的必要性。</li>
+            </ul>
+            <h4>2. 背景與問題意識</h4>
+            <p>在現代電力系統中，<strong>輸電線路（Transmission Lines）</strong> 扮演著能量運輸的「血管」角色，負責將發電廠產生的電力長距離輸送至各地。然而，這些基礎設施長期暴露於戶外環境，不可避免地面臨各種物理損壞：</p>
+            <ul>
+            <li><strong>絕緣子缺陷（Insulator defects）：</strong> 導致漏電或短路。</li>
+            <li><strong>金屬腐蝕（Bolts rusting）：</strong> 影響結構強度。</li>
+            <li><strong>異物纏繞（Foreign objects entanglement）：</strong> 如風箏、樹枝或塑膠布等，影響線路安全。</li>
+            </ul>
+            <p><strong>問題核心：</strong> 傳統上，這些設施的檢測高度依賴「人力巡檢」。這種模式在現代工業需求下已顯得力不從心，主要存在以下缺失：</p>
+            <ol>
+            <li><strong>高人力消耗：</strong> 需要大量專業工程師進行實地勘查。</li>
+            <li><strong>高資源成本：</strong> 涉及車輛調度、裝備部署與長時間的差旅費用。</li>
+            <li><strong>效率低下：</strong> 人工巡檢速度慢，且受限於地理環境（如深山、高海拔區域），導致整體維護週期過長。</li>
+            </ol>
+            <h4>3. 核心概念與定義</h4>
+            <ul>
+            <li><strong>輸電線路檢測（Transmission Line Inspection）：</strong> 指針對輸電塔及電纜進行狀態評估的過程，目的是及早發現故障並預防大規模停電。</li>
+            <li><strong>人工巡檢（Manual Inspection）：</strong> 指由檢查員親自攜帶測量設備前往現場，透過目視或手持儀器記錄數據。</li>
+            </ul>
+            <h4>4. 原理與機制：為什麼人工模式會遭遇瓶頸？</h4>
+            <p>從系統工程角度來看，人工巡檢屬於「低頻率、高負荷」的維護機制。其運作邏輯如下：</p>
+            <ul>
+            <li><strong>線性檢測路徑：</strong> 檢查員必須沿著線路路徑逐一排查，無法同時並行多點作業。</li>
+            <li><strong>環境限制：</strong> 若遇惡劣天氣或複雜地形，檢測頻率將被迫下降，導致故障預警的「時間窗口」被壓縮。</li>
+            </ul>
+            <p><strong>效率公式直觀模型：</strong><br />
+            若我們定義檢測效率 <span class="math inline">$E$</span> 為：</p>
+            <div class="formula">$$E = \frac{N}{T}$$</div>
+            
+            <p>其中：</p>
+            <ul>
+            <li><span class="math inline">$N$</span> 代表完成巡檢的線路長度（單位：公里）。</li>
+            <li>
+            <p><span class="math inline">$T$</span> 代表消耗的總工時（單位：小時）。</p>
+            </li>
+            <li>
+            <p><strong>舉例說明：</strong></p>
+            <ul>
+            <li>若一個檢測小組在 10 小時內完成了 2 公里的線路檢查，其效率 <span class="math inline">$E = 2/10 = 0.2$</span> 公里/小時。</li>
+            <li><strong>實務意義：</strong> 該數值越小，意味著覆蓋整個電力網絡所需的時間成本越長，一旦發生突發性災害（如暴風），人工效率根本無法即時回應大規模受損狀況。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>5. 比較、限制或補充</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">比較維度</th>
+            <th style="text-align: left;">人工巡檢</th>
+            <th style="text-align: left;">自動化檢測（目標趨勢）</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>作業成本</strong></td>
+            <td style="text-align: left;">高（人力、差旅）</td>
+            <td style="text-align: left;">初期建置高，長期維運低</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>安全性</strong></td>
+            <td style="text-align: left;">低（人員需攀爬或涉險）</td>
+            <td style="text-align: left;">高（無人化操作）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>執行效率</strong></td>
+            <td style="text-align: left;">慢（受限於體力與時間）</td>
+            <td style="text-align: left;">快（可部署多台設備同時監測）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>數據一致性</strong></td>
+            <td style="text-align: left;">差（受主觀判斷影響）</td>
+            <td style="text-align: left;">優（具備量化標準）</td>
+            </tr>
+            </tbody>
+            </table>
+            <ul>
+            <li><strong>限制說明：</strong> 雖然自動化檢測是趨勢，但其必須解決影像識別精度、環境適應性與資料傳輸穩定性等問題，這也是當前學術界與產業界共同開發的目標。</li>
+            </ul>
+            <h4>6. 重點整理</h4>
+            <ul>
+            <li><strong>輸電線路是電力系統的生命線</strong>，損壞會對供電穩定性造成嚴重威脅。</li>
+            <li><strong>傳統人工巡檢的缺點</strong>：高人力成本、低效率、高風險，已不適應現代電力網絡的規模。</li>
+            <li><strong>轉型動機</strong>：為了克服 <span class="math inline">$E = N/T$</span> 中過高的 <span class="math inline">$T$</span> 值，必須導入自動化技術，以提升檢測的覆蓋率與即時性。</li>
+            </ul>
+            <h3>I. 背景與研究趨勢：輸電線路巡檢中的絕緣子缺陷檢測</h3>
+            <h4>1. 學習目標</h4>
+            <ul>
+            <li>理解為何 UAV（無人機）與深度學習的結合是目前輸電線路巡檢的主流。</li>
+            <li>掌握「絕緣子缺陷檢測（Insulator Defect Detection, ID）」在工程中的重要性。</li>
+            <li>釐清當前技術發展的核心瓶頸：為什麼「輕量化」與「高性能」是研究的關鍵路徑。</li>
+            </ul>
+            <h4>2. 背景與問題意識</h4>
+            <p>隨著電力基礎設施的擴張，輸電線路的巡檢任務日益繁重。過去仰賴人工巡檢不僅效率低，且在惡劣環境下存在高度風險。近年來，<strong>無人機巡檢（UAV Inspection）</strong>技術結合<strong>深度學習（Deep Learning）</strong>，已成為解決此問題的標準方案。</p>
+            <ul>
+            <li><strong>為什麼需要自動化檢測？</strong><ul>
+            <li>絕緣子（Insulator）是維持輸電線路穩定的關鍵組件，一旦破損（如裂縫、閃絡），會導致嚴重停電事故。</li>
+            <li>透過影像分析技術，可以在無人機飛行過程中即時判斷絕緣子狀態，降低人工判讀誤差。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>3. 核心概念定義</h4>
+            <ul>
+            <li><strong>無人機巡檢（UAV Inspection）：</strong> 利用飛行器搭載高清鏡頭，對高空輸電線路進行影像採集。</li>
+            <li><strong>深度學習（Deep Learning）：</strong> 一種模擬人類神經網絡的演算法，能從大量的標註影像中「學會」如何辨識絕緣子的破損特徵，無需人工設計規則。</li>
+            <li><strong>絕緣子缺陷檢測（ID Detection）：</strong> 專指透過計算機視覺技術，定位影像中的絕緣子並判定其是否出現結構性損傷的程序。</li>
+            </ul>
+            <h4>4. 關鍵研究趨勢：為什麼要追求「輕量化」？</h4>
+            <p>目前技術已取得顯著成果，但實務應用面臨一個核心挑戰：<strong>實時部署（Real-time Deployment）的需求</strong>。</p>
+            <ul>
+            <li>
+            <p><strong>問題痛點：</strong></p>
+            <ul>
+            <li>高性能的深度模型（如大型捲積神經網路）通常需要龐大的運算資源（GPU/RAM），這在無人機這類有限功耗的嵌入式設備上難以運行。</li>
+            <li>若運算速度太慢，無人機飛過現場後才跑完運算，就無法實現「即時示警」或「飛行路徑自動校正」。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>輕量化與高性能的取捨（Trade-off）：</strong></p>
+            <ul>
+            <li><strong>輕量化（Lightweight）：</strong> 減少模型參數數量，提升推論速度（FPS, Frames Per Second）。</li>
+            <li><strong>高性能（High-performance）：</strong> 確保模型在簡化架構後，依然能維持極高的「檢測準確率（Recall/Precision）」。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>5. 比較分析：不同技術路線的差異</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">比較維度</th>
+            <th style="text-align: left;">傳統影像處理 (手動特徵)</th>
+            <th style="text-align: left;">現代深度學習模型</th>
+            <th style="text-align: left;">輕量化深度學習模型 (新方向)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>運算成本</strong></td>
+            <td style="text-align: left;">低</td>
+            <td style="text-align: left;">極高</td>
+            <td style="text-align: left;">中等/低</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>精準度</strong></td>
+            <td style="text-align: left;">低 (容易受天氣影響)</td>
+            <td style="text-align: left;">極高</td>
+            <td style="text-align: left;">高</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>適配性</strong></td>
+            <td style="text-align: left;">差</td>
+            <td style="text-align: left;">需大型設備</td>
+            <td style="text-align: left;">適合無人機嵌入式系統</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>即時性</strong></td>
+            <td style="text-align: left;">快</td>
+            <td style="text-align: left;">慢 (需雲端運算)</td>
+            <td style="text-align: left;">快 (可端側處理)</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>6. 限制與未來方向</h4>
+            <p>雖然深度學習在 ID 檢測上表現卓越，但目前研究者正將重心從「單純追求準確率」轉向「如何高效部署」。</p>
+            <ul>
+            <li><strong>限制：</strong> 模型過於龐大則無法即時反應，模型過於簡單則容易漏報破損（False Negative）。</li>
+            <li><strong>未來研究：</strong> 探索如何設計輕量化的網路架構（如剪枝、量化、輕量化卷積核設計），使無人機在有限算力下，仍能達到媲美大型模型的檢測效果。</li>
+            </ul>
+            <h4>7. 重點整理</h4>
+            <ol>
+            <li><strong>產業趨勢：</strong> 輸電巡檢已全面轉向「無人機 + 深度學習」。</li>
+            <li><strong>核心痛點：</strong> 如何在高空作業的有限算力環境下，維持高準確率並達成即時檢測。</li>
+            <li><strong>核心目標：</strong> 開發「輕量化、高精準」的缺陷檢測模型，這是當前學界與工業界共同的技術突破口。</li>
+            </ol>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - Ii. Existing Distillation Methods</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>主題：知識蒸餾（Knowledge Distillation）基礎與現狀分析</h3>
+            <h4>學習目標</h4>
+            <ol>
+            <li>掌握知識蒸餾的核心運作邏輯。</li>
+            <li>理解現有蒸餾方法在處理特定任務（如絕緣子缺陷檢測）時所面臨的技術瓶頸。</li>
+            <li>為後續導入 DFKD（基於特徵的知識蒸餾）框架建立理論基礎。</li>
+            </ol>
+            <hr />
+            <h4>背景與問題意識</h4>
+            <p>在現代深度學習中，我們常使用龐大且精準的「教師模型」（Teacher Model）來指導輕量化的「學生模型」（Student Model）。這種技術稱為<strong>知識蒸餾</strong>。然而，現有的蒸餾方法在應用於工業檢測（如絕緣子缺陷檢測）時，往往無法有效提取關鍵特徵，導致學生模型在複雜場景下的識別能力大幅下降。本章將釐清現有方法的局限性。</p>
+            <hr />
+            <h4>核心概念與定義</h4>
+            <ul>
+            <li><strong>知識蒸餾 (Knowledge Distillation, KD)</strong>：一種模型壓縮技術，核心概念是「傳承」。透過讓學生模型模仿教師模型的輸出分布或中間層特徵，使學生模型在維持輕量化體積的同時，具備接近教師模型的表現。</li>
+            <li><strong>教師模型 (Teacher Model)</strong>：通常指參數多、結構複雜、預測能力強但運算成本高的模型。</li>
+            <li><strong>學生模型 (Student Model)</strong>：結構簡單、反應速度快，但需要透過蒸餾來「學習」教師模型的特徵與知識。</li>
+            </ul>
+            <hr />
+            <h4>原理或機制：經典 KD 流程</h4>
+            <p>傳統的蒸餾機制通常透過最小化「教師輸出」與「學生輸出」之間的差異來進行訓練。</p>
+            <p>假設教師輸出向量為 <span class="math inline">$T$</span>，<span class="math inline">$S$</span> 為學生輸出向量，其損失函數通常表示為：</p>
+            <div class="formula">$$\mathcal{L}_{distill} = \mathcal{D}(S, T)$$</div>
+            
+            <ul>
+            <li><strong>變數說明</strong>：<ul>
+            <li><span class="math inline">$\mathcal{L}_{distill}$</span>：蒸餾損失，數值越小代表學生模仿得越好。</li>
+            <li><span class="math inline">$\mathcal{D}$</span>：距離度量函數（如 KL 散度或均方誤差 MSE）。</li>
+            <li><span class="math inline">$S, T$</span>：學生與教師的預測結果。</li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>具體數值示例</strong>：<br />
+            假設教師對某一絕緣子影像判定為「正常」的機率為 <span class="math inline">$T = 0.95$</span>，學生初次訓練的預測為 <span class="math inline">$S = 0.70$</span>。<br />
+            使用 MSE 計算損失：<span class="math inline">$\mathcal{L} = (0.95 - 0.70)^2 = 0.0625$</span>。<br />
+            <strong>實務意義</strong>：這個 <span class="math inline">$0.0625$</span> 的誤差值會透過反向傳播，強制學生模型的參數進行調整，讓 <span class="math inline">$S$</span> 的數值向 <span class="math inline">$0.95$</span> 靠攏，達成知識轉移。</p>
+            <hr />
+            <h4>比較、限制或補充</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">比較維度</th>
+            <th style="text-align: left;">傳統輸出層蒸餾</th>
+            <th style="text-align: left;">特徵層蒸餾（本研究重點）</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>傳遞內容</strong></td>
+            <td style="text-align: left;">最終預測結果（Soft Labels）</td>
+            <td style="text-align: left;">中間層的特徵圖（Feature Maps）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>資訊密度</strong></td>
+            <td style="text-align: left;">低（僅包含類別機率）</td>
+            <td style="text-align: left;">高（包含紋理、邊緣等空間資訊）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>適用場景</strong></td>
+            <td style="text-align: left;">通用分類問題</td>
+            <td style="text-align: left;">需要精確定位的缺陷檢測</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>現有方法的限制</strong>：</p>
+            <ol>
+            <li><strong>資訊流失</strong>：傳統蒸餾僅關注最後的機率分布，忽略了模型在處理複雜絕緣子影像時的「判斷過程」。</li>
+            <li><strong>層級不對等</strong>：教師模型的深層特徵非常抽象，學生模型往往難以直接對齊，導致學習效率低下。</li>
+            <li><strong>缺陷特徵微小</strong>：絕緣子缺陷通常只佔影像的一小部分，現有方法難以聚焦於這些微小但關鍵的區域。</li>
+            </ol>
+            <hr />
+            <h4>重點整理</h4>
+            <ol>
+            <li><strong>知識蒸餾的本質</strong>：並非複製模型結構，而是透過損失函數引導，將教師模型的「推理能力」轉移到學生模型。</li>
+            <li><strong>為什麼要進步</strong>：針對絕緣子檢測任務，僅學習「結果（分類機率）」是不夠的，必須學習「過程（特徵提取能力）」。</li>
+            <li><strong>核心問題</strong>：現有方法無法解決教師與學生模型在「特徵空間」上的表達差異，這正是後續章節導入 DFKD 的原因。</li>
+            <li><strong>學習複習指標</strong>：<ul>
+            <li>理解 <span class="math inline">$\mathcal{L}_{distill}$</span> 如何連接教師與學生。</li>
+            <li>區分「輸出層蒸餾」與「特徵層蒸餾」對模型效能的影響差異。</li>
+            </ul>
+            </li>
+            </ol>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - A. Basic Framework of KD</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>A. 知識蒸餾（Knowledge Distillation, KD）的基本框架</h3>
+            <h4>1. 學習目標</h4>
+            <ul>
+            <li>理解知識蒸餾（KD）的核心概念：將大型模型的學習成果傳遞給小型模型。</li>
+            <li>掌握 KD 總損失函數的構成要素。</li>
+            <li>解析特徵蒸餾與 Logits 蒸餾的數學表達形式。</li>
+            </ul>
+            <h4>2. 背景與問題意識</h4>
+            <p>在實際應用中，大型模型（Teacher）雖然準確度高，但往往參數量過大，導致運算速度慢、耗能高，無法部屬在邊緣設備（如手機、嵌入式系統）。我們希望訓練一個輕量化模型（Student），使其在保持較小體積的同時，能擁有接近大型模型的預測能力。這便是 <strong>知識蒸餾 (Knowledge Distillation)</strong> 的價值所在。</p>
+            <h4>3. 核心概念與定義</h4>
+            <ul>
+            <li><strong>Teacher Model</strong>：訓練好的大型模型，作為知識提供者。</li>
+            <li><strong>Student Model</strong>：目標輕量化模型，負責學習 Teacher 的輸出行為。</li>
+            <li><strong>Soft Loss (<span class="math inline">$L_{soft}$</span>)</strong>：蒸餾損失，用於衡量 Student 對 Teacher 知識的模仿程度。</li>
+            <li><strong>Hard Loss (<span class="math inline">$L_{hard}$</span>)</strong>：真實標籤損失，保證 Student 模型最終能預測正確的類別。</li>
+            </ul>
+            <h4>4. 原理與機制</h4>
+            <p>KD 的訓練目標是最小化一個組合後的損失函數：</p>
+            <div class="formula">$$L_{tal} = \alpha L_{soft} + \beta L_{hard}$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$L_{tal}$</span></td>
+            <td style="text-align: left;">總損失函數（Total Loss），訓練的優化目標</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha, \beta$</span></td>
+            <td style="text-align: left;">權重參數，用於平衡蒸餾知識與真實標籤的重要性</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>蒸餾損失 (<span class="math inline">$L_{soft}$</span>) 的種類：</strong></p>
+            <ol>
+            <li>
+            <p><strong>特徵蒸餾</strong>：針對中間層特徵，常用 <strong>均方誤差 (MSE)</strong> 或 <strong>KL 散度 (KL Divergence)</strong>。</p>
+            <ul>
+            <li><span class="math inline">$L_{MSE} = \left\| F^S(x) - F^T(x) \right\|$</span></li>
+            <li><span class="math inline">$F^S$</span> 與 <span class="math inline">$F^T$</span> 分別為 Student 與 Teacher 的特徵轉換函數。這代表我們強制 Student 的特徵圖盡可能接近 Teacher 的特徵圖。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>Logits 蒸餾</strong>：針對輸出層，使用帶有溫度係數 <span class="math inline">$T$</span> 的 <strong>交叉熵損失 (Cross-Entropy Loss)</strong>。</p>
+            <ul>
+            <li><span class="math inline">$L_{CE} = -p(t, T) \log(q(s, T))$</span></li>
+            <li>其中 <span class="math inline">$p(t, T)$</span> 與 <span class="math inline">$q(s, T)$</span> 是經過 Softmax 處理後的機率分佈：</li>
+            </ul>
+            </li>
+            </ol>
+            <div class="formula">$$p(t, T) = \frac{e^{\frac{t}{T}}}{\sum_{k}^N e^{\frac{t_k}{T}}}, \quad q(s, T) = \frac{e^{\frac{s}{T}}}{\sum_{k}^N e^{\frac{s_k}{T}}}$$</div>
+            
+            <h4>5. 公式拆解與實務意義</h4>
+            <p><strong>關於 Softmax 與溫度係數 <span class="math inline">$T$</span> 的意義：</strong><br />
+            公式 (5) 中的 <span class="math inline">$T$</span> 是關鍵。如果 <span class="math inline">$T=1$</span>，就是標準的 Softmax。當 <span class="math inline">$T &gt; 1$</span> 時，輸出機率會變「平滑」（Soft），這能讓 Student 模型學習到類別之間隱含的相似關係（例如：貓很像狗，但不像車子）。</p>
+            <p><strong>數值計算範例：</strong><br />
+            假設 Teacher 輸出的 logits 為 <span class="math inline">$[2, 1]$</span>，取 <span class="math inline">$T=2$</span>：</p>
+            <ol>
+            <li>計算分子：<span class="math inline">$e^{2/2} = e^1 \approx 2.72, \quad e^{1/2} = e^{0.5} \approx 1.65$</span></li>
+            <li>計算分母：<span class="math inline">$2.72 + 1.65 = 4.37$</span></li>
+            <li>結果 <span class="math inline">$p = [2.72/4.37, 1.65/4.37] \approx [0.62, 0.38]$</span><br />
+            若不使用 <span class="math inline">$T$</span>（即 <span class="math inline">$T=1$</span>），<span class="math inline">$p$</span> 會變成 <span class="math inline">$[0.73, 0.27]$</span>。<br />
+            <strong>實務意義</strong>：<span class="math inline">$T$</span> 越大，輸出越接近均勻分佈，能強迫模型關注那些被認為是「負樣本」類別中的細微資訊，這對提升模型泛化能力至關重要。</li>
+            </ol>
+            <h4>6. 比較、限制或補充</h4>
+            <ul>
+            <li><strong>MSE vs KL</strong>：MSE 適合對齊特徵空間的絕對數值；KL 散度則適合衡量兩個機率分佈的差異（資訊熵）。</li>
+            <li><strong>限制</strong>：當 <span class="math inline">$\alpha$</span> 與 <span class="math inline">$\beta$</span> 設定不當時，模型可能會過度擬合 Teacher 的錯誤預測，導致 Student 的表現受限。</li>
+            </ul>
+            <h4>7. 重點整理</h4>
+            <ul>
+            <li><strong>總損失函數</strong>：平衡模仿老師（<span class="math inline">$L_{soft}$</span>）與學習正確答案（<span class="math inline">$L_{hard}$</span>）。</li>
+            <li><strong>中間層 vs 輸出層</strong>：特徵蒸餾旨在讓中間表徵對齊，Logits 蒸餾旨在讓最終預測分佈對齊。</li>
+            <li><strong>溫度係數 (<span class="math inline">$T$</span>)</strong>：是用來調整輸出平滑程度的超參數，較大的 <span class="math inline">$T$</span> 有助於釋放類別間的隱含知識，使 Student 模型學得更全面。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-5">
+        <h2>Section 5 - Iii. Proposed Method</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>1. 主題：深度知識蒸餾中的雙重機制（DFKD）架構</h3>
+            <h3>2. 學習目標</h3>
+            <ul>
+            <li>理解 DFKD（Dual-mechanism-based Federated Knowledge Distillation）的核心組成。</li>
+            <li>掌握 ISF（Importance-based Sampling Framework）與 TDL（Task-Difficulty-aware Labeling）在知識蒸餾中的具體功能與必要性。</li>
+            </ul>
+            <h3>3. 背景與問題意識</h3>
+            <p>在聯邦學習（Federated Learning）場景中，若各個參與節點的資料分布不均或品質參差不齊，傳統的蒸餾方式往往會因為「無差別傳遞知識」而導致模型效能瓶頸。為了提升效率與精確度，我們需要一套能篩選資訊並適應任務難度的架構。因此，DFKD 應運而生，它旨在解決「傳遞什麼知識」以及「如何標記這些知識」的問題。</p>
+            <h3>4. 核心概念與定義</h3>
+            <p>DFKD 框架由兩大核心引擎構成，分別處理「樣本優先級」與「標籤學習難度」：</p>
+            <ul>
+            <li><strong>ISF (Importance-based Sampling Framework，基於重要性的採樣框架)</strong>：<ul>
+            <li>定義：這是一種資料篩選機制，負責識別出哪些樣本對於模型更新最具價值。</li>
+            <li>白話解釋：就像老師在教學時，會優先挑出最能考驗學生理解程度的經典題型，而不是把課本從頭唸到尾。</li>
+            </ul>
+            </li>
+            <li><strong>TDL (Task-Difficulty-aware Labeling，任務難度感知標記)</strong>：<ul>
+            <li>定義：這是一種針對不同學習難度自動調適標記強度的策略。</li>
+            <li>白話解釋：針對學生已經很熟悉的基礎題，老師給予標準答案；但針對容易混淆的難題，老師會提供更詳盡的引導與加權提示。</li>
+            </ul>
+            </li>
+            </ul>
+            <h3>5. 原理與機制</h3>
+            <p>DFKD 將知識蒸餾的流程拆解為兩個緊密協作的步驟，以達到最佳的知識遷移效果：</p>
+            <ol>
+            <li><strong>配對機制（Matching Mechanism based on ISF）</strong>：<ul>
+            <li>運作原理：透過計算樣本的權重（Importance score），ISF 確保參與蒸餾的資料是有代表性的。</li>
+            <li>為什麼有效：過濾掉重複或低資訊量的雜訊樣本，能減少傳輸頻寬並加速模型收斂。</li>
+            </ul>
+            </li>
+            <li><strong>選擇機制（Selection Mechanism based on TDL）</strong>：<ul>
+            <li>運作原理：根據任務的難度動態調整學習標籤的權重。</li>
+            <li>為什麼有效：讓模型在簡單任務上保持穩定，在困難任務上能獲得更多元的梯度引導。</li>
+            </ul>
+            </li>
+            </ol>
+            <h3>6. 例子與直觀理解</h3>
+            <p>想像一個專業的教練團隊在培訓運動員：</p>
+            <ul>
+            <li><strong>ISF（配對機制）</strong>：教練透過觀察運動員的訓練錄影（樣本），篩選出「動作最關鍵、最能提升實力」的片段，而不是看整整 24 小時的平庸訓練過程。</li>
+            <li><strong>TDL（選擇機制）</strong>：面對「簡單動作」，教練給出簡單的肯定（標準標籤）；面對「複雜的戰術演練」，教練會加入戰術註解（調整後的標籤），幫助運動員更深刻地理解其中的變化。</li>
+            </ul>
+            <h3>7. 比較、限制或補充</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">機制名稱</th>
+            <th style="text-align: left;">核心目標</th>
+            <th style="text-align: left;">實務上解決的問題</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>ISF</strong></td>
+            <td style="text-align: left;">資料品質篩選</td>
+            <td style="text-align: left;">減少冗餘資訊，聚焦核心訓練資料</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>TDL</strong></td>
+            <td style="text-align: left;">標籤品質優化</td>
+            <td style="text-align: left;">解決模型對複雜任務理解力不足的困境</td>
+            </tr>
+            </tbody>
+            </table>
+            <ul>
+            <li><strong>限制補充</strong>：此架構高度依賴於 ISF 評分函數的準確度，若評分函數本身對「重要性」定義偏差，可能會漏掉關鍵訓練樣本。</li>
+            <li><strong>補充說明</strong>：DFKD 並非單一演算法，而是一個整合框架，其彈性在於 ISF 與 TDL 的計算邏輯可視具體業務需求進行模組化替換。</li>
+            </ul>
+            <h3>8. 重點整理</h3>
+            <ul>
+            <li><strong>DFKD 的結構</strong>：由 ISF（決定用什麼資料學）與 TDL（決定怎麼給出標籤參考）共同支撐。</li>
+            <li><strong>系統邏輯</strong>：先透過 ISF 篩出菁英數據，再經由 TDL 針對任務難度進行精確的標記指導。</li>
+            <li><strong>設計優勢</strong>：在計算資源有限的情況下，透過雙重篩選達到「少即是多（Less is more）」的高效學習狀態。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-6">
+        <h2>Section 6 - A. ISF for Distillation Samples Matching Mechanism</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>1. 主題：DFKD 中的知識蒸餾樣本匹配機制 (ISF)</h3>
+            <h3>2. 學習目標</h3>
+            <ul>
+            <li>理解如何透過加權策略優化蒸餾過程中的樣本品質。</li>
+            <li>掌握 <strong>IoU (交集聯集比)</strong> 在樣本篩選機制中的決策邏輯。</li>
+            <li>學會計算蒸餾損失函數，並理解權重因子對模型訓練的影響。</li>
+            </ul>
+            <h3>3. 背景與問題意識</h3>
+            <p>在知識蒸餾 (Knowledge Distillation) 中，我們希望學生模型 (Student) 學習教師模型 (Teacher) 的預測分布。然而，並非所有樣本都具有同樣的教學價值。如果教師模型的預測品質較差，或者學生模型已經具備該樣本的知識，強制學習可能會引入噪聲。因此，我們需要一個機制來篩選「值得學習」的樣本，並分配適當的學習權重。</p>
+            <h3>4. 核心概念與定義</h3>
+            <ul>
+            <li><strong>Distillation Loss (<span class="math inline">$L_{soft}$</span>)</strong>：蒸餾損失，用於衡量教師模型輸出與學生模型輸出之間的差異。</li>
+            <li><strong><span class="math inline">$\text{IoU}_t$</span> (Intersection over Union of Teacher)</strong>：教師模型預測框與真值框 (Ground Truth) 的重疊度。</li>
+            <li><strong><span class="math inline">$\text{IoU}_s$</span> (Intersection over Union of Student)</strong>：學生模型預測框與真值框的重疊度。</li>
+            <li><strong><span class="math inline">$\omega$</span> (Weight Factor)</strong>：權重因子，決定該樣本在損失函數中的重要程度。</li>
+            <li><strong><span class="math inline">$\gamma$</span></strong>：超參數，用來調整權重影響力的強度。</li>
+            </ul>
+            <h3>5. 原理或機制</h3>
+            <p>該機制的核心在於對樣本進行「差異化加權」。我們根據教師與學生模型的預測能力（以 IoU 為指標）來判斷樣本的優先級：</p>
+            <ul>
+            <li><strong>核心公式</strong>：</li>
+            </ul>
+            <div class="formula">$$L_{soft}(t, s, T) = -\omega^{\gamma} p(t, T) \log \left( \frac{p(t, T)}{q(s, T)} \right)$$</div>
+            
+            <ul>
+            <li><strong>權重邏輯 (Equation 7)</strong>：</li>
+            </ul>
+            <div class="formula">$$\omega = \begin{cases} (1 - \text{IoU}_s), &amp; \text{IoU}_t \geq \text{IoU}_s \\ 0, &amp; \text{IoU}_t &lt; \text{IoU}_s \end{cases}$$</div>
+            
+            <p><strong>設計邏輯分析</strong>：</p>
+            <ol>
+            <li><strong>濾除無效資訊</strong>：當學生模型表現已經優於教師模型 (<span class="math inline">$\text{IoU}_t &lt; \text{IoU}_s$</span>)，代表教師模型無法提供額外的知識，此時 <span class="math inline">$\omega = 0$</span>，該樣本對損失不產生貢獻。</li>
+            <li><strong>鼓勵困難樣本學習</strong>：當教師表現優於學生時，權重 <span class="math inline">$\omega = 1 - \text{IoU}_s$</span>。意味著學生模型預測得越差（<span class="math inline">$\text{IoU}_s$</span> 越低），該樣本的學習權重越大，鼓勵模型專注於其尚未學會的區域。</li>
+            </ol>
+            <h3>6. 例子與數值理解</h3>
+            <p>假設 <span class="math inline">$\gamma = 1$</span>，<span class="math inline">$p(t, T)$</span> 與 <span class="math inline">$q(s, T)$</span> 產生的 KL 散度計算結果為 <span class="math inline">$0.5$</span>。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">狀況</th>
+            <th style="text-align: left;"><span class="math inline">$\text{IoU}_t$</span></th>
+            <th style="text-align: left;"><span class="math inline">$\text{IoU}_s$</span></th>
+            <th style="text-align: left;"><span class="math inline">$\omega$</span></th>
+            <th style="text-align: left;">最終損失 (<span class="math inline">$L_{soft}$</span>)</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">情況 A</td>
+            <td style="text-align: left;">0.8</td>
+            <td style="text-align: left;">0.3</td>
+            <td style="text-align: left;"><span class="math inline">$1-0.3 = 0.7$</span></td>
+            <td style="text-align: left;"><span class="math inline">$0.7^1 \times 0.5 = 0.35$</span></td>
+            <td style="text-align: left;">學生表現差，教師表現好，強制學習該樣本。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">情況 B</td>
+            <td style="text-align: left;">0.2</td>
+            <td style="text-align: left;">0.5</td>
+            <td style="text-align: left;">0</td>
+            <td style="text-align: left;">0</td>
+            <td style="text-align: left;">學生已超越教師，無需繼續蒸餾此樣本。</td>
+            </tr>
+            </tbody>
+            </table>
+            <ul>
+            <li><strong>結果解讀</strong>：在情況 A 中，學生模型表現不佳（IoU=0.3），因此模型給予此樣本較高的權重（0.7），這會強迫學生模型在反向傳播時大幅修正參數以接近教師模型。</li>
+            </ul>
+            <h3>7. 比較、限制與補充</h3>
+            <ul>
+            <li><strong>與傳統蒸餾比較</strong>：傳統蒸餾對所有樣本一視同仁，容易受限於教師模型的錯誤預測。此機制透過 <span class="math inline">$\omega$</span> 動態調整，有效過濾掉教師模型「表現糟糕」或「學生已學會」的場景。</li>
+            <li><strong>限制</strong>：此方法極度依賴 IoU 的準確性。若場景中存在大量遮擋或定位模糊問題，單純依賴 IoU 可能會誤刪除某些具有教學意義的困難樣本。</li>
+            </ul>
+            <h3>8. 重點整理</h3>
+            <ul>
+            <li><strong>目標</strong>：透過 IoU 比較，動態分配每個樣本的訓練權重。</li>
+            <li><strong>關鍵判斷</strong>：僅在教師表現優於學生 (<span class="math inline">$\text{IoU}_t \geq \text{IoU}_s$</span>) 時，才給予學習權重。</li>
+            <li><strong>權重設計</strong>：權重與學生的表現成反比 (<span class="math inline">$1 - \text{IoU}_s$</span>)，即「越不會，越要學」。</li>
+            <li><strong>訓練效益</strong>：有效避免知識蒸餾過程中的噪聲干擾，並引導模型專注於具挑戰性的學習樣本。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-7">
+        <h2>Section 7 - B. TDL for Distillation Temperature Selection Mechanism</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>主題：TDL 蒸餾溫度選擇機制 (Distillation Temperature Selection Mechanism)</h3>
+            <h4>1. 學習目標</h4>
+            <ul>
+            <li>理解 <strong>NDL (Normal Distillation Learner)</strong> 與 <strong>TDL (Teacher Distillation Learner)</strong> 之間的對抗學習架構。</li>
+            <li>掌握如何透過動態調整超參數 <span class="math inline">$\varepsilon$</span> 來優化蒸餾溫度。</li>
+            <li>理解公式 (8) 到 (11) 在模型訓練過程中扮演的數學角色。</li>
+            </ul>
+            <h4>2. 背景與問題意識</h4>
+            <p>在模型蒸餾過程中，我們需要一個「教師模型」來引導「學生模型」。如果直接使用固定溫度的蒸餾策略，往往無法適應訓練過程中的不同階段。因此，引入對抗式訓練機制（NDL 與 TDL 互博），讓 TDL 自動調整溫度參數 <span class="math inline">$\varepsilon$</span>，以找到最適合當前模型狀態的配置，進而提升蒸餾效率。</p>
+            <h4>3. 核心概念與定義</h4>
+            <ul>
+            <li><strong>NDL (Normal Distillation Learner)</strong>：負責執行正規的蒸餾任務，目標是最小化蒸餾損失。</li>
+            <li><strong>TDL (Teacher Distillation Learner)</strong>：負責動態選擇蒸餾溫度，透過對抗方式對 NDL 施加壓力，迫使系統尋找最佳溫度參數。</li>
+            <li><strong><span class="math inline">$\varepsilon$</span> (Distillation Temperature)</strong>：控制模型輸出軟目標（soft labels）的平滑程度，決定了蒸餾時對知識細節的保留程度。</li>
+            </ul>
+            <h4>4. 原理與機制：對抗性損失函數</h4>
+            <p>模型的核心目標函數為：</p>
+            <div class="formula">$$\min_{NDL} \max_{TDL} L_{soft}(\theta_{NDL}, \theta_{TDL}) = L_{soft}(t, s, \theta_{TDL}) + L_{soft}(\theta_{NDL}, T) \quad (8)$$</div>
+            
+            <ul>
+            <li><strong>機制說明</strong>：<ul>
+            <li>這是一個 <strong>Min-Max 遊戲</strong>：NDL 試圖最小化損失，而 TDL 試圖最大化損失。</li>
+            <li>透過公式 (9) <span class="math inline">$\frac{\partial L_{soft}}{\partial \theta_{TDL}} = -\frac{\partial L_{soft}}{\partial \theta_{NDL}}$</span>，我們定義了二者的梯度方向相反，形成對抗。</li>
+            <li>公式 (10) <span class="math inline">$\theta_{TDL} = \theta_{TDL} + \mu \frac{\partial(\varepsilon L_{soft})}{\partial \theta_{TDL}}$</span> 代表 TDL 的參數更新過程，其中 <span class="math inline">$\mu$</span> 為學習率。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>5. 溫度調節公式解析</h4>
+            <p>為了讓溫度 <span class="math inline">$\varepsilon$</span> 隨訓練輪數變化，作者設計了餘弦退火（Cosine Annealing）機制：</p>
+            <div class="formula">$$\varepsilon = \varepsilon_{min} + 0.5(\varepsilon_{max} - \varepsilon_{min}) \left( 1 + \cos \left( \frac{E_n}{E_{max}} \pi \right) \right) \quad (11)$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\varepsilon_{min}, \varepsilon_{max}$</span></td>
+            <td style="text-align: left;">溫度的下限與上限值</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$E_n$</span></td>
+            <td style="text-align: left;">當前訓練輪數 (Current Epoch)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$E_{max}$</span></td>
+            <td style="text-align: left;">總訓練輪數 (Total Epochs)</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義</strong>：<br />
+            假設設定 <span class="math inline">$\varepsilon_{min} = 1.0, \varepsilon_{max} = 5.0, E_{max} = 100$</span>。<br />
+            當我們進行到訓練一半 (<span class="math inline">$E_n = 50$</span>) 時：</p>
+            <ol>
+            <li>計算 <span class="math inline">$\cos(\frac{50}{100}\pi) = \cos(0.5\pi) = 0$</span>。</li>
+            <li>代入公式：<span class="math inline">$\varepsilon = 1.0 + 0.5(5.0 - 1.0) \times (1 + 0) = 1.0 + 2.0 = 3.0$</span>。</li>
+            <li><strong>實務意義</strong>：這代表訓練進行至中期時，系統將蒸餾溫度動態設為 3.0。這種設計讓模型在訓練初期擁有較大的探索空間（高溫），隨著訓練收斂，溫度逐漸降低，使模型專注於精確的知識傳遞。</li>
+            </ol>
+            <h4>6. 比較、限制與補充</h4>
+            <ul>
+            <li><strong>與固定參數法的比較</strong>：傳統方法通常手動調整溫度，若調整不當容易導致模型過擬合（溫度太低）或學習不到特徵（溫度太高）。本機制透過 TDL 自動調控，解決了人工調參的繁瑣與不精確。</li>
+            <li><strong>限制</strong>：<ul>
+            <li>此機制依賴於 <span class="math inline">$\varepsilon_{min}$</span> 與 <span class="math inline">$\varepsilon_{max}$</span> 的預設範圍，若範圍設定過大可能影響對抗穩定性。</li>
+            <li>對抗訓練本身比單純監督式訓練更消耗運算資源。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>7. 重點整理</h4>
+            <ol>
+            <li><strong>結構化對抗</strong>：NDL 與 TDL 組成的對抗架構，是透過目標函數 (8) 實現，利用梯度反向傳播 (9) 達成訓練目標。</li>
+            <li><strong>動態溫度</strong>：公式 (11) 利用餘弦函數的特性，確保 <span class="math inline">$\varepsilon$</span> 在 <span class="math inline">$[ \varepsilon_{min}, \varepsilon_{max} ]$</span> 之間平滑變動，避免訓練劇烈震盪。</li>
+            <li><strong>靈活應用</strong>：此類機制適合用於需要針對不同知識點細緻度進行調控的深度學習模型蒸餾任務。</li>
+            </ol>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-8">
+        <h2>Section 8 - C. DFKD-MP-YOLO for the Lightweight Model Combining KD and MP</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>專題講座：DFKD-MP-YOLO 模型輕量化策略 —— LAMP 評分機制與剪枝比例</h3>
+            <h4>1. 學習目標</h4>
+            <ul>
+            <li>理解如何量化神經網路中各個權重的重要性。</li>
+            <li>掌握「剪枝（Pruning）」操作中的比例計算邏輯。</li>
+            <li>學習如何透過數學指標決定模型刪減的幅度。</li>
+            </ul>
+            <h4>2. 背景與問題意識</h4>
+            <p>在模型輕量化過程中，我們的目標是「在維持效能的前提下減少參數」。直接刪除權重會導致準確度崩跌，因此我們需要一套<strong>重要性評分機制</strong>，用來篩選出哪些權重是可以安全移除的。這就是為什麼我們需要引入 LAMP (Layer-adaptive Magnitude-based Pruning) 評分。</p>
+            <h4>3. 核心概念與定義</h4>
+            <ul>
+            <li><strong>LAMP Score (層級自適應基於幅值的剪枝分數)</strong>：這是一種衡量神經網路權重重要性的指標。其核心假設是：權重的絕對值平方越大，該權重對輸出結果的影響力越大。</li>
+            <li><strong>Pruning Ratio (剪枝比例)</strong>：定義為原始模型參數量與剪枝後模型參數量的比值，用來量化模型縮小的倍率。</li>
+            </ul>
+            <h4>4. 原理或機制：LAMP 分數的計算</h4>
+            <p>為了決定哪些權重該被刪除，我們使用以下公式來計算第 <span class="math inline">$u$</span> 個權重的重要性：</p>
+            <div class="formula">$$score_{LAMP}(u, W) = \frac{(W[u])^2}{\sum_{u \leq v} (W[v])^2}$$</div>
+            
+            <p><strong>變數意義解析：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$W[u]$</span></td>
+            <td style="text-align: left;">第 <span class="math inline">$u$</span> 個權重的值</td>
+            <td style="text-align: left;">單一連接的強度</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$(W[u])^2$</span></td>
+            <td style="text-align: left;">權重的平方</td>
+            <td style="text-align: left;">將負數影響轉為正值，並放大較大數值的差異</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\sum (W[v])^2$</span></td>
+            <td style="text-align: left;">所有權重的平方總和</td>
+            <td style="text-align: left;">模型整體的「能量總和」</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>計算示例：</strong><br />
+            假設某一層有 3 個權重，數值分別為 <span class="math inline">$W = [0.5, 0.2, 0.1]$</span>：</p>
+            <ol>
+            <li>平方值：<span class="math inline">$W^2 = [0.25, 0.04, 0.01]$</span></li>
+            <li>總和：<span class="math inline">$\sum = 0.25 + 0.04 + 0.01 = 0.30$</span></li>
+            <li><span class="math inline">$score_{LAMP}$</span>：</li>
+            <li><span class="math inline">$score_1 = 0.25 / 0.30 \approx 0.833$</span></li>
+            <li><span class="math inline">$score_2 = 0.04 / 0.30 \approx 0.133$</span></li>
+            <li><span class="math inline">$score_3 = 0.01 / 0.30 \approx 0.033$</span></li>
+            </ol>
+            <p><strong>實務意義：</strong> 第一個權重佔了整體重要性的 83%，顯示它是模型運作的核心，不可隨意刪除；而第三個權重僅佔 3%，適合被列為剪枝對象。</p>
+            <h4>5. 原理或機制：剪枝比例計算</h4>
+            <p>剪枝比例 <span class="math inline">$r_{pruning}$</span> 反映了我們對模型進行了多少程度的「瘦身」：</p>
+            <div class="formula">$$r_{pruning} = \frac{F_{original}}{F_{pruning}}$$</div>
+            
+            <ul>
+            <li><span class="math inline">$F_{original}$</span>：模型剪枝前的參數總數。</li>
+            <li><span class="math inline">$F_{pruning}$</span>：模型剪枝後的參數總數。</li>
+            </ul>
+            <p><strong>數值示例：</strong><br />
+            若原始模型有 1,000 萬個參數，剪枝後保留 250 萬個參數，則 <span class="math inline">$r_{pruning} = 10 / 2.5 = 4$</span>。這代表我們執行了 4 倍的剪枝。</p>
+            <h4>6. 比較與限制</h4>
+            <ul>
+            <li><strong>直覺做法 vs. LAMP</strong>：直覺做法通常是直接設定一個閾值（例如小於 0.05 的都刪除），但這樣會忽略不同層之間權重分布的差異。LAMP 透過總和歸一化，讓不同層的權重可以在同一個基準線上比較，這使得模型在進行全局剪枝時更加平滑。</li>
+            <li><strong>限制</strong>：LAMP 雖然考慮了大小，但並未考慮權重對「最終預測結果」的梯度貢獻，僅屬於基於幅值（Magnitude-based）的方法，在極高比例壓縮時仍可能導致效能顯著衰減。</li>
+            </ul>
+            <h4>7. 重點整理</h4>
+            <ol>
+            <li><strong>LAMP 邏輯</strong>：利用權重平方的比例作為重要性指標，強調數值大的權重佔有更高的話語權。</li>
+            <li><strong>層級適應性</strong>：該公式透過分母的歸一化，解決了不同層權重尺度不一的問題。</li>
+            <li><strong>比例量化</strong>：剪枝比例 <span class="math inline">$r_{pruning}$</span> 是衡量模型輕量化進度的直接指標，數值越高，代表模型被壓縮得越精簡。</li>
+            <li><strong>教學建議</strong>：在實際操作 DFKD-MP-YOLO 時，請先計算每一層的 LAMP 分數，再依據目標 <span class="math inline">$r_{pruning}$</span> 設定篩選門檻，以確保模型性能受損最小。</li>
+            </ol>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-9">
+        <h2>Section 9 - Iv. Experimental Results And Analysis</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗結果評估指標與分析</h3>
+            <h4>1. 學習目標</h4>
+            <ul>
+            <li>理解機器學習模型效能評估的核心指標。</li>
+            <li>掌握平均精確度（mAP）的數學意義及其計算邏輯。</li>
+            <li>學會如何量化模型的推論效率（FPS）。</li>
+            </ul>
+            <h4>2. 背景與問題意識</h4>
+            <p>在電腦視覺或分類任務中，我們不能僅憑「正確率」來評估模型，因為這無法區分模型在分類時產生的特定錯誤（例如把狗誤認為貓）。因此，我們需要透過 <strong>TP、TN、FP、FN</strong> 等基礎指標來推導出更精準的評估方法，並透過執行速度來判斷模型是否具備實用價值。</p>
+            <h4>3. 核心概念與定義</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>TP (True Positive)</strong></td>
+            <td style="text-align: left;">真陽性</td>
+            <td style="text-align: left;">預測為正確，事實也為正確。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>TN (True Negative)</strong></td>
+            <td style="text-align: left;">真陰性</td>
+            <td style="text-align: left;">預測為負面，事實也為負面。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>FP (False Positive)</strong></td>
+            <td style="text-align: left;">偽陽性</td>
+            <td style="text-align: left;">預測為正確，但事實為錯誤（誤報）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>FN (False Negative)</strong></td>
+            <td style="text-align: left;">偽陰性</td>
+            <td style="text-align: left;">預測為負面，但事實為正確（漏報）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>AP (Average Precision)</strong></td>
+            <td style="text-align: left;">平均精確度</td>
+            <td style="text-align: left;">單一類別的效能評估指標。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>mAP (mean AP)</strong></td>
+            <td style="text-align: left;">平均平均精確度</td>
+            <td style="text-align: left;">所有類別 AP 的平均值，是模型綜合效能指標。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>4. 原理與公式說明</h4>
+            <h5>A. 單一類別效能：AP</h5>
+            <p>原文定義公式為：</p>
+            <div class="formula">$$AP = \frac{TP + TN}{TP + TN + FP + FN} \quad (14)$$</div>
+            
+            <ul>
+            <li><strong>變數解釋</strong>：分子為「所有預測正確的項目」，分母為「樣本總數」。</li>
+            <li><strong>直觀理解</strong>：這其實代表了模型在該類別上的整體準確性。</li>
+            <li><strong>數值示例</strong>：假設總樣本數為 100，其中 TP=80，TN=10，FP=5，FN=5。<ul>
+            <li>計算：<span class="math inline">$AP = \frac{80+10}{80+10+5+5} = \frac{90}{100} = 0.9$</span></li>
+            <li>實務意義：該模型對此類別的判斷正確率為 90%。</li>
+            </ul>
+            </li>
+            </ul>
+            <h5>B. 整體模型效能：mAP</h5>
+            <p>原文定義公式為：</p>
+            <div class="formula">$$mAP = \frac{\sum_{i=0}^N AP_i}{N} \quad (15)$$</div>
+            
+            <ul>
+            <li><strong>變數解釋</strong>：<span class="math inline">$AP_i$</span> 為第 <span class="math inline">$i$</span> 個類別的 AP 值，<span class="math inline">$N$</span> 為類別總數。</li>
+            <li><strong>直觀理解</strong>：將模型在每個類別上的表現加總後取平均，確保模型在處理多類別時不會出現偏科（例如只擅長辨識貓，卻完全看不懂狗）。</li>
+            <li><strong>數值示例</strong>：假設有 3 個類別，AP 分別為 0.9, 0.8, 0.7。<ul>
+            <li>計算：<span class="math inline">$mAP = \frac{0.9 + 0.8 + 0.7}{3} = \frac{2.4}{3} = 0.8$</span></li>
+            <li>實務意義：模型在所有類別的平均表現達到了 80% 的水準。</li>
+            </ul>
+            </li>
+            </ul>
+            <h5>C. 運算速度：FPS</h5>
+            <p>原文定義公式為：</p>
+            <div class="formula">$$FPS = \frac{1}{\text{Latency}} \quad (16)$$</div>
+            
+            <ul>
+            <li><strong>變數解釋</strong>：<span class="math inline">$FPS$</span> 代表每秒偵測張數（Frames Per Second），<span class="math inline">$\text{Latency}$</span> 代表處理一張圖片所需的秒數。</li>
+            <li><strong>直觀理解</strong>：這是衡量模型「反應速度」的指標。</li>
+            <li><strong>數值示例</strong>：假設處理一張圖片需要 0.02 秒（即 20ms）。<ul>
+            <li>計算：<span class="math inline">$FPS = \frac{1}{0.02} = 50$</span></li>
+            <li>實務意義：該模型在硬體上每秒可以處理 50 張圖片，適用於即時串流監控。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>5. 比較與限制</h4>
+            <ul>
+            <li><strong>AP 與 mAP 的應用限制</strong>：公式 (14) 在類別極度不平衡（例如 99% 樣本都是負類別）時會失效，因為即便模型全猜負類別，TN 值很高，AP 依然會很高，這時通常會改用 Precision 與 Recall 的綜合指標。</li>
+            <li><strong>FPS 的依賴性</strong>：FPS 高低不僅取決於模型複雜度，更高度依賴於「運算硬體」（如 GPU 型號）。在閱讀論文數據時，務必確認實驗是在何種硬體環境下測得的。</li>
+            </ul>
+            <h4>6. 重點整理</h4>
+            <ol>
+            <li><strong>全面評估</strong>：單看準確率不足以說明問題，必須綜合考慮 TP, TN, FP, FN。</li>
+            <li><strong>指標層級</strong>：AP 針對單類別，mAP 針對整體模型的多類別綜合表現，數值越高越好。</li>
+            <li><strong>時效性</strong>：FPS 是評估即時系統的核心指標，與 Latency 呈倒數關係，數值越高表示系統反應越靈敏。</li>
+            </ol>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-10">
+        <h2>Section 10 - V. Conclusion</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>5. 結論與總結 (Conclusion)</h3>
+            <h4>學習目標</h4>
+            <p>本單元旨在總結 <strong>DFKD (Dynamic Feature Knowledge Distillation, 動態特徵知識蒸餾)</strong> 框架的核心貢獻，並理解其如何平衡模型輕量化與檢測精度，適用於輸電線路巡檢等工業場景。</p>
+            <h4>背景與問題意識</h4>
+            <p>在輸電線路缺陷檢測任務中，模型部署常面臨以下挑戰：</p>
+            <ul>
+            <li><strong>精度瓶頸</strong>：傳統模型壓縮方法往往導致檢測準確度顯著下降。</li>
+            <li><strong>資源限制</strong>：邊緣運算裝置（如無人機搭載的運算單元）對模型大小與計算功耗（FLOPs）有極高要求。</li>
+            </ul>
+            <h4>核心貢獻：DFKD 框架</h4>
+            <p>DFKD 是一種<strong>結構無損模型壓縮方法</strong>。所謂「結構無損」，是指在不改變目標模型（Student model）核心邏輯架構的前提下，透過知識傳遞機制提升其效能。</p>
+            <p>本框架透過兩項關鍵技術解決上述問題：</p>
+            <ol>
+            <li><strong>蒸餾樣本雙重聚焦 (Dual Focusing of Distillation Samples)</strong>：確保教師模型（Teacher model）能將最有價值的資訊轉移給學生模型，不僅關注整體特徵，還能聚焦於關鍵瑕疵點。</li>
+            <li><strong>蒸餾溫度動態對抗學習 (Dynamic Adversarial Learning of Distillation Temperature)</strong>：根據學習階段動態調整「蒸餾溫度」，這能控制模型在軟化標籤（Soft Label）學習時的細膩程度，防止模型過早收斂或陷入局部最優解。</li>
+            </ol>
+            <h4>實務應用：DFKD-MP-YOLO</h4>
+            <p>為了追求極致的部署效益，論文提出了 <strong>DFKD-MP-YOLO</strong>，其設計邏輯如下：</p>
+            <ul>
+            <li><strong>基礎</strong>：基於 DFKD 蒸餾框架。</li>
+            <li><strong>優化</strong>：結合了 <strong>MP (Lightweight Structure)</strong>，即輕量化網路結構設計。</li>
+            <li><strong>最終目標</strong>：在以下三個維度達成「黃金平衡」：<ul>
+            <li><strong>參數量 (Parameters)</strong>：減少模型佔用的記憶體。</li>
+            <li><strong>計算量 (FLOPs)</strong>：降低推理時的運算消耗。</li>
+            <li><strong>檢測精度 (mAP)</strong>：確保缺陷檢測的準確性。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>比較與補充</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">項目</th>
+            <th style="text-align: left;">傳統壓縮方法</th>
+            <th style="text-align: left;">DFKD-MP-YOLO</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>精度影響</strong></td>
+            <td style="text-align: left;">常見顯著下降</td>
+            <td style="text-align: left;">維持高品質輸出</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>設計彈性</strong></td>
+            <td style="text-align: left;">靜態參數設定</td>
+            <td style="text-align: left;">動態對抗學習</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>應用場景</strong></td>
+            <td style="text-align: left;">通用計算環境</td>
+            <td style="text-align: left;">輸電線路巡檢等資源受限場景</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>重點整理</h4>
+            <ol>
+            <li><strong>技術本質</strong>：DFKD 透過動態對抗機制，使模型在壓縮後仍能保有高階特徵提取能力。</li>
+            <li><strong>性能優勢</strong>：透過 DFKD-MP-YOLO 的組合，實現在模型體積、運算速度與識別精準度之間的最佳化權衡。</li>
+            <li><strong>教學意義</strong>：此架構證明了在特定工業場景下，針對「蒸餾樣本」與「蒸餾參數（溫度）」進行動態優化，是提升模型壓縮效率的關鍵路徑。</li>
+            </ol>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

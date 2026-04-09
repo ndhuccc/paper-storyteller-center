@@ -5,7 +5,8 @@ import re
 from pathlib import Path
 
 
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+PROJECT_DIR = Path(__file__).resolve().parent
+STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 
 # ── Markdown list repair ─────────────────────────────────────────────────────
 

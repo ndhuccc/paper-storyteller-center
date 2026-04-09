@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIVA 說書人版 — 說書人風格（雙欄並列）</title>
+<style>
+body { font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif; line-height: 1.8; max-width: 1200px; margin: 0 auto; padding: 20px; background: #fafafa; color: #1e293b; }
+h1 { color: #1a1a2e; border-bottom: 4px solid #3b82f6; padding-bottom: 12px; margin-bottom: 8px; font-size: 26px; }
+.meta { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+h2 { color: #1a1a2e; font-size: 20px; margin-top: 32px; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
+h3 { color: #1d4ed8; font-size: 16px; margin-top: 20px; }
+.two-col-section { background: #fff; border-radius: 12px; padding: 24px 28px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px; }
+.col-original { background: #f8fafc; border-radius: 8px; padding: 16px; border-left: 3px solid #94a3b8; font-size: 14px; }
+.col-plain { background: #f0f9ff; border-radius: 8px; padding: 16px; border-left: 3px solid #3b82f6; font-size: 14px; }
+.col-original p, .col-plain p { margin: 8px 0; }
+.col-original p:first-child, .col-plain p:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+<h1>VIVA：指令式影片編輯框架</h1>
+<p class="meta">說書人版 · 雙欄並列 · 受眾：完全小白 · VIVA 論文說書人改寫</p>
+
+<div class="two-col-section" id="abstract">
+  <h2>摘要（Abstract）</h2>
+  <div class="two-col">
+    <div class="col-original"><p>Instruction-based video editing aims to modify an input video according to a natural-language instruction while preserving content fidelity and temporal coherence. However, existing diffusion-based approaches are often trained on paired data of simple editing operations, which fundamentally limits their ability to generalize to diverse and complex, real-world instructions. To address this generalization gap, we propose VIVA, a scalable framework that leverages VLM-guided encoding and reward optimization. First, we introduce a VLM-based instructor that encodes the textual instruction, the first frame of the source video, and an optional reference image into visually-grounded instruction representations. Second, we propose Edit-GRPO, which adapts Group Relative Policy Optimization to video editing, directly optimizing for instruction-faithful, content-preserving, and aesthetically pleasing edits. Furthermore, we propose a data construction pipeline for synthetically generating diverse, high-fidelity paired video-instruction data. Extensive experiments show that VIVA achieves superior instruction following, generalization, and editing quality over state-of-the-art methods.</p></div>
+    <div class="col-plain"><p>你可以把這篇論文想成是：研究團隊想要打造一個「聽得懂人話的影片編輯 AI」。</p><p>現在的影片編輯 AI 有一個根本問題：它們只會做「把紅氣球換成藍氣球」這種超級簡單的操作。碰到「把背景改成賽博龐克風格，但主角的動作要完整保留下來」這類複雜指令，模型就完全失效。</p><p>VIVA 就是為了解決這個問題而生。團隊做了兩件事：第一，設計了 VLM Instructor——把模糊的指令翻譯成精準的視覺操作信號；第二，設計了 Edit-GRPO——用強化學習的獎懲機制，讓模型在沒有標準答案的情況下也能持續進步。</p><p>實驗結果：VIVA 在開源模型中指令遵循能力第一名，效果甚至可以跟需要付費的商業模型 Runway 一較高下。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="introduction">
+  <h2>研究背景與動機（Introduction）</h2>
+  <div class="two-col">
+    <div class="col-original"><p>Video editing plays a central role in modern digital media creation. Recent diffusion-based approaches formulate video editing as a supervised translation problem. However, the construction of paired training data faces a significant bottleneck: existing pipelines are confined to generating pairs for highly simplified editing tasks. It remains extremely difficult to automatically generate training pairs for more general and complex edits.</p></div>
+    <div class="col-plain"><p>影片編輯在現代數位內容創作中扮演核心角色。現有方法的根本問題是：訓練資料幾乎只能涵蓋「加一個物件」「移除一個物件」這類簡單操作。真實世界的編輯需求複雜得多——例如「把背景的晴天變成雨天，但主角撐傘的動作要完全自然」——這種需要理解整體上下文、還要兼顧時間連貫性的任務，現有系統完全做不到。</p></div>
+  </div>
+  <div class="two-col">
+    <div class="col-original"><p>First, we introduce the VLM instructor: given the first frame of the input video together with the user's editing instructions, the VLM produces grounded, fine-grained multimodal tokens. Second, we introduce Edit-GRPO: the model generates multiple candidate edited videos, we compute edit-specific rewards, and use relative scores within each group to update the policy.</p></div>
+    <div class="col-plain"><p>VIVA 的兩個核心創新：</p><p>第一，VLM Instructor——讓模型先「看過」影片的第一幀截圖，再結合文字指令。這就像翻譯時有情境照片輔助，翻譯品質自然提升。</p><p>第二，Edit-GRPO——讓模型一次生成好幾個版本的編輯結果，老師不打分數，而是說「這個比那個好，原因是⋯⋯」。模型透過不斷的相對比較，慢慢抓到什麼是好編輯。</p></div>
+  </div>
+  <div class="two-col">
+    <div class="col-original"><p>Furthermore, we propose a pipeline to construct a high-quality, synthetic dataset of 1.5 million paired video-instruction examples. Our contributions include: (1) VLM instructor with first-frame conditioning; (2) Edit-GRPO post-training; (3) data construction pipeline; (4) extensive evaluations showing superior instruction following.</p></div>
+    <div class="col-plain"><p>最後，團隊還設計了一套自動生成訓練資料的管線，自己做出 150 萬組「原始影片＋編輯後影片」的配對範例。</p><p>總結四大貢獻：① VLM Instructor（讓模型看懂複雜指令）② Edit-GRPO（讓模型越做越好）③ 自動資料生成管線④ 開源模型中最佳的指令遵循能力。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="related-work">
+  <h2>前人的肩膀（Related Work）</h2>
+  <div class="two-col">
+    <div class="col-original"><p>Instruction-based video editing: Earlier methods leveraged inversion-based approaches for zero-shot text-driven edits. With open-source pretrained video diffusion models, task-specific solutions emerged for video addition, inpainting, and character replacement. However, these approaches depend on manual priors such as masks or poses. InsV2V pioneered instruction-only video editing, but results were hindered by limited data quality. Recent efforts like Ditto and InstructX have scaled instruction-based editing with notable gains.</p></div>
+    <div class="col-plain"><p>指令式影片編輯的發展分三波：</p><p>第一波是「反演ベース」——把影片逆推回純噪聲再重新生出編輯版本。零樣本就能用，但效果普普通通。</p><p>第二波跟著開源影片擴散模型崛起，各式各樣的「單一任務專家」冒出來——每個模型只會一招。</p><p>第三波是「一個模型搞定所有指令」的方向。直到 Ditto、InstructX 等新一代方案出來，才開始有了實質進展。</p></div>
+  </div>
+  <div class="two-col">
+    <div class="col-original"><p>VLMs for visual understanding: VLMs provide a bridge between visual perception and textual description. Foundational VLMs such as CLIP, BLIP-2, and Flamingo learn joint representations. Instruction-tuned variants like LLaVA, Video-ChatGPT, and Qwen2.5-VL further enhance visual grounding. Our work adopts a VLM-based instructor to encode both textual instructions and visual context.</p></div>
+    <div class="col-plain"><p>VLM（視覺語言模型）是近年最重要的突破之一。它們學會了「把像素翻譯成文字、把文字翻譯成像素」的雙向橋接。</p><p>VIVA 的切入點是善用這股能力：不是把 VLM 當成「圖片說明產生器」，而是當成「翻譯官」——它負責把「文字指令」和「視覺畫面」之間的鴻溝填補起來。</p></div>
+  </div>
+  <div class="two-col">
+    <div class="col-original"><p>Reinforcement learning for generative models: RL algorithms such as PPO and GRPO have been widely adopted in LLMs to refine instruction-following. Recent studies extended these ideas to visual generation and image editing. We extend these approaches for video editing to comprehensively enhance instruction following, robustness, and generalization.</p></div>
+    <div class="col-plain"><p>強化學習（RL）在大型語言模型領域已經被證明能有效提升模型的「指令遵循」能力——做法是讓模型生成多個答案，再透過相對獎勵比較來引導學習方向。</p><p>但把 RL 帶入「影片編輯」——用相對比較而非標準答案的方式——VIVA 是先驅。這是重要的創新，因為影片編輯的「正確答案」往往沒有唯一解。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="method-3-1">
+  <h2>3.1 情境感知 VLM 教練</h2>
+  <div class="two-col">
+    <div class="col-original"><p>Since video editing is a highly context-aware task, it is critical to interpret the complicated relationship between diverse multimodal conditions. An encoder exposed only to the language space, such as T5 series, struggles to provide sufficient semantic guidance. Instead, VLM achieves more robust alignment between language space and visual feature space. Thus, we choose Hunyuan-T2V-13B as our backbone, as its pretrained model has already aligned with the VLM space.</p><p>Solely relying on semantically sparse textual instructions often leads to ambiguity. We incorporate the first frame I_src from the source video V_src. The VLM can implicitly distinguish critical elements such as the intended editing region. Our VLM instructor also allows an optional reference image input I_ref to explicitly ground how the edited content should look.</p></div>
+    <div class="col-plain"><p>【研究問題】現有的影片編輯 AI 只能理解「把這個人的衣服變紅」這種簡單指令，複雜一點就會錯誤百出。這是因為它們只看文字，無法真正理解「我想改的是哪個主體」「編輯範圍要多大」。</p><p>【解決方案】VLM（Vision-Language Model，視覺語言模型）就像一個同時會做菜又會看照片的大廚——它能把「文字指令」和「實際畫面」對應得很好。論文選用 Hunyuan-T2V-13B 作為骨幹。</p><p>【再補強】光靠文字還是不夠，所以加了第一幀（影片開頭的那一張畫面）當作「視覺錨點」，讓 AI 清楚知道主體位置和編輯範圍。如果還是不確定，還可以再提供一張參考圖片當「範例」。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="method-3-2">
+  <h2>3.2 指令監督微調</h2>
+  <div class="two-col">
+    <div class="col-original"><p>To preserve the VLM's multimodal understanding, we freeze its parameters during training. We introduce a lightweight Token Refiner R to enhance the DiT's responsiveness to visual conditioning signals. We concatenate the source video latent with noise in the channel dimension to enhance editing consistency. We use Flow Matching for model training, and augment the loss into a masked version: L_mask = (1 + w_m M) L_FM.</p></div>
+    <div class="col-plain"><p>【設計考量】VLM 已經很會理解圖文關係了，我們不想訓練時把它「教壞」，所以把它的參數「凍住」不動。</p><p>【新問題】凍住 VLM 後，DiT 可能看不懂 VLM 給它的指令信號，就像主管說的話太抽象，下屬聽不懂。</p><p>【解決方案】在中間加一個「Token Refiner」（令牌精煉器）——一個輕量的小模組，專門把 VLM 的抽象指令翻譯成 DiT 聽得懂的語言。這就像一個翻譯官。</p><p>【保持一致性】還要把原始影片的「壓縮特徵」摻進去，讓 AI 知道「這是同一個人、同一個場景」。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="method-3-3">
+  <h2>3.3 編輯強化學習（Edit-GRPO）</h2>
+  <div class="two-col">
+    <div class="col-original"><p>To further enhance model performance, we design a reward system via GRPO, focusing on instruction following, source preservation, and human preference alignment. We generate diverse samples via Flow-SDE, score them with our reward system, and compute a GRPO loss from relative advantages. For efficiency, we use LoRA instead of full fine-tuning.</p><p>Instruction following reward: R_IF = C(V_edit, t_edit) - C(V_edit, t_src). Source preservation: R_SP = C(V_src, V_edit). Human preference: R_PS = Pickscore(V_edit, t_edit). Final reward: R = w_IF R_IF + w_SP R_SP + w_PS R_PS.</p></div>
+    <div class="col-plain"><p>【目的】前面的監督學習只能教「什麼是對的」，但有些細節很難用例子全部覆蓋。需要一種讓模型自己摸索「怎麼做得更好」的方法。</p><p>【強化學習思路】就像教小孩：不完全告訴他每一步怎麼做，而是設定三個「獎勵標準」，讓他自己嘗試各種做法，做得好就獎勵。</p><p>【三個獎勵指標】：① 指令遵循度：編輯後的影片有沒有按照要求執行？② 原始保留度：編輯有沒有傷及無辜？③ 人類偏好：這個結果好不好看？</p><p>【實作細節】用 Flow-SDE 生成多樣化的候選結果，透過獎勵系統打分數，再用 GRPO 根據「相對優劣」來更新模型參數。為了省算力，用 LoRA（低秩適配）而不是全參數訓練。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="method-3-4">
+  <h2>3.4 資料準備</h2>
+  <div class="two-col">
+    <div class="col-original"><p>We construct a large-scale video editing dataset of 1.5 million pairs covering diverse local editing types. We use Grounding-DINO to detect objects on the first frame and SAM 2 to track masks throughout the video. We also collect 5.4 million image editing pairs from publicly available datasets.</p></div>
+    <div class="col-plain"><p>【為什麼需要這麼多資料？】模型要學會「各種場景怎麼編輯」，就像廚師要會做各國料理需要看很多食譜一樣。論文建構了 150 萬對「原始影片→編輯後影片」的訓練資料。</p><p>【自動產出標籤】這麼多資料不可能全部手動標註。論文用 Grounding-DINO 為影片第一幀找到「要編輯的目標主體」在哪裡，再用 SAM 2 在後續幀持續追蹤這個主體，自動產出「編輯區域」標籤。</p><p>【額外加料】除了影片，還收了 540 萬對圖片編輯資料來補充——因為圖片資料取得容易且成本低，可以幫助模型先學習基本的「圖文對應」能力。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="exp-4-1">
+  <h2>4.1 實現細節</h2>
+  <div class="two-col">
+    <div class="col-original"><p>We use the pretrained HunyuanVideo-T2V-13B as the DiT backbone and finetune it for 12,000 steps. Learning rate: 2×10⁻⁵, batch size: 128. We sample video data with probability 0.4 and image data with probability 0.6.</p></div>
+    <div class="col-plain"><p>團隊把一個叫做 HunyuanVideo-T2V-13B 的預訓練模型拿來當骨幹，然後在上面微調 12,000 步。學習率設定為 2×10⁻⁵（控制模型每次更新的幅度），一次處理的批次量是 128。訓練資料的比例是：影片佔 40%、圖片佔 60%——之所以圖片用比較多，是因為圖片相對便宜且數據量大，能幫模型打好基本功，再慢慢學複雜的影片編輯。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="exp-4-2">
+  <h2>4.2 實驗設定</h2>
+  <div class="two-col">
+    <div class="col-original"><p>Benchmark: VIE-Bench with 140 instances. Baselines: ICVE, Lucy-Edit-Dev, Ditto, InsV2V (open-source) and Runway Gen-4 Aleph (commercial). Metrics: VLM evaluator (Gemini-2.5-pro) scores four dimensions (Instruction Following, Source Preservation, Editing Quality, Subject Similarity), plus VBench and DINO for quantitative measures.</p></div>
+    <div class="col-plain"><p>實驗用一個叫 VIE-Bench 的標準測試集（內含 140 個題目）來考試。比較的對手有兩種：開源工具（ICVE、Lucy-Edit-Dev、Ditto、InsV2V）和商業級狠角色 Runway Gen-4 Aleph。評分方式採用「裁判 AI」——用 Gemini-2.5-pro 當評分員，從四個維度打分：指令遵循、原畫保留、編輯品質、主體相似度。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="exp-4-3">
+  <h2>4.3 質性比較（視覺效果）</h2>
+  <div class="two-col">
+    <div class="col-original"><p>Three representative tasks: material change ("Change the material of the train to ice cubes"), subject addition ("Add an Asian man sitting in the driver's seat"), and subject removal ("Remove the boy"). VIVA correctly captured complex semantics; Runway failed on material change and subject addition. Only VIVA preserved the soccer ball when removing the boy.</p></div>
+    <div class="col-plain"><p>團隊挑了三道有點難度的題目來考：變換材質（「把火車變成冰塊做的」）、新增主體（「加一個坐在駕駛座上的亞洲男性」）和移除主體（「把那個男孩刪掉」）。結果 VIVA 三題都答對了，Runway 在前兩題直接翻車——連「冰塊」和「亞洲男性」這麼具體的描述都搞不清楚。而且在刪除男孩那道題，只有 VIVA 想到「旁邊的足球要保留」，其他模型連帶把足球也一起刪掉了。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="exp-4-4">
+  <h2>4.4 量化比較（數據說話）</h2>
+  <div class="two-col">
+    <div class="col-original"><p>VIVA achieves superior performance over all open-source baselines and is on par with Runway. User study with 14 domain experts: VIVA is preferred across all three criteria against all five baselines.</p></div>
+    <div class="col-plain"><p>光看圖不夠，數據會說話：VIVA 在所有開源模型中排名第一，而且分數跟需要付費的商業模型 Runway 差不多。團隊還找來了 14 位業界專家做人體驗收，結果 VIVA 在三個核心指標（指令聽話度、原畫保留度、編輯品質）上，全面碾壓所有五個對手。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="exp-4-5">
+  <h2>4.5 消融實驗（哪個零件最重要）</h2>
+  <div class="two-col">
+    <div class="col-original"><p>VLM Instructor provides the largest gain in instruction following. Masked Loss enhances spatial precision in edited regions. Image data mixing enables unexpected generalization to complex video edits. Full model with Edit-GRPO achieves highest PickScore.</p></div>
+    <div class="col-plain"><p>消融實驗就像把一台車的零件一個個拆下來開，看哪個零件最重要：VLM Instructor（理解指令的大腦）是最大的功臣；Masked Loss（遮罩損失）則像是在編輯區域裝了精準導航；圖片資料混合訓練則是意外驚喜——本來以為只能學圖片，沒想到模型因此學會了應對複雜影片編輯的本事；最後再加上 Edit-GRPO 強化學習，PickScore 才是真正的巔峰。</p></div>
+  </div>
+</div>
+
+<div class="two-col-section" id="conclusion">
+  <h2>結論</h2>
+  <div class="two-col">
+    <div class="col-original"><p>VIVA outperforms all open-source baselines, achieving state-of-the-art instruction following and edit quality. Future work: richer compositional edit types, interactive editing, arbitrary resolution/duration, and unified video editing reward models.</p></div>
+    <div class="col-plain"><p>VIVA 的核心成就是：在開源模型中拿下「指令遵循能力」第一名，效果還能跟商業模型 Runway 打得有來有回。</p><p>團隊做對了兩件事：發明了 VLM Instructor，讓模型同時看「文字指令＋影片截圖＋參考圖」；首創把強化學習 GRPO 引入影片編輯（Edit-GRPO），讓模型能透過獎懲信號持續自我修正。</p><p>未來方向：支援更複雜的複合指令、任意解析度和長度、以及更通用的影片編輯獎勵模型。</p></div>
+  </div>
+</div>
+
+</body>
+</html>

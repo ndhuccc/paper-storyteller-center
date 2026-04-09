@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIVA：教 AI 剪影片的故事 - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '\\[', right: '\\]', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        body { font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif; line-height: 1.9; max-width: 920px; margin: 0 auto; padding: 24px; color: #1e293b; background: #f8fafc; }
+        h1 { color: #1e3a5f; border-bottom: 4px solid #3b82f6; padding-bottom: 12px; font-size: 1.8rem; }
+        h2 { color: #1d4ed8; margin-top: 48px; font-size: 1.3rem; border-left: 5px solid #3b82f6; padding-left: 12px; }
+        h3 { color: #0369a1; font-size: 1.1rem; margin-top: 28px; }
+        .story { background: #fff; padding: 20px 24px; border-radius: 12px; margin: 16px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+        .formula-box { background: #f0f9ff; padding: 16px 20px; border-radius: 10px; margin: 18px 0; border-left: 4px solid #0ea5e9; }
+        .formula-title { font-weight: bold; color: #0369a1; margin-bottom: 8px; }
+        .formula-plain { background: #fefce8; padding: 10px 14px; border-radius: 6px; margin-top: 10px; color: #713f12; font-size: 0.95rem; }
+        .example { background: #f0fdf4; padding: 16px 20px; border-radius: 10px; margin: 12px 0; border-left: 4px solid #22c55e; }
+        .example-title { font-weight: bold; color: #15803d; }
+        .term-table { width: 100%; border-collapse: collapse; margin: 24px 0; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+        .term-table th { background: #1d4ed8; color: white; padding: 12px 16px; text-align: left; }
+        .term-table td { border-bottom: 1px solid #e2e8f0; padding: 12px 16px; }
+        .term-table tr:last-child td { border-bottom: none; }
+        .term-table tr:nth-child(even) td { background: #f8fafc; }
+        .section-badge { display: inline-block; background: #dbeafe; color: #1d4ed8; font-size: 0.78rem; font-weight: bold; padding: 2px 10px; border-radius: 20px; margin-bottom: 8px; }
+        .toc { background: #fff; padding: 20px 28px; border-radius: 12px; margin: 24px 0; box-shadow: 0 1px 4px rgba(0,0,0,0.07); }
+        .toc ul { margin: 8px 0; padding-left: 20px; }
+        .toc li { margin: 4px 0; }
+        .toc a { color: #2563eb; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .core-msg { background: #faf5ff; border-left: 4px solid #7c3aed; padding: 16px 20px; border-radius: 10px; margin: 20px 0; }
+        .core-msg h4 { color: #6d28d9; margin: 0 0 10px; }
+        blockquote { border-left: 4px solid #94a3b8; padding: 10px 18px; margin: 16px 0; background: #f1f5f9; color: #475569; border-radius: 0 8px 8px 0; }
+    </style>
+</head>
+<body>
+
+<h1>VIVA：教 AI 讀懂複雜指令、剪出精準影片的故事</h1>
+<p style="color:#64748b; font-size:0.9rem;">原論文：<em>VIVA — Instruction-based Video Editing via VLM-guided Encoding and Reward Optimization</em> | 說書人版 · 2026-04-07</p>
+
+<div class="core-msg">
+  <h4>🎯 讀這篇論文，你只需要記住三件事</h4>
+  <ol>
+    <li><strong>問題：</strong>現有 AI 影片編輯只會做「換個物件」這種簡單動作，遇到複雜指令就一頭霧水。</li>
+    <li><strong>解法：</strong>VIVA 給 AI 裝了一個「視覺大腦」（VLM Instructor）讀懂指令，再用強化學習讓它越改越好。</li>
+    <li><strong>成果：</strong>勝過所有開源對手，追平商業級的 Runway Gen-4，而且方法可以拓展。</li>
+  </ol>
+</div>
+
+<div class="toc">
+  <strong>📚 目錄</strong>
+  <ul>
+    <li><a href="#abstract">Abstract — 三行看懂這篇論文</a></li>
+    <li><a href="#intro">1. Introduction — 為什麼現在的影片剪輯 AI 不夠用？</a></li>
+    <li><a href="#related">2. Related Work — 前輩們都怎麼做的</a></li>
+    <li><a href="#method">3. Method — VIVA 的三大武器</a>
+      <ul>
+        <li><a href="#s31">3.1 VLM Instructor — AI 的「視覺大腦」</a></li>
+        <li><a href="#s32">3.2 監督式微調 — 讓模型學會看圖改影片</a></li>
+        <li><a href="#s33">3.3 Edit-GRPO — 用競爭讓 AI 越改越好</a></li>
+        <li><a href="#s34">3.4 資料準備 — 150 萬對訓練資料從哪來</a></li>
+      </ul>
+    </li>
+    <li><a href="#exp">4. Experiments — 實驗說話</a></li>
+    <li><a href="#conclusion">5. Conclusion — 這項研究的意義</a></li>
+    <li><a href="#terms">📚 術語表</a></li>
+  </ul>
+</div>
+
+<!-- ==================== Abstract ==================== -->
+<h2 id="abstract">Abstract — 三行看懂這篇論文</h2>
+<div class="section-badge">Abstract</div>
+<div class="story">
+  <p>想像你叫一個助理「幫我把這支影片的背景換成夜景，同時把主角的衣服改成紅色」。現在的 AI 影片編輯工具，大概只能做到其中一件事，甚至兩件都做不好——因為它只見過「做一件事」的訓練案例，面對複雜組合就傻眼了。</p>
+  <p>VIVA 要解決的，正是這個「只會簡單指令」的老問題。它的秘訣有兩招：第一，用一個強大的視覺語言模型（VLM）先「讀懂」指令和影片畫面，產出富含空間與語義線索的引導訊號，再交給影片生成模型去執行；第二，用一套叫做 Edit-GRPO 的強化學習策略，讓模型在一次次「生成 → 打分 → 改進」的循環中越來越準。實驗證明，VIVA 的成果大幅超越現有開源方案，甚至與商業模型 Runway Gen-4 並駕齊驅。</p>
+</div>
+
+<!-- ==================== Introduction ==================== -->
+<h2 id="intro">1. Introduction — 為什麼現在的影片剪輯 AI 不夠用？</h2>
+<div class="section-badge">Section 1</div>
+<div class="story">
+  <p>影片編輯這件事，現在主流的 AI 做法是「配對學習」——你給它一段原始影片和一個指令，它學會如何生成對應的編輯結果。聽起來合理，但問題藏在資料裡：這些「配對資料集」都是人工合成的，而合成工具只能處理最簡單的操作，像是「把這個物件加進去」或「把那個東西刪掉」。</p>
+  <p>一旦指令變複雜，比如「讓坐在駕駛座的亞洲男性戴上紅色棒球帽，同時把車窗玻璃換成透明」，現有系統就開始手足無措。它沒見過這種組合，自然做不好。</p>
+  <p>VIVA 的回答是：與其讓模型死背簡單案例，不如給它裝一個「理解大腦」。VLM Instructor 這個模組，把文字指令和影片第一幀的畫面一起「咀嚼」，吐出比純文字豐富得多的語義引導。再加上 Edit-GRPO 強化學習，讓模型透過「試錯 → 打分 → 進步」的方式，學會如何面對千變萬化的複雜指令。</p>
+</div>
+
+<!-- ==================== Related Work ==================== -->
+<h2 id="related">2. Related Work — 前輩們都怎麼做的</h2>
+<div class="section-badge">Section 2</div>
+<div class="story">
+  <h3>影片編輯的演進</h3>
+  <p>影片編輯 AI 的歷史，可以用三個時代來描述。第一代靠「反演」技術，把影片逆向還原到噪聲，再重新生成；這招零樣本就能用，但效果普普通通。第二代跟著開源影片擴散模型（如 Wan、HunyuanVideo）崛起，針對特定任務——加人、去背、換衣——都冒出了專屬解法，但每個模型只懂一招，靈活性差。第三代嘗試用單一模型搞定「只憑文字指令就能編輯」，InsV2V 是先驅，但因為訓練資料品質有限，效果還不夠好。</p>
+  <h3>VLM 的崛起</h3>
+  <p>CLIP、BLIP-2、LLaVA 這些視覺語言模型，讓 AI 第一次能夠同時「看圖」和「讀字」。VIVA 站在這些巨人的肩上，把 VLM 當作指令理解的大腦，而不只是文字編碼器。</p>
+  <h3>強化學習的引入</h3>
+  <p>PPO、GRPO 等演算法原本用來訓練語言模型「說出人類喜歡的答案」，現在研究者開始把同樣的思路搬到影片生成上——讓 AI 透過「被打分」來學習生成更好的影片。VIVA 的 Edit-GRPO 正是這條路線的最新實踐。</p>
+</div>
+
+<!-- ==================== Method ==================== -->
+<h2 id="method">3. Method — VIVA 的三大武器</h2>
+<div class="section-badge">Section 3</div>
+<div class="story">
+  <p>VIVA 的架構就像一個「理解 + 生成 + 優化」的流水線。VLM Instructor 負責理解指令和畫面，把複雜語義包裝成引導訊號；Diffusion Transformer（DiT）負責生成，把引導訊號轉化成真實的影片像素；Edit-GRPO 則是品管員，不斷評估生成結果、反饋給模型、讓它持續進步。</p>
+</div>
+
+<!-- ==================== 3.1 ==================== -->
+<h3 id="s31">3.1 Context-Aware VLM Instructor — AI 的「視覺大腦」</h3>
+<div class="section-badge">Section 3.1</div>
+<div class="story">
+  <p>傳統的影片編輯模型拿到一個指令，只用文字編碼器（如 T5）把它轉成一串數字向量，然後交給生成模型。這就好像你叫助理幫你改文件，但只給他一個語音留言，沒讓他看原稿——難免有誤解。</p>
+  <p>VLM Instructor 的做法是：不只給指令，還把「影片第一幀的截圖」也一起交給 VLM，讓它同時看到「原本長什麼樣」和「要改成什麼樣」。這樣，VLM 輸出的引導訊號就帶有豐富的空間定位和語義細節——知道「要改的物件在畫面哪個位置」、「指令說的紅色帽子應該加在誰的頭上」。甚至，使用者還可以額外附上一張「參考圖片」，說「改成這樣」，讓模型更精確地理解目標外觀。</p>
+</div>
+
+<div class="formula-box">
+  <div class="formula-title">📐 公式 1 — VLM Instructor 的輸出</div>
+  <p>$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref})$$</p>
+  <div class="formula-plain">
+    <strong>白話：</strong>把「文字指令」、「影片第一幀」、「可選的參考圖片」三者一起餵給 VLM，它輸出一組豐富的多模態引導向量 $\mathbf{x}_{vlm}$，後續交給 DiT 使用。
+  </div>
+  <div class="example">
+    <span class="example-title">📊 數值範例</span>
+    <p>假設：</p>
+    <ul>
+      <li>$\mathbf{t}_{ins}$ = 「把帽子換成紅色棒球帽」（文字指令）</li>
+      <li>$\mathbf{I}_{src}$ = 影片第 1 幀截圖（含人物和帽子位置）</li>
+      <li>$\mathbf{I}_{ref}$ = 一張紅色棒球帽的參考圖片</li>
+    </ul>
+    <p>VLM 輸出的 $\mathbf{x}_{vlm}$ 向量不只描述「換帽子」，還包含「帽子在畫面右上方」、「帽子目前是藍色」、「參考圖的帽子有帽沿角度」等細節，大幅減少後續生成的歧義。</p>
+  </div>
+</div>
+
+<!-- ==================== 3.2 ==================== -->
+<h3 id="s32">3.2 Instruction-based Supervised Fine-Tuning — 讓模型學會看圖改影片</h3>
+<div class="section-badge">Section 3.2</div>
+<div class="story">
+  <p>有了 VLM 的引導訊號，接下來要讓生成模型（DiT）學會「根據訊號生成編輯後的影片」。VIVA 選用的骨幹模型是 HunyuanVideo-T2V-13B，它有 130 億個參數，原本只會根據文字生成全新的影片。</p>
+  <p>為了讓它學會「編輯而非重新創作」，VIVA 做了一件妙事：把原始影片的潛在表示（latent）直接拼接在噪聲旁邊，一起輸入 DiT。這就像給工人一份「原稿 + 修改紙」，讓他知道要在哪個基礎上動工，而不是從白紙開始畫。此外，還加了一個輕量的 Token Refiner 模組，幫助 DiT 更好地整合來自 VLM 的視覺訊號。</p>
+  <p>訓練時用了一個「遮罩損失函數」，讓模型對「被編輯的區域」投注更多注意力，對「不需要動的背景」則放寬要求——這大幅加速了收斂，也讓編輯結果更精準。</p>
+</div>
+
+<div class="formula-box">
+  <div class="formula-title">📐 公式 2 — 帶源影片的影像 Token 表示</div>
+  <p>$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c)$$</p>
+  <div class="formula-plain">
+    <strong>白話：</strong>把原始影片的潛在碼 $\mathbf{z}_{src}$ 和隨機噪聲 $\mathbf{z}_{noise}$ 各自做「影格切塊」（patchify），然後沿著通道方向拼接起來，最後用投影器 $\mathcal{P}$ 降維到 DiT 所需的格式。結果就是一組「既有原始結構參考、又包含待生成空間」的混合 token。
+  </div>
+  <div class="example">
+    <span class="example-title">📊 數值範例</span>
+    <p>假設每個 patch 的通道數 $C = 64$：</p>
+    <ul>
+      <li>$\mathbf{P}(\mathbf{z}_{src}) \in \mathbb{R}^{L \times 64}$（原始影片切塊後的序列）</li>
+      <li>$\mathbf{P}(\mathbf{z}_{noise}) \in \mathbb{R}^{L \times 64}$（噪聲切塊後的序列）</li>
+      <li>通道拼接後：$\mathbb{R}^{L \times 128}$</li>
+      <li>投影器壓回：$\mathbf{x}_{video} \in \mathbb{R}^{L \times 64}$</li>
+    </ul>
+    <p>這樣 DiT 在每個位置都同時「看到」原始畫面和待生成的噪聲，保持空間對齊。</p>
+  </div>
+</div>
+
+<div class="formula-box">
+  <div class="formula-title">📐 公式 3 — 遮罩損失函數</div>
+  <p>$$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}$$</p>
+  <div class="formula-plain">
+    <strong>白話：</strong>在標準的 Flow Matching 損失 $\mathcal{L}_{\text{FM}}$ 上，乘上一個「遮罩放大係數」。遮罩 $M$ 標記了「需要被編輯的區域」，遮罩內的 loss 會被放大 $(1 + w_m)$ 倍，讓模型更認真學習編輯區域的生成，而不是被大片不需要變化的背景稀釋掉。
+  </div>
+  <div class="example">
+    <span class="example-title">📊 數值範例</span>
+    <p>假設 $w_m = 2$：</p>
+    <ul>
+      <li>遮罩外（背景）：loss 係數 = $1 + 2 \times 0 = 1.0$</li>
+      <li>遮罩內（編輯區）：loss 係數 = $1 + 2 \times 1 = 3.0$</li>
+    </ul>
+    <p>也就是說，模型在「換帽子的區域」的學習強度是背景的 3 倍，讓編輯更精準。</p>
+  </div>
+</div>
+
+<!-- ==================== 3.3 ==================== -->
+<h3 id="s33">3.3 Edit-GRPO — 用競爭讓 AI 越改越好</h3>
+<div class="section-badge">Section 3.3</div>
+<div class="story">
+  <p>監督式學習只能讓模型「模仿訓練資料」，但訓練資料的品質有限。Edit-GRPO 換了一個思路：讓模型自己生成多個候選結果，然後用三個維度的分數來評判，再把「分數高」的方向強化、「分數低」的方向抑制。這就像讓一個學生自己多寫幾版答案，老師挑出最好的幾份給予獎勵，最差的幾份給予懲罰。</p>
+  <p>三個評分維度分別是：指令遵循（有沒有按照要求改）、來源保留（沒被改的地方有沒有動到）、人類偏好（看起來自然不自然）。這三個維度的加權總分，就是指引模型進步的羅盤。為了效率，Edit-GRPO 只訓練一個輕量的 LoRA 層，而不是整個 130 億參數模型，大幅降低了計算成本。</p>
+</div>
+
+<div class="formula-box">
+  <div class="formula-title">📐 公式 4 — 指令遵循分數</div>
+  <p>$$\mathbf{R}_{\text{IF}} = C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src})$$</p>
+  <div class="formula-plain">
+    <strong>白話：</strong>用 CLIP 計算「編輯後影片」與「目標描述」的相似度，減去「編輯後影片」與「原始描述」的相似度。分數越高，代表影片在語義上「離目標越近、離原始越遠」，也就是編輯越成功。
+  </div>
+  <div class="example">
+    <span class="example-title">📊 數值範例</span>
+    <p>假設 $\mathbf{t}_{edit}$=「紅色帽子」、$\mathbf{t}_{src}$=「藍色帽子」：</p>
+    <ul>
+      <li>$C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) = 0.82$（編輯結果和「紅帽」高度匹配）</li>
+      <li>$C(\mathbf{V}_{edit}, \mathbf{t}_{src}) = 0.51$（和「藍帽」只有中等相似）</li>
+      <li>$\mathbf{R}_{\text{IF}} = 0.82 - 0.51 = 0.31$ ✅ 正分，說明編輯方向正確</li>
+    </ul>
+  </div>
+</div>
+
+<div class="formula-box">
+  <div class="formula-title">📐 公式 5 — 來源保留分數</div>
+  <p>$$\mathbf{R}_{\text{SP}} = C(\mathbf{V}_{src}, \mathbf{V}_{edit})$$</p>
+  <div class="formula-plain">
+    <strong>白話：</strong>計算「原始影片」和「編輯後影片」的 CLIP 相似度。分數越高，代表整體畫面越相似，也就是「非編輯區域沒有被動到」。
+  </div>
+</div>
+
+<div class="formula-box">
+  <div class="formula-title">📐 公式 6 — 人類偏好分數</div>
+  <p>$$\mathbf{R}_{\text{PS}} = \text{Pickscore}(\mathbf{V}_{edit}, \mathbf{t}_{edit})$$</p>
+  <div class="formula-plain">
+    <strong>白話：</strong>用 Pickscore 模型（從人類偏好資料訓練而來）給編輯結果打分，同時評估「視覺品質」和「指令對齊度」。
+  </div>
+</div>
+
+<div class="formula-box">
+  <div class="formula-title">📐 公式 7 — 綜合獎勵分數</div>
+  <p>$$\mathbf{R} = w_{IF}\mathbf{R}_{\text{IF}} + w_{SP}\mathbf{R}_{\text{SP}} + w_{PS}\mathbf{R}_{\text{PS}}$$</p>
+  <div class="formula-plain">
+    <strong>白話：</strong>把三個分數加權求和，得到最終的強化學習獎勵信號。
+  </div>
+  <div class="example">
+    <span class="example-title">📊 數值範例</span>
+    <p>假設 $w_{IF}=0.4$、$w_{SP}=0.3$、$w_{PS}=0.3$：</p>
+    <ul>
+      <li>$\mathbf{R}_{\text{IF}} = 0.31$、$\mathbf{R}_{\text{SP}} = 0.78$、$\mathbf{R}_{\text{PS}} = 0.65$</li>
+      <li>$\mathbf{R} = 0.4\times0.31 + 0.3\times0.78 + 0.3\times0.65 = 0.124 + 0.234 + 0.195 = 0.553$</li>
+    </ul>
+    <p>這個綜合分數越高，就越能引導模型往「既改對、又保留背景、又好看」的方向優化。</p>
+  </div>
+</div>
+
+<!-- ==================== 3.4 ==================== -->
+<h3 id="s34">3.4 Data Preparation — 150 萬對訓練資料從哪來</h3>
+<div class="section-badge">Section 3.4</div>
+<div class="story">
+  <p>訓練影片編輯模型最頭痛的問題，就是找不到足夠多的「原始影片 + 編輯後影片 + 精確指令」三元組。VIVA 的解法是：自己生一個。</p>
+  <p>他們用一個預訓練的文字生成影片模型作為「工廠」，加裝一個額外的輸入分支，讓它接受遮罩和條件影片，從而合成高保真的配對影片。整個流水線涵蓋三種基本操作：物件替換（偵測物件 → 遮罩追蹤 → 換成新物件）、物件添加/刪除（隨機遮罩 → 用新描述填充）、全局風格轉換（從「白天」改成「夜晚」之類的場景替換）。</p>
+  <p>品質控管也很聰明：用 Gemini 2.5 Pro 重寫指令讓它更精確，再讓 VLM 標記「有沒有出現影像瑕疵」。有瑕疵的合成影片只能當「來源」（原始影片），不能當「目標」（編輯後的成果），確保模型不會學到爛的結果。最終，這個流程產出了 150 萬對影片配對資料，再加上 540 萬對圖片配對，組成了 VIVA 的訓練基礎。</p>
+</div>
+
+<!-- ==================== Experiments ==================== -->
+<h2 id="exp">4. Experiments — 實驗說話</h2>
+<div class="section-badge">Section 4</div>
+
+<h3>4.1 訓練細節</h3>
+<div class="story">
+  <p>VIVA 以 HunyuanVideo-T2V-13B 為骨幹，在自建的配對資料上微調了 12,000 步。學習率設為 $2 \times 10^{-5}$，全局 batch size 為 128。訓練時影片資料和圖片資料的抽樣比例為 4:6，確保圖片資料中豐富的編輯類型能遷移到影片域。</p>
+</div>
+
+<h3>4.2 評估設置</h3>
+<div class="story">
+  <p>評估用的基準是 VIE-Bench，涵蓋 140 個高品質的多類別影片編輯案例。競爭對手包含四個開源方法（ICVE、Lucy-Edit-Dev、Ditto、InsV2V）和一個商業模型（Runway Gen-4 Aleph）。評估維度有四個：指令遵循、來源保留、編輯品質，以及（針對參考圖控制）主體相似度。評分由 Gemini-2.5-pro 擔任裁判，給出 0–10 分。</p>
+</div>
+
+<h3>4.3 質化比較</h3>
+<div class="story">
+  <p>三個代表性案例清楚說明了 VIVA 的優勢。在「把座位換成亞洲男性」這個複雜案例中，只有 VIVA 正確理解了「坐在駕駛座」這個複合語義——其他模型要麼位置擺錯，要麼人物特徵不對。在「換材質」案例中，Runway 只改了一部分列車，VIVA 整列都換了。在「移除男孩」案例中，只有 VIVA 既移除了目標、又保留了旁邊的足球、又維持了背景一致性。</p>
+  <p>對於需要參考圖的場景，現有開源方案完全不支援，而 Runway 雖然有做，但帽沿角度和品牌標誌都與參考圖有明顯差異。VIVA 則精準還原了參考圖中的所有細節。</p>
+</div>
+
+<h3>4.4 量化比較</h3>
+<div class="story">
+  <p>在 VIE-Bench 的四個量化指標上，VIVA 全面超越四個開源對手，並與 Runway Gen-4 並列頂端。用戶研究（14 位領域專家，40 個案例）同樣確認：VIVA 在「指令遵循」、「來源保留」、「編輯品質」三個維度上，都被明顯偏好。</p>
+</div>
+
+<h3>4.5 消融實驗</h3>
+<div class="story">
+  <p>逐一拆掉每個模組，可以看到它們各自貢獻了什麼：VLM Instructor 拿掉之後，指令遵循分數大幅下滑，說明「視覺大腦」是核心；遮罩損失拿掉，收斂變慢且編輯精度下降；圖片資料混訓拿掉，模型學不會全局風格轉換；Edit-GRPO 拿掉，指令遵循和人類偏好都明顯退步。每個模組都不可或缺。</p>
+</div>
+
+<!-- ==================== Conclusion ==================== -->
+<h2 id="conclusion">5. Conclusion — 這項研究的意義</h2>
+<div class="section-badge">Section 5</div>
+<div class="story">
+  <p>VIVA 的意義，不只是在排行榜上刷出好成績。它真正示範的是：讓 AI 影片編輯從「只懂簡單指令」進化到「能理解複雜語義」是可行的，而且有明確的技術路徑——用 VLM 讀懂指令、用強化學習打磨質量、用大規模合成資料彌補真實資料的不足。</p>
+  <p>未來的方向很清晰：讓可支援的編輯類型更豐富、讓互動編輯（邊改邊看）更流暢、讓解析度和影片長度不再受限，以及開發一個更通用的「影片編輯獎勵模型」。這些方向，每一個都值得獨立成一篇研究。</p>
+  <blockquote>一句話總結：VIVA 讓我們看到，複雜影片編輯指令不是 AI 的天花板，而只是一個「還沒被好好解決」的問題。</blockquote>
+</div>
+
+<!-- ==================== 術語表 ==================== -->
+<h2 id="terms">📚 術語表</h2>
+<table class="term-table">
+  <thead>
+    <tr><th>術語</th><th>白話解釋</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>VIVA</td><td>本論文提出的影片編輯框架，全名「VIsually-grounded Video Editing with VLM and reward optimization」</td></tr>
+    <tr><td>VLM（Vision-Language Model）</td><td>視覺語言模型，能同時理解圖片和文字的 AI，如 LLaVA、Qwen2.5-VL</td></tr>
+    <tr><td>DiT（Diffusion Transformer）</td><td>擴散 Transformer，用來生成高品質影片的神經網路骨幹</td></tr>
+    <tr><td>VLM Instructor</td><td>VIVA 的「理解大腦」，把指令 + 畫面 + 參考圖一起編碼成豐富的引導訊號</td></tr>
+    <tr><td>Edit-GRPO</td><td>VIVA 的強化學習策略，讓模型透過多候選競爭 + 打分來持續進步</td></tr>
+    <tr><td>GRPO（Group Relative Policy Optimization）</td><td>一種強化學習演算法，在一組候選答案中用相對分數來更新模型</td></tr>
+    <tr><td>Token Refiner</td><td>輕量模組，幫助 DiT 更好地整合 VLM 的視覺引導訊號</td></tr>
+    <tr><td>Flow Matching</td><td>一種訓練生成模型的方法，讓模型學會從噪聲逐步「流向」目標影片</td></tr>
+    <tr><td>LoRA（Low-Rank Adaptation）</td><td>低秩適應，一種高效的微調技術，只訓練模型的一小部分參數</td></tr>
+    <tr><td>Instruction Following（指令遵循）</td><td>編輯結果是否真的按照指令改了應該改的地方</td></tr>
+    <tr><td>Source Preservation（來源保留）</td><td>非編輯區域是否維持與原始影片的一致性</td></tr>
+    <tr><td>VIE-Bench</td><td>影片編輯評估基準，包含 140 個多類別編輯案例</td></tr>
+    <tr><td>Pickscore</td><td>從人類偏好資料訓練的評分模型，衡量生成內容的視覺品質與指令對齊度</td></tr>
+    <tr><td>Latent（潛在表示）</td><td>VAE 把影片壓縮到的低維空間，在這個空間做計算更高效</td></tr>
+    <tr><td>HunyuanVideo-T2V-13B</td><td>騰訊開源的 130 億參數文字生成影片模型，是 VIVA 的生成骨幹</td></tr>
+  </tbody>
+</table>
+
+<hr style="margin: 40px 0; border: none; border-top: 2px solid #e2e8f0;">
+<p style="color:#94a3b8; font-size:0.85rem; text-align:center;">說書人版 · 由工作簿 10 v2.0 生成 · 2026-04-07</p>
+
+</body>
+</html>

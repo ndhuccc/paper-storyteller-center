@@ -1,0 +1,1879 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inpainting-Guided Policy Optimization for Diffusion LargeLanguageModels - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 Inpainting-Guided Policy Optimization for Diffusion LargeLanguageModels</h1>
+    <div class="meta">
+        <strong>說書人版本（v1.5 - 術語表 + 公式詳解）</strong><br>
+        Source PDF: Inpainting-Guided_Policy_Optimization_for_Diffusion_LargeLanguageModels.pdf<br>
+        Model: models/gemini-3.1-flash-lite-preview<br>
+        Generated at (UTC): 2026-04-05T05:26:15.149529+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - Abstract</a></li>
+<li><a href="#section-2">Section 2 - Introduction</a></li>
+<li><a href="#section-3">Section 3 - MaskedDiffusionLargeLanguageModels</a></li>
+<li><a href="#section-4">Section 4 - PolicyOptimizationforMaskedDiffusionLargeLanguageModels</a></li>
+<li><a href="#section-5">Section 5 - IGPO:InpaintingGuidedPolicyOptimization</a></li>
+<li><a href="#section-6">Section 6 - Length-AlignedSFTviaConciseReasoningTraceRewriting</a></li>
+<li><a href="#section-7">Section 7 - Experiments</a></li>
+<li><a href="#section-8">Section 8 - Complete Training Recipe</a></li>
+<li><a href="#section-9">Section 9 - Experimental Setup</a></li>
+<li><a href="#section-10">Section 10 - Main Results</a></li>
+<li><a href="#section-11">Section 11 - Analysis and Ablation Studies</a></li>
+<li><a href="#section-12">Section 12 - 5 RelatedWork</a></li>
+<li><a href="#section-13">Section 13 - Conclusion</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - Abstract</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>讓模型學會「填空」來找答案：IGPO 的誕生</h3>
+            <p>想像一下，你正在教一個學生解數學題。傳統的語言模型（Autoregressive LLMs）就像是一個堅持「從頭寫到尾」的考生，如果中間一步錯了，整題就全毀了。而我們今天要聊的「遮罩擴散語言模型」（Masked diffusion large language models, dLLMs），就像是一個能隨意在題目中挖洞、讓你填寫缺漏內容的「填空題大師」。</p>
+            <p>這種「填空」能力（Inpainting）其實非常有潛力！在教導 AI 學習複雜任務時，我們常會用到「強化學習」（Reinforcement Learning, RL）。但強化學習有個痛點：如果不給提示，模型就像在迷宮裡亂撞，很難找到正確答案，導致浪費大量時間在無效的探索上。</p>
+            <p>這時候，dLLMs 的優勢就來了——我們可以利用「填空」的能力，在模型探索的過程中，適度塞入正確的解題步驟，幫它「指引方向」。這就是我們提出的 <strong>IGPO（Inpainting Guided Policy Optimization）</strong>。它不像直接給出全盤答案那樣剝奪了模型的思考空間，而是像老師只給出關鍵的一小步，讓模型順著這步繼續走下去，既保留了自我推理的過程，又大幅提升了學習效率。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Masked diffusion LLMs (dLLMs)</strong></td>
+            <td style="text-align: left;">一種透過「填空」方式來生成文字的模型，能隨意補齊段落中的缺失部分。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Autoregressive LLMs</strong></td>
+            <td style="text-align: left;">傳統的語言模型，像寫作文一樣，必須按照順序一個字一個字寫出來，不能回頭修改。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Inpainting</strong></td>
+            <td style="text-align: left;">指在一段文字中挖洞，由模型自動補上正確內容的能力。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Reinforcement Learning (RL)</strong></td>
+            <td style="text-align: left;">透過給予獎勵或懲罰，引導 AI 學習如何達成目標的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">本文提出的框架，利用「填空」來引導 AI 探索更有效的解題路徑。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>當「填空」成為導航：為什麼 IGPO 這麼有效？</h3>
+            <p>你可能會好奇，為什麼要在模型訓練時加入這些「填空」？我們在研究中發現，當模型使用像 <strong>GRPO</strong> 這種基於群組的優化方法時，如果模型探索失敗，它拿不到任何獎勵，連帶地也無法學到任何「修正建議」（即梯度資訊）。這就像學生寫完考卷全錯，卻沒有老師告訴他哪裡錯，他只能原地踏步。</p>
+            <p>IGPO 的核心邏輯是：在模型自我生成答案的過程中，我們人為地「遮掉」部分邏輯錯誤，並強制填入正確的思考軌跡。這讓模型即便一開始不會，也能在「被指引」的情況下成功走完流程，進而拿到獎勵、產出有效的學習梯度。</p>
+            <p>為了讓大家更清楚，我們來看一個簡單的邏輯映射公式，想像目標軌跡為 <span class="math inline">$T$</span>，我們給出的引導強度為 <span class="math inline">$\lambda$</span>：</p>
+            <div class="formula">$$ \text{Loss}_{Total} = \text{Loss}_{RL} + \lambda \cdot \text{Loss}_{Inpaint} $$</div>
+            
+            <ul>
+            <li><strong>公式變數拆解</strong>：<ul>
+            <li><span class="math inline">$\text{Loss}_{Total}$</span>：模型最終要最小化的總錯誤率。</li>
+            <li><span class="math inline">$\text{Loss}_{RL}$</span>：模型原本在強化學習中產生的錯誤。</li>
+            <li><span class="math inline">$\text{Loss}_{Inpaint}$</span>：模型填空錯誤的程度。</li>
+            <li><span class="math inline">$\lambda$</span>（Lambda）：引導強度係數，控制我們介入多少「正確步驟」。</li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>數值示例</strong>：<br />
+            假設原本 <span class="math inline">$\text{Loss}_{RL} = 0.8$</span>（模型表現很差），我們設定 <span class="math inline">$\lambda = 0.2$</span>，並透過填空引導將 <span class="math inline">$\text{Loss}_{Inpaint}$</span> 控制在 <span class="math inline">$0.1$</span>。<br />
+            總損失 = <span class="math inline">$0.8 + (0.2 \times 0.1) = 0.82$</span>。<br />
+            雖然數值看起來微調，但在訓練中，這小小的「引導」能讓模型在一次迭代中，從原本的「無效輸出」變成「部分正確輸出」，這在實務上代表模型從「完全學不到東西」變成了「能從正確步驟中獲得回饋」，這是進步的關鍵。</p>
+            <p>透過這種「人工介入指引 + 模型自我發揮」的組合拳，我們能將監督式微調（Supervised Fine-tuning）與強化學習完美銜接，讓模型在處理複雜數學題時，既有邏輯的嚴謹性，又有靈活的解題能力。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>GRPO</strong></td>
+            <td style="text-align: left;">一種讓模型產出多個答案並進行比較，從中選出最好的一個來學習的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Gradient</strong></td>
+            <td style="text-align: left;">梯度，即模型調整自己參數的方向，告訴模型「該往哪個方向改進」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Supervised Fine-tuning</strong></td>
+            <td style="text-align: left;">給 AI 看大量的正確範本，讓它模仿正確的解題模式。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Trajectory</strong></td>
+            <td style="text-align: left;">軌跡，指模型從題目開始到給出最終答案的全過程。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>結尾：把數學解好，讓學習更聰明</h3>
+            <p>最後，為了讓模型更適應這種節奏，我們還提出了一套「精簡重寫」策略。我們發現，過於冗長的推理過程反而會干擾模型的學習模式，於是我們將訓練數據改寫得更簡潔、更精準。</p>
+            <p>結合這些優化，包括過濾掉不穩定數據的 <strong>熵值過濾（Entropy-based filtering）</strong>，我們在 GSM8K、Math500 和 AMC 等權威數學評測中，刷新了全注意力機制（Full-attention）dLLMs 的紀錄。這不只是模型的勝利，更是我們找到了一條「讓 AI 懂得如何被引導」的捷徑——只要給它一點正確的引導，它就能跑得比誰都快。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Entropy-based filtering</strong></td>
+            <td style="text-align: left;">熵值過濾，透過檢查模型對某個答案有多「猶豫」來過濾掉品質差的數據。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Full-attention</strong></td>
+            <td style="text-align: left;">一種模型架構，讓模型在處理每個字時，都能同時參考前後文的所有資訊。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>GSM8K/Math500/AMC</strong></td>
+            <td style="text-align: left;">幾種知名的 AI 數學能力測試集，題目難度從國中數學到奧林匹亞競賽不等。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - Introduction</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>重新定義 AI 的思考方式：從「接龍」到「填空」</h3>
+            <p>想像一下你在玩「文字接龍」。傳統的大型語言模型（像是 GPT 系列）就像是一個超級接龍高手，它們嚴格遵守「左到右」的規則，一次只吐出一個字，不能回頭修改。這種模式很順暢，但一旦遇到複雜的邏輯推理難題，如果第一步走錯了，後面整段話就會像骨牌一樣崩塌。</p>
+            <p>現在，有一群新興的模型叫做 <strong>Masked Diffusion Large Language Models (dLLMs)</strong>，它們不玩接龍，它們玩的是「填空遊戲」。</p>
+            <h4>為什麼要玩「填空」？</h4>
+            <p>這類模型在訓練時，會故意把句子裡的某些字蓋起來（Masked），然後學習如何同時將這些空格補上。這就像是一個編輯，它能同時看到句子的前後文，而不是死板地按順序思考。這種機制賦予了模型一個超級優勢——<strong>Inpainting（填空/修復能力）</strong>。</p>
+            <p>想像你是一台導航系統，傳統模型必須從起點開始一步步預測路徑，而 dLLMs 可以先設定好幾個關鍵轉折點，再讓模型自己把路徑中斷的部分補齊。這讓它們在處理推理任務時更有彈性，甚至能透過「外掛提示」來引導學習。</p>
+            <h4>RLVR 的困境：大海撈針</h4>
+            <p>雖然 dLLMs 很強，但在進行 <strong>RL Post-training（強化學習後訓練）</strong> 時，研究者們遇到了瓶頸。目前的作法多半沿用傳統模式，給模型一個任務，如果做對了就給獎勵，做錯了就沒有。</p>
+            <p>這產生了「大海撈針」的問題：當題目太難，模型怎麼試都寫不出正確答案時，獎勵機制就失效了。因為模型從來沒拿到過獎勵，它根本不知道該往哪個方向改進。這導致了大量的算力浪費，訓練效率極低。</p>
+            <h4>IGPO：給 AI 一點「作弊」的勇氣</h4>
+            <p>為了突破這個困境，我們提出了 <strong>IGPO (Inpainting Guided Policy Optimization)</strong>。</p>
+            <p>如果模型在解決難題時卡住了，與其讓它盲目地瞎猜，我們不如在它生成內容的過程中，適度「注入」一點推理的關鍵步驟或提示（Partial reasoning traces）。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">步驟</th>
+            <th style="text-align: left;">動作</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">1. 偵測</td>
+            <td style="text-align: left;">判斷模型是否卡關</td>
+            <td style="text-align: left;">若模型生成正確答案的機率過低，則觸發引導機制</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">2. 注入</td>
+            <td style="text-align: left;">放入推理片段</td>
+            <td style="text-align: left;">將正確路徑的一部分「填入」到模型的思考範圍中</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">3. 補完</td>
+            <td style="text-align: left;">模型接手剩餘部分</td>
+            <td style="text-align: left;">dLLM 利用其填空能力，順著提示完成推理並給出最終答案</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">4. 優化</td>
+            <td style="text-align: left;">只學好的結果</td>
+            <td style="text-align: left;">只有當模型成功補完且答案正確時，我們才進行後續的政策優化</td>
+            </tr>
+            </tbody>
+            </table>
+            <p>這種設計就像是在學生考試卡住時，老師給了一個關鍵公式，學生立刻就能舉一反三解出整題。這不僅大幅提升了訓練成功率，還有效解決了「給不出獎勵訊號」的學習飢荒問題。透過與 <strong>GRPO (Group-relative Policy Optimization)</strong> 這類群體優化方法結合，我們證明了 IGPO 能讓模型學得更快、更聰明。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Masked Diffusion LLMs (dLLMs)</strong></td>
+            <td style="text-align: left;">一種透過「遮蓋並修復」文字來生成內容的模型，能同時參考上下文。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Autoregressive models</strong></td>
+            <td style="text-align: left;">自回歸模型，像接龍一樣從左到右，一個字一個字產出內容。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>RL Post-training</strong></td>
+            <td style="text-align: left;">模型學會說話後，再透過獎勵機制進行針對性的「考試特訓」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Inpainting</strong></td>
+            <td style="text-align: left;">指在既有文字內容中，填補缺失的部分，像修復殘缺的畫作。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>RLVR (Reinforcement Learning with Verifiable Reward)</strong></td>
+            <td style="text-align: left;">一種學習方法，若模型給出的答案經過驗證為正確，則給予獎勵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO (Inpainting Guided Policy Optimization)</strong></td>
+            <td style="text-align: left;">本文提出的方法，透過在推理過程中注入提示，引導模型學會解題。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>GRPO (Group-relative Policy Optimization)</strong></td>
+            <td style="text-align: left;">一種讓模型比較「同一批生成結果」中哪一個表現最好，並向好的方向靠攏的優化演算法。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>為什麼你的 AI 模型學不會？「歸零」的困境與 IGPO 的解方</h3>
+            <p>想像一下，你是一位正在教學生解數學題的教練。你要求學生分成小組去嘗試解題，並給予每組相同的分數獎勵。這時候問題來了：如果這組學生全體都錯了，或者全體都矇對了，這時候作為教練的你，根本看不出誰比較努力、誰比較聰明，因為大家的分數都一樣。這在強化學習（Reinforcement Learning, RL）中稱為「<strong>優勢訊號塌陷</strong>（Advantage Signal Collapse）」。</p>
+            <h4>1. 為什麼會出現「優勢訊號塌陷」？</h4>
+            <p>在像 GRPO（群體相對策略優化）這類方法中，我們依賴「群體內的相對獎勵」來學習。當一群樣本的獎勵值完全相同（例如全是 0 分），計算優勢函數（Advantage Estimation）時，優勢值就會變成 0。</p>
+            <p>當優勢函數的輸出為 0 時，意味著損失函數的梯度（用來更新模型參數的導航訊號）也變成了 0。這就像是你在指揮球隊，但球員全部停在原地不動，因為你給的指令失效了。這在處理複雜的推理任務時非常常見，導致模型學習進度停滯。</p>
+            <p><strong>公式拆解：優勢函數 <span class="math inline">$A_i$</span></strong></p>
+            <div class="formula">$$A_i = \frac{r_i - \text{mean}(r)}{\text{std}(r)}$$</div>
+            
+            <ul>
+            <li><span class="math inline">$r_i$</span>：第 <span class="math inline">$i$</span> 個答案得到的獎勵分數。</li>
+            <li><span class="math inline">$\text{mean}(r)$</span>：整組答案的平均分數。</li>
+            <li><span class="math inline">$\text{std}(r)$</span>：整組分數的標準差（用來衡量大家表現的差異程度）。</li>
+            </ul>
+            <p><strong>數值示例：</strong><br />
+            如果一組學生拿到的分數分別是 <span class="math inline">$[0, 0, 0]$</span>。</p>
+            <ul>
+            <li>平均值 <span class="math inline">$\text{mean}(r) = 0$</span>。</li>
+            <li>標準差 <span class="math inline">$\text{std}(r) = 0$</span>。</li>
+            <li>計算結果：<span class="math inline">$A_i = (0 - 0) / 0 \to$</span> 在數學上這是未定義的，但在程式實作中，我們通常會強制讓它歸零。</li>
+            <li><strong>實務影響</strong>：因為 <span class="math inline">$A_i = 0$</span>，模型認為當前所有動作都「沒好壞之分」，導致模型無法從錯誤中學到任何修正資訊。</li>
+            </ul>
+            <h4>2. IGPO 如何打破這個僵局？</h4>
+            <p>為了救回這些「全錯」的組別，我們提出了 <strong>IGPO（Inpainting-Guided Policy Optimization，填補引導式策略優化）</strong>。</p>
+            <p>IGPO 的核心邏輯是「引導式探索」。想像一下，與其讓學生盲目猜測，我們在他們解題的過程中，適度「填入」一點正確的解題思路（就像在考卷上先寫下關鍵步驟的提示）。這不是直接把答案給他們，而是讓模型在生成答案時，有一半是自己想的，有一半是我們給的「骨架」。</p>
+            <ul>
+            <li><strong>為什麼有效？</strong> 因為有了這些提示，模型更容易進入「高獎勵區域」。這大大減少了全組皆錯的情況（實驗證明減少了約 60%），從而產生了有效的梯度訊號。</li>
+            <li><strong>介於監督與強化學習之間</strong>：IGPO 像是一個平衡點。它不像單純的監督式學習（SFT）那樣容易產生「分佈偏移」（當模型訓練資料與實際產出的資料長相差太多時，表現會變差），它保持了對非注入部分的「線上生成」，確保模型學到的是當下最真實的策略。</li>
+            </ul>
+            <h4>3. 不只是填補：一套完整的優化食譜</h4>
+            <p>除了填補技術，我們還加上了兩項關鍵調味料：</p>
+            <ol>
+            <li><strong>長度對齊（Length-Aligned）SFT</strong>：我們重新整理了教學用的推理軌跡，讓資料的長度跟模型實際推理的長度一致。這解決了以往因為教案太長、太囉唆而導致模型學壞的問題。</li>
+            <li><strong>熵值基礎梯度過濾（Entropy-based Gradient Filtering）</strong>：我們針對注入的提示部分加上了保護機制，確保模型在學習時不會因為過度依賴提示而變得僵化，進而提升學習的穩定性。</li>
+            </ol>
+            <p>這套方法在數學推理任務中表現驚人，不僅讓模型收斂速度變快，在 GSM8K、Math500 等指標上更達到了新的頂尖水準。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>GRPO</strong></td>
+            <td style="text-align: left;">一種讓模型分組產生多個答案，並比較組內優劣來進步的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>優勢訊號塌陷</strong></td>
+            <td style="text-align: left;">因組內獎勵都一樣，導致模型找不到改進方向，學習動力歸零。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>梯度</strong></td>
+            <td style="text-align: left;">指導 AI 模型參數該往哪個方向微調的數學訊號。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">本文提出的方法，透過在推理過程中填入正確片段，幫助模型順利學習。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>SFT (監督式學習)</strong></td>
+            <td style="text-align: left;">給模型看大量題目與標準答案，讓它模仿學習。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>分佈偏移</strong></td>
+            <td style="text-align: left;">模型的學習資料與它之後實際回答的題目長相不同，導致錯誤率提高。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Inpainting (填補)</strong></td>
+            <td style="text-align: left;">像拼圖一樣，把缺失的推理步驟補進模型產出的內容中。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>熵值 (Entropy)</strong></td>
+            <td style="text-align: left;">在這裡指模型對動作選擇的「不確定性」，熵值越高代表越隨機。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>消融實驗 (Ablation)</strong></td>
+            <td style="text-align: left;">一項實驗技術，透過拆解模型中的不同元件，檢查每個零件對結果的貢獻。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>為什麼「修復得不完整」反而比「完全正確」更好？</h3>
+            <p>想像一下，你正在訓練一位機器人學習如何在迷宮中行走。傳統做法通常是給機器人一張完美的地圖（Ground-truth），告訴它所有路徑的正確答案。但問題來了，當機器人進入一個全新的、未知的環境時，這張「完美地圖」反而可能成了它的心理負擔——因為它太依賴固定答案，一旦現實路徑稍微不同，機器人就慌了。</p>
+            <p>我們發現，與其強迫模型死記硬背「完全正確」的答案，不如讓它在修復地圖時「留一手」，也就是進行<strong>部分修復（Partial Inpainting）</strong>。這就像是給學生考卷時，不直接給出所有標準答案，而是留下一些模糊的空白，讓學生必須依賴自己學到的策略去判斷。這樣做，能讓模型的行為更貼近它在實際操作時的「心智模式」，也就是我們常說的<strong>策略分佈（Policy Distribution）</strong>，這能讓機器人在線上學習的過程中，表現得比死記硬背的模型還要穩定且聰明。</p>
+            <p>但這帶來了一個挑戰：如果修復的過程太隨意，訓練過程可能會變得像脫韁的野馬，難以掌控。為了馴服這匹野馬，我們引入了一個<strong>基於熵的梯度過濾機制（Entropy-based gradient filtering mechanism）</strong>。</p>
+            <hr />
+            <h3>拆解：熵（Entropy）如何成為訓練的「穩定器」？</h3>
+            <p>這裡提到的「熵」，你可以把它想像成<strong>混亂度</strong>或<strong>不確定性</strong>。在強化學習中，如果機器人對每個選擇都感到非常困惑（高熵），或者對某個選擇過度自信（低熵），都可能導致學習過程中的數據波動太大，讓模型「學壞了」。</p>
+            <p>我們的機制可以透過以下公式來理解：</p>
+            <div class="formula">$$ \text{Filtered Gradient} = \mathbb{1}(\text{Entropy} &gt; \tau) \cdot \nabla L $$</div>
+            
+            <p><strong>公式拆解：</strong></p>
+            <ul>
+            <li><span class="math inline">$\mathbb{1}(\text{Entropy} &gt; \tau)$</span>：這是一個「開關」。如果當前的混亂度（Entropy）超過了我們設定的門檻值（<span class="math inline">$\tau$</span>），這個開關就是 1（開）；反之則為 0（關）。</li>
+            <li><span class="math inline">$\nabla L$</span>：這是梯度的修正量，代表模型該往哪個方向改進。</li>
+            <li><strong>白話意義</strong>：這就像是一道「篩網」，只有當系統處於足夠複雜、需要深入思考的狀態時，我們才更新模型的權重；如果系統顯得太無聊或是過度自信（低於門檻 <span class="math inline">$\tau$</span>），我們就暫時不進行大幅調整。</li>
+            </ul>
+            <p><strong>數值示例：</strong><br />
+            假設我們設定的門檻 <span class="math inline">$\tau = 0.5$</span>：</p>
+            <ol>
+            <li>如果當前狀態的熵為 0.8（大於 0.5），公式結果為 <span class="math inline">$1 \cdot \nabla L = \nabla L$</span>。這意味著：模型很困惑，需要根據梯度進行學習。</li>
+            <li>如果當前狀態的熵為 0.2（小於 0.5），公式結果為 <span class="math inline">$0 \cdot \nabla L = 0$</span>。這意味著：模型太過自信，可能會因為過度調整而跑偏，所以我們選擇「先不動」，維持現狀。</li>
+            </ol>
+            <p>這個設計的精髓在於，它幫模型擋掉了那些「不穩定」的雜訊，確保每一次的學習都是在理性且有必要的狀況下進行。這就像是導航系統，只有在車子偏離路線嚴重時才進行大幅修正，而不是整路都在微調方向盤，導致車身搖晃。</p>
+            <p>這項機制的重要性在於，它解決了強化學習中最頭痛的問題：<strong>訓練動態不穩定</strong>。透過這種智慧型過濾，我們讓模型在學習策略時，既保有靈活性，又能穩紮穩打，最終達到更優異的執行效果。</p>
+            <hr />
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Partial Inpainting</strong></td>
+            <td style="text-align: left;">部分修復，指不完全提供標準答案，而是留有適度模糊空間的學習方式。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Ground-truth Inpainting</strong></td>
+            <td style="text-align: left;">完全正確修復，指訓練模型時強迫其輸出與標準答案完全一致的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Online RL</strong></td>
+            <td style="text-align: left;">線上強化學習，指機器人在當下的真實環境中邊執行任務、邊進行學習的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Policy Distribution</strong></td>
+            <td style="text-align: left;">策略分佈，指模型在採取行動時，對於各種選擇傾向的機率分佈情況。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Entropy</strong></td>
+            <td style="text-align: left;">熵，用來衡量模型對於當前選擇的「不確定性」或「混亂程度」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Gradient Filtering</strong></td>
+            <td style="text-align: left;">梯度過濾，指在訓練時過濾掉不重要的訊號，只讓有意義的資訊去修正模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Training Dynamics</strong></td>
+            <td style="text-align: left;">訓練動態，指模型在訓練過程中，參數如何隨時間變化與調整的過程。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - MaskedDiffusionLargeLanguageModels</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>揭開 Masked Diffusion LLMs 的神秘面紗</h3>
+            <p>想像一下，你正在玩一個「填字遊戲」。原本完整的句子，被我們隨機塗黑了一些格子（Mask），我們的任務就是看著剩下的殘缺線索，把正確的字填回去。這正是 <strong>Masked Diffusion LLMs</strong>（遮罩擴散大型語言模型）的核心邏輯——透過「破壞」來學習「重建」。</p>
+            <h4>從完美到破碎：前向擴散過程</h4>
+            <p>我們首先定義一個「變髒」的過程，這在技術上稱為<strong>前向擴散</strong>（Forward diffusion process）。我們用時間 <span class="math inline">$t$</span> 來衡量這個過程，當 <span class="math inline">$t$</span> 從 0 變到 1 時，句子會變得越來越破碎：</p>
+            <ul>
+            <li>當 <span class="math inline">$t=0$</span>：句子是完整的（<span class="math inline">$x_0$</span>）。</li>
+            <li>當 <span class="math inline">$t$</span> 增加：我們開始把字變成「遮罩」（Mask tokens）。</li>
+            <li>當 <span class="math inline">$t=1$</span>：整個句子都被塗黑了，什麼都看不見（<span class="math inline">$x_1$</span>）。</li>
+            </ul>
+            <p>這裡有個關鍵指標叫 <span class="math inline">$\alpha_t$</span>（遮罩機率參數），代表一個字「還沒被塗黑」的機率。因為 <span class="math inline">$\alpha_t$</span> 隨著時間 <span class="math inline">$t$</span> 嚴格遞減，所以時間過得越久，句子就越模糊。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">📖 本節術語表</th>
+            <th style="text-align: left;"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Masked Diffusion LLMs</strong></td>
+            <td style="text-align: left;">一種利用「反覆遮蔽與預測」來學習語言規律的生成模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>前向擴散</strong></td>
+            <td style="text-align: left;">指將原始資料逐步加入雜訊（本處指遮罩）變成隨機狀態的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Mask tokens</strong></td>
+            <td style="text-align: left;">遮罩標記，就像試卷上被塗黑的空格，用來掩蓋原本的內容。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong><span class="math inline">$\alpha_t$</span></strong></td>
+            <td style="text-align: left;">衡量資料保留完整度的參數，數值越小代表損壞越嚴重。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h4>數學的指引：如何評估模型的聰明程度？</h4>
+            <p>為了訓練模型，我們需要一個標準來衡量它做得好不好。我們使用 <strong>NELBO</strong>（負證據下界，Negative Evidence Lower Bound），你可以把它想像成一個「罰分系統」。模型的目標就是儘量降低這個分數。</p>
+            <p>對於像 LLaDA 這樣的模型，公式如下：</p>
+            <div class="formula">$$
+            \mathbb{E}_{t \sim U[0,1), x_0 \sim p_{data}, x_t \sim q_{t|0}(x_t|x_0)} \left[ \frac{1}{|x_t|} \sum_{k=1}^t \mathbb{1}[x_k^t = \text{mask}] \log f_\theta(x_k^0 | x_t) \right]
+            $$</div>
+            
+            <p><strong>公式拆解：</strong></p>
+            <ol>
+            <li><span class="math inline">$\mathbb{E}_{t \sim U[0,1)}$</span>：我們隨機選一個時間點，看看模型在這種混亂程度下表現如何。</li>
+            <li><span class="math inline">$\mathbb{1}[x_k^t = \text{mask}]$</span>：這是一個開關，只有當那個位置是「被塗黑的」，我們才要求模型去猜；如果是原本就看得到的字，就不計算。</li>
+            <li><span class="math inline">$f_\theta(x_k^0 | x_t)$</span>：模型根據目前的殘缺句子 <span class="math inline">$x_t$</span>，猜測位置 <span class="math inline">$k$</span> 的原始文字是什麼。</li>
+            </ol>
+            <p><strong>數值示例：</strong><br />
+            假設句子長度 <span class="math inline">$|x_t| = 10$</span>，其中有 3 個位置是 Mask，模型這 3 個都猜對了。那麼該步驟的 Loss 就會變得很小（因為 <span class="math inline">$\log$</span> 後的機率值趨近於 0）。如果模型猜錯，Loss 就會大幅增加，懲罰模型。</p>
+            <p><strong>為什麼這樣設計？</strong><br />
+            如果模型什麼都猜，它會變得懶惰。只計算「被塗黑」的部分，能強迫模型專注於從上下文推敲缺失內容，這正是學習語言核心結構的關鍵。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">📖 本節術語表</th>
+            <th style="text-align: left;"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>NELBO</strong></td>
+            <td style="text-align: left;">訓練時的損失函數，數值越低代表模型預測能力越強。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>NLL</strong></td>
+            <td style="text-align: left;">負對數概似，衡量模型輸出的機率分佈與真實情況的差距。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>LLaDA</strong></td>
+            <td style="text-align: left;">一種具體的 Masked Diffusion 語言模型實現。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Bidirectional unmasking predictor</strong></td>
+            <td style="text-align: left;">一種能夠同時參考左右兩側上下文資訊的預測器。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h4>從殘缺到完整：生成過程</h4>
+            <p>當我們要生成一段文字時，過程是相反的：</p>
+            <ol>
+            <li><strong>輸入提示</strong>：我們給模型一個開頭，這個開頭是不會被塗黑的。</li>
+            <li><strong>逐步修復</strong>：模型從全遮罩狀態開始，透過 <strong>反向過程</strong>（Reverse process）不斷預測那些被遮住的字。</li>
+            <li><strong>保留不變</strong>：我們已經設定好的「提示內容」，在過程中不會被模型隨意更動，確保生成的內容不會跑題。</li>
+            </ol>
+            <p>這種「先由粗到細」或「由空到實」的生成方式，讓模型能像拼圖一樣，一步步拼湊出邏輯通順的文章。這與傳統由左到右逐字生成的模型不同，它具備更強的整體規劃能力。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">📖 本節術語表</th>
+            <th style="text-align: left;"></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Prompt conditional generation</strong></td>
+            <td style="text-align: left;">給定一個開頭提示，要求模型接龍生成的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Ancestral sampling</strong></td>
+            <td style="text-align: left;">從機率分佈中採樣，逐步將遮罩替換為真實文字的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Reverse process</strong></td>
+            <td style="text-align: left;">將雜訊（遮罩）逐步消除，還原出原始資料的過程。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - PolicyOptimizationforMaskedDiffusionLargeLanguageModels</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>為什麼要給 AI 做「政策優化」？從 GRPO 到 Diffusion 模型</h3>
+            <p>想像一下，你是一位訓練馬戲團表演的教練。你手邊有一群剛受訓完的 AI 助理（模型），你需要教它們如何產出更精準的回答。傳統上，我們會使用「政策梯度法」（Policy-gradient methods），簡單來說，就是如果 AI 表現得好，我們就給它多一點糖果，鼓勵它下次繼續那樣做。</p>
+            <p>最近，有一種超級新星技術叫做 <strong>GRPO（群體相對政策優化）</strong>，它之所以厲害，是因為它不用像過去那樣大費周章訓練一個負責「打分數」的裁判模型（Value function），而是讓 AI 一次產出好幾個不同的回答，再把這些回答互相比較，看誰最優質。</p>
+            <h3>拆解 GRPO 的運作公式</h3>
+            <p>GRPO 的目標是讓 AI 在保持不亂跑（透過 KL 散度限制）的前提下，最大化它的獎勵。公式長這樣：</p>
+            <div class="formula">$$L_{GRPO}(\theta) = E_{q \sim D, o_1, \dots, o_G \sim \pi_{\theta_{old}}(\cdot|q)} \left[ \frac{1}{G} \sum_{i=1}^G \left( \frac{1}{|o_i|} \sum_{k=1}^{|o_i|} \min(\rho_i^k A_i, \text{clip}(\rho_i^k, 1-\epsilon, 1+\epsilon) A_i) \right) - \beta D_{KL}[\pi_\theta(\cdot|q) \parallel \pi_{ref}(\cdot|q)] \right]$$</div>
+            
+            <p>別被這串數學嚇到了，我們拆開來看：</p>
+            <ol>
+            <li><strong><span class="math inline">$\rho_i^k = \frac{\pi_\theta(o_i^k|q, o_i^{&lt;k})}{\pi_{\theta_{old}}(o_i^k|q, o_i^{&lt;k})}$</span>（重要性比率）</strong>：這是在看「新腦袋」產出該字詞的機率，跟「舊腦袋」差多少。如果不一樣，我們用 <code>clip</code> 函數把變動幅度鎖在 <span class="math inline">$1-\epsilon$</span> 到 <span class="math inline">$1+\epsilon$</span> 之間，防止模型一次改太多而「壞掉」。</li>
+            <li><strong><span class="math inline">$A_i = r(o_i) - \frac{1}{G} \sum_{j=1}^G r(o_j)$</span>（群體相對優勢）</strong>：這是核心。<span class="math inline">$r(o_i)$</span> 是該回答的得分，減掉所有回答的平均分。如果你得分 90，平均分 70，你的優勢就是 +20，模型就會學到「這樣寫很好，多寫點！」</li>
+            </ol>
+            <p><strong>數值示例</strong>：<br />
+            假設 AI 生成了 2 個回答，回答 A 得分 10 分，回答 B 得分 2 分。<br />
+            平均分 <span class="math inline">$\frac{10+2}{2} = 6$</span>。<br />
+            回答 A 的優勢 <span class="math inline">$A_1 = 10 - 6 = 4$</span>（正向鼓勵，學！）。<br />
+            回答 B 的優勢 <span class="math inline">$A_2 = 2 - 6 = -4$</span>（負向懲罰，改！）。</p>
+            <h3>為什麼 Diffusion 模型用這招很麻煩？</h3>
+            <p>普通的 AI（如 GPT）是「接龍式」的，這讓它們很容易計算機率；但 <strong>Masked Diffusion LLMs（遮罩式擴散語言模型，簡稱 dLLM）</strong> 完全不同。</p>
+            <p>dLLM 生成文字時，並不是一個字一個字接下去，而是透過「多次去噪」（Denoising steps）來不斷修正文字的內容。這導致我們很難直接套用上面的 GRPO 公式，因為：</p>
+            <ul>
+            <li><strong>計算代價太大</strong>：若要精確計算每個字出現的機率，必須考慮整條「去噪路徑」，這在運算上幾乎不可能實現。</li>
+            <li><strong>公式無法拆解</strong>：自動回歸模型（Autoregressive model）可以把句子分解成單字相乘，但 dLLM 的生成過程像是一場混亂的迭代，無法簡單拆解。</li>
+            </ul>
+            <h3>突破口：平均場近似（Mean-Field Approximation）</h3>
+            <p>為了讓 dLLM 也能用上 GRPO 這種高效率的訓練方法，研究人員引入了「平均場近似」。這就像在處理擠沙丁魚的人群時，我們不計算每一個人具體在哪，而是算一個「平均密度」。</p>
+            <p>我們採用 <strong>DiffuGRPO</strong> 的方法，將多步驟的去噪過程簡化為「單次蒙地卡羅估計」（Single-sample Monte Carlo estimate）。這意味著：我們不再執著於計算複雜的完整路徑機率，而是用單次抽樣出來的結果來逼近真實值。這雖然會有一點點誤差，但在實務上卻讓訓練變得可行，模型終於能透過「群體比較」的方式進行自我優化了。</p>
+            <p>📖 <strong>本節術語表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>政策梯度法 (Policy-gradient methods)</strong></td>
+            <td style="text-align: left;">一種透過獎勵機制，鼓勵模型往更好方向調整參數的學習方式。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>GRPO</strong></td>
+            <td style="text-align: left;">不需訓練額外裁判模型，透過比較同一題目下多個回答的好壞來優化模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>KL 散度 (KL regularization)</strong></td>
+            <td style="text-align: left;">用來衡量新舊模型差距的指標，防止模型學過頭而崩潰。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>重要性比率 (<span class="math inline">$\rho$</span>)</strong></td>
+            <td style="text-align: left;">衡量新模型與舊模型在生成某個字詞時機率的比例。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Masked Diffusion LLMs (dLLM)</strong></td>
+            <td style="text-align: left;">一種透過不斷修正（去噪）來產出文字的模型，與傳統接龍式模型不同。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>平均場近似 (Mean-Field Approximation)</strong></td>
+            <td style="text-align: left;">將複雜的群體互動簡化為單一平均數值來計算的方法，降低運算量。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>蒙地卡羅估計 (Monte Carlo estimate)</strong></td>
+            <td style="text-align: left;">利用隨機抽樣的結果，來推估整體情況的統計方法。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-5">
+        <h2>Section 5 - IGPO:InpaintingGuidedPolicyOptimization</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>當努力等於零：GRPO 的「零優勢困境」</h3>
+            <p>想像一下，你是一位老師，要求學生針對同一個題目寫出五個答案，並根據答案的好壞給予分數，藉此調整學生的學習策略（這就是 <strong>GRPO</strong>，群體相對策略優化）。但問題來了，如果五個學生的答案全都寫對，或者全都寫錯，他們拿到的分數一模一樣。這時，你無法判斷誰更好、誰更差，你的獎勵機制瞬間失效，這就是所謂的「零優勢困境」。</p>
+            <p>在數學上，這個困境發生在獎勵的計算公式：</p>
+            <div class="formula">$$A^k_i = r(o_i) - \frac{1}{G} \sum_{j=1}^{G} r(o_j)$$</div>
+            
+            <p>這裡的變數含義如下：</p>
+            <ul>
+            <li><span class="math inline">$A^k_i$</span>：第 <span class="math inline">$i$</span> 個答案的「優勢值」（代表這個答案比平均好多少）。</li>
+            <li><span class="math inline">$r(o_i)$</span>：第 <span class="math inline">$i$</span> 個答案得到的獎勵分數。</li>
+            <li><span class="math inline">$\frac{1}{G} \sum_{j=1}^{G} r(o_j)$</span>：這群答案的平均獎勵分數。</li>
+            </ul>
+            <p><strong>舉個例子：</strong><br />
+            若我們抽樣 3 個答案，分數分別是 <span class="math inline">$[1, 1, 1]$</span>（全對）。<br />
+            代入公式：<span class="math inline">$1 - \frac{1+1+1}{3} = 1 - 1 = 0$</span>。<br />
+            當優勢值 <span class="math inline">$A^k_i$</span> 為 0 時，整個更新模型的公式就會變成 0，模型根本不知道該學什麼，導致這群答案的計算資源通通白費。</p>
+            <p>為了突破這個困境，我們特別針對「全錯」的情況，引入了一套「提示引導機制」。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>GRPO</strong></td>
+            <td style="text-align: left;">一種訓練模型的方法，透過讓模型產生多個答案並比較其好壞來進行學習。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>零優勢困境</strong></td>
+            <td style="text-align: left;">當模型產生的答案獎勵值全相同時，優勢值為 0，導致模型無法進行有效學習。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>優勢值 (Advantage)</strong></td>
+            <td style="text-align: left;">衡量一個答案比平均表現好出多少的指標，正值代表優於平均，負值則反之。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>用「遮蓋填空」來注入提示：IGPO 的核心邏輯</h3>
+            <p>當模型已經徹底陷入「全錯」的死胡同，我們該怎麼引導它走回正軌？我們引入了「遮蓋填空」的概念。</p>
+            <p>想像你在玩「填字遊戲」。原本模型面對一個問題時，必須從頭猜到尾。我們現在改變規則：先給它正確答案中的一小部分碎片（我們稱為「提示」），其他的空格則蓋住，讓模型透過這已知的線索，去填充剩下的空白。</p>
+            <p>這透過以下方式達成：</p>
+            <ul>
+            <li><strong>遮蓋語言模型 (dLLM)</strong>：模型會進行「反覆去噪」，也就是不斷地修改答案，直到內容變得連貫。</li>
+            <li><strong>提示注入 (Hint Injection)</strong>：我們把正確答案 <span class="math inline">$y^*$</span> 中的某些片段，透過二進位遮罩 <span class="math inline">$m$</span> 強制填入模型輸入中：</li>
+            </ul>
+            <div class="formula">$$z_{hint}[i] = y^*[i] \text{ if } m[i] = 1 \text{ and } i \leq |y^*|, \text{ mask otherwise.}$$</div>
+            
+            <p>簡單來說，若 <span class="math inline">$m[i]=1$</span>，這個位置就填入正確答案；若 <span class="math inline">$m[i]=0$</span>，則顯示為「遮罩（mask）」，讓模型去猜。</p>
+            <p>為了設計有效的提示模式，我們把正確答案切成一塊塊的「片段」 <span class="math inline">$C = \{c_1, c_2, ..., c_N\}$</span>，每個片段的長度在 <span class="math inline">$s_{min}$</span> 到 <span class="math inline">$s_{max}$</span> 之間隨機抽樣。我們刻意不洩漏最終答案，只給予中間的推導過程，防止模型變成只會抄答案的機器。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>遮蓋語言模型 (dLLM)</strong></td>
+            <td style="text-align: left;">一種能識別並填補文本中缺失內容的模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>反覆去噪</strong></td>
+            <td style="text-align: left;">模型反覆修改答案，像擦掉錯誤重寫，直到內容正確連貫的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>提示注入</strong></td>
+            <td style="text-align: left;">在模型學習時，故意放入部分正確答案，引導模型學會正確的思考路徑。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>二進位遮罩 (Binary Mask)</strong></td>
+            <td style="text-align: left;">一種標記法，告訴模型哪些位置是已知的正確答案（1），哪些位置是需要猜的空白（0）。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>智慧調節：什麼時候該給提示？</h3>
+            <p>最後，我們將上述機制整合為 <strong>IGPO (Inpainting Guided Policy Optimization)</strong>。</p>
+            <p>這是一個「彈性」系統：它並不是無時無刻都在給提示（否則模型會過度依賴提示，懶得自己動腦）。<strong>它只有在發生「全錯」這種零優勢困境時才會觸發</strong>。一旦觸發，我們會隨機改變提示的比率（給多少提示）和片段長度，讓模型每次訓練看到的「線索」都不一樣。</p>
+            <p>這種作法就像是一個嚴格又聰明的教練，平常讓學生自己練習；當學生遇到死胡同完全寫不出來時，教練才介入，給予一點點關鍵線索，幫助學生重新建立信心並學會正確的解題邏輯。透過這種方式，我們確保每一滴運算資源都能轉化為有效的學習動力。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">本文提出的方法，透過在模型寫錯時提供關鍵提示，引導模型學會正確路徑。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>彈性提示注入</strong></td>
+            <td style="text-align: left;">非固定式給予提示，僅在模型表現極差時才依需求動態提供，避免模型產生依賴。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>當模型集體「交白卷」：透過「填空」來拯救訓練</h3>
+            <p>想像一下，你是一位老師，派了一組學生（模型）去解答數學題。結果這組學生非常一致，全部都寫錯了（正確性獎勵 <span class="math inline">$r(o_i) = 0$</span>）。在這種情況下，模型根本學不到任何東西，因為它無法分辨什麼是「比較好」的答案，這就是所謂的「零優勢（Zero-advantage）」困境。</p>
+            <p>為了打破這個僵局，我們引入了 <strong>Inpainting（修補/填空）</strong> 機制。當我們發現模型產出的這批答案全是廢話時，我們不直接放棄，而是像給考卷加上「提示框」一樣，強迫模型在特定提示（Hint）的引導下，重新「填空」補全答案。</p>
+            <p>我們為每個答案設定一個不同的「提示注入比率」 <span class="math inline">$\eta_i \sim U[\eta_{low}, \eta_{high}]$</span>。這就像是給不同學生發放不同深度的提示卡：有的提示給得多（幫助大），有的給得少（考驗獨立思考）。透過這樣的方式，我們確保生成的答案具備多樣性。</p>
+            <h3>巧妙的「換血」策略</h3>
+            <p>我們並不是無條件信任這些「補考」出來的答案，只有經過檢驗且確實正確的（<span class="math inline">$r(\tilde{o}_i) = 1$</span>）才能參加接下來的評分。</p>
+            <p>我們設定一個替換數量 <span class="math inline">$K$</span>：</p>
+            <div class="formula">$$K = \min(|\{\tilde{o}_i : r(\tilde{o}_i) = 1\}|, \lfloor \lambda G \rfloor)$$</div>
+            
+            <ul>
+            <li><strong>變數拆解</strong>：<ul>
+            <li><span class="math inline">$|\{\tilde{o}_i : r(\tilde{o}_i) = 1\}|$</span>：我們成功補考並寫對的答案數量。</li>
+            <li><span class="math inline">$\lambda \in (0, 1)$</span>：我們允許替換的上限比例（例如設為 0.5，代表最多只能換掉一半的答案）。</li>
+            <li><span class="math inline">$G$</span>：原本每一輪產出的答案總數。</li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>舉個例子：</strong> 假設原本有 <span class="math inline">$G=10$</span> 個答案全都錯誤。我們設定 <span class="math inline">$\lambda=0.5$</span>（代表最多換 5 個）。如果我們透過填空機制成功救回了 7 個正確答案，那麼 <span class="math inline">$K = \min(7, 5) = 5$</span>。我們就會用這 5 個正確答案替換掉原本 5 個錯誤答案，讓模型重新學習「什麼是正確的」。</p>
+            <p>這為什麼有效？因為如果模型總是全錯，它的學習方向就會停滯。我們適度地把正確答案混入其中，就像在泥沼中丟入墊腳石，讓模型能感受到「這才是我該走的正確方向」，從而維持了<strong>優勢（Advantage）</strong>的變異性。</p>
+            <h3>IGPO 的完整進化目標</h3>
+            <p>現在我們把這種機制整合進 <strong>IGPO (Inpainting Guided Policy Optimization)</strong> 的學習公式裡：</p>
+            <div class="formula">$$L_{IGPO}(\theta) = \mathbb{E}_{q \sim D, \{o_1, \dots, o_{G-K}, \tilde{o}_1, \dots, \tilde{o}_K\} \sim \text{IGPO-Sample}} \left[ \frac{1}{G} \sum_{i=1}^G \frac{1}{L_i} \sum_{k=1}^{L_i} \min \left( \rho_i^k A_i^k, \text{clip}(\rho_i^k, 1-\epsilon, 1+\epsilon) A_i^k \right) - \beta D_{KL}[\pi_\theta(\cdot|q) \parallel \pi_{ref}(\cdot|q)] \right]$$</div>
+            
+            <ul>
+            <li><strong>公式的核心意義</strong>：<ul>
+            <li><span class="math inline">$\text{IGPO-Sample}$</span>：這是我們剛提到的「換血」過程，確保每一批樣本裡都混入正確的補考答案。</li>
+            <li><span class="math inline">$\rho_i^k A_i^k$</span>：代表我們希望模型對好的動作（<span class="math inline">$A$</span> 大）給予更高機率。</li>
+            <li><span class="math inline">$\text{clip}(\dots)$</span>：限制模型每次調整不要跑太快，避免學偏。</li>
+            <li><span class="math inline">$\beta D_{KL}$</span>：確保模型不要離「最初的聰明樣貌（參考模型）」太遠。</li>
+            </ul>
+            </li>
+            </ul>
+            <h3>為什麼這樣設計最穩？</h3>
+            <p>我們參考了 DiffuGRPO 的技術，將所有完成後的 token（符號）進行遮蔽，並簡化了提示詞的遮蔽邏輯。因為我們迭代次數少（僅 4 次），所以不需要像以前那樣刻意遮蔽提示詞來防過擬合。同時，我們引入了「平均場近似（Mean-field approximation）」來計算序列整體的比率，這能讓整個訓練過程像在平坦的道路上開車，不會因為某個答案的劇烈波動而崩潰。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Inpainting</strong></td>
+            <td style="text-align: left;">指根據給定的部分內容，透過模型進行「填空」補全完整答案的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Zero-advantage</strong></td>
+            <td style="text-align: left;">指模型產出的所有樣本獎勵都一樣（例如全錯），導致模型無法判斷好壞，失去學習的推動力。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Hint injection ratio</strong></td>
+            <td style="text-align: left;">提示注入比率，決定填空時給予模型多少引導線索。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Advantage</strong></td>
+            <td style="text-align: left;">優勢，代表一個答案相較於平均水準表現好多少。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">一種透過填空引導來優化模型政策的學習方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>GRPO</strong></td>
+            <td style="text-align: left;">一種常見的強化學習策略，讓模型透過產出多個答案並比較來學習。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>DiffuGRPO</strong></td>
+            <td style="text-align: left;">基於擴散模型思想改良的 GRPO 方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Mean-field approximation</strong></td>
+            <td style="text-align: left;">平均場近似，將複雜的群體互動簡化為單一平均效應，用於提升計算穩定性。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Importance-ratio</strong></td>
+            <td style="text-align: left;">重要性比率，用於衡量新舊政策之間的差異，防止訓練過度震盪。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h1>當學霸教練也碰壁：用熵值過濾機制讓模型聰明吸收提示</h1>
+            <p>想像一下，你是一位正在學習解數學題的學生。你的老師（這裡指 <strong>IGPO</strong> 機制）為了讓你進步，會適時給你一些正確的解題步驟（Hint Tokens，提示標記）。但問題來了：如果你對某個步驟已經很有把握，老師卻硬要你改掉它，這會讓你感到困惑，甚至打亂你的解題邏輯。</p>
+            <p>這就是我們在訓練模型時遇到的「分佈不匹配」問題。如果強行用外部的「正確答案」去修正模型當下信心十足的判斷，模型會因為「過於固執」而導致訓練崩潰。為了讓學習更穩定，我們引入了「基於熵的梯度過濾」策略。</p>
+            <h3>為什麼模型需要「過濾」提示？</h3>
+            <p>我們引入了一個概念叫 <strong>熵 (Entropy)</strong>，你可以把它想像成「不確定性指標」。</p>
+            <ul>
+            <li>熵值越高：模型覺得這裡很有挑戰性，它對這一步不確定，非常渴望獲得外部引導。</li>
+            <li>熵值越低：模型已經有很強的定見了，這時候強行塞入外部資訊，反而會引發衝突，讓梯度（模型參數更新的依據）變得雜亂無章。</li>
+            </ul>
+            <p>為了避免這種「硬碰硬」的衝突，我們決定：只教導那些模型自己也拿不準的地方。</p>
+            <h3>公式拆解：如何挑選「最該學習」的位置？</h3>
+            <p>我們設定了一個門檻值 <span class="math inline">$\tau$</span>（百分位數，例如 <span class="math inline">$\tau = 0.8$</span> 代表只看最不確定的前 20% 位置）。</p>
+            <p>對於每一個提示標記的位置，我們先計算其熵值 <span class="math inline">$H$</span>：</p>
+            <div class="formula">$$H(p) = - \sum_{i} p_i \log p_i$$</div>
+            
+            <ul>
+            <li>
+            <p><strong>變數解釋</strong>：</p>
+            <ul>
+            <li><span class="math inline">$p$</span>：模型對於下一個詞出現機率的分佈。</li>
+            <li><span class="math inline">$p_i$</span>：模型認為下一個詞是第 <span class="math inline">$i$</span> 個候選詞的機率。</li>
+            <li><span class="math inline">$\log p_i$</span>：機率的對數值，用於衡量資訊量。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>數值範例</strong>：<br />
+                假設模型在某個位置，面對三個選項：</p>
+            <ul>
+            <li>選項 A：0.33, B：0.33, C：0.34。計算出熵 <span class="math inline">$H \approx 1.09$</span>（高度不確定）。</li>
+            <li>選項 A：0.9, B：0.05, C：0.05。計算出熵 <span class="math inline">$H \approx 0.32$</span>（模型很有把握）。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>結果意義</strong>：當我們設定只更新「熵值最高」的區塊時，我們只會針對上述第一種情況進行學習。這代表模型只會在它原本就「猶豫不決」的地方，才會聽取提示標記的建議，這極大地提升了學習的穩定性。</p>
+            </li>
+            </ul>
+            <h3>為什麼這樣設計最有效？</h3>
+            <p>這套設計有兩個深層的洞察：</p>
+            <ol>
+            <li><strong>順水推舟</strong>：在模型「不確定」的位置給予指導，就像在學生已經發現自己寫錯時給予糾正，學習效果最好；反之，在模型已經認定正確的地方強行干預，只會造成干擾。</li>
+            <li><strong>穩定梯度更新</strong>：高熵位置意味著機率分佈較平坦，這時引入正確的提示資訊，可以產生更平穩的梯度更新，避免模型參數劇烈跳動。</li>
+            </ol>
+            <p>總結來說，這個過濾機制就像是一位懂得「察言觀色」的教練。它不強迫學生改變已有的信念，而是專注於在學生感到困惑的關鍵節點提供指引，讓模型在吸收新知識的同時，維持內部邏輯的連貫與穩定。</p>
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">一種透過填空引導來優化模型決策的訓練方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Hint Tokens</strong></td>
+            <td style="text-align: left;">模型訓練時，由外部提供給模型的正確解題步驟或標記。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Entropy (熵)</strong></td>
+            <td style="text-align: left;">用來衡量「不確定性」的指標；值越高代表模型越猶豫。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Zero-advantage scenarios</strong></td>
+            <td style="text-align: left;">指模型在訓練時，缺乏明確的優勢訊號來指導更新的場景。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Off-policy learning</strong></td>
+            <td style="text-align: left;">使用與當前模型策略不同的數據來源進行學習。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Gradient Updates</strong></td>
+            <td style="text-align: left;">透過計算誤差，調整模型內部參數以求更精確的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Distribution mismatch</strong></td>
+            <td style="text-align: left;">外部提示的分佈與模型當前認知分佈不一致的情況。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong><span class="math inline">$\tau$</span> percentile</strong></td>
+            <td style="text-align: left;">門檻參數，用來決定要保留多少比例的高不確定性資料。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-6">
+        <h2>Section 6 - Length-AlignedSFTviaConciseReasoningTraceRewriting</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>當推理模型遇上「長度撞牆」：為什麼我們需要精簡思維鏈？</h3>
+            <p>想像一下，你是一位正在準備馬拉松的跑者。如果你平時練習時跑得氣喘吁吁、路線又長又亂，到了正式比賽卻要求你在縮短的賽道上保持同樣的節奏，這肯定會出問題。</p>
+            <p>在訓練 <strong>dLLMs (mask-based Diffusion Large Language Models，即基於擴散模型的遮蔽式大型語言模型，例如 LLaDA)</strong> 時，我們就遇到了類似的「長度失調」困境。這些模型與常見的 ChatGPT 不同，它們在計算時不能使用 <strong>KV Cache (鍵值快取，一種讓模型記憶之前計算結果以加速生成的技術)</strong>，這導致每生成一個字，模型都得把整個句子重新算一遍。為了讓訓練不至於跑上幾個月，我們被迫將模型生成的長度限制在 256 個 Token（字元單位）以內。</p>
+            <p>然而，現有的推理數據集（比如 OpenR1）動不動就長達 10,000 個 Token。如果你直接拿這些數據去訓練模型，模型就會產生嚴重的「分佈失配」——它在訓練時學的是長篇大論，到了實測時卻被強制關在 256 個字的「小房間」裡。這不僅讓模型困惑，還會因為數據中包含過多重複的廢話，導致模型無法抓到邏輯重點。</p>
+            <h3>核心解法：精簡思維鏈重寫 (Concise Reasoning Trace Rewriting)</h3>
+            <p>為了打破這個僵局，我們提出了一種「精簡重寫」策略。簡單來說，就像是請一位專業編輯，把冗長的草稿整理成精煉的重點筆記。</p>
+            <p>我們利用 <strong>LLaMA-4-Maverick</strong> 這位「編輯」，對原本囉唆的推理過程進行了三步優化：</p>
+            <ol>
+            <li><strong>刪除贅字</strong>：把重複的碎碎念全部砍掉。</li>
+            <li><strong>邏輯濃縮</strong>：把解釋了一整段的廢話，濃縮成一句嚴謹的數學公式。</li>
+            <li><strong>結構化</strong>：保留最核心的邏輯推導步驟，確保模型「學得精」而不是「學得久」。</li>
+            </ol>
+            <p>這種做法的核心洞察在於：<strong>模型不需要看到一萬字的廢話才能學會邏輯，它只需要看到足夠精簡、結構清晰的過程。</strong> 當我們訓練模型的數據長度與模型實際的「生存空間」（256 Token）對齊後，模型就不需要在學習推理品質的同時，還要分心去學如何「壓縮長度」。</p>
+            <h3>實戰成效與小技巧</h3>
+            <p>透過這種 <strong>Length-Aligned SFT (長度對齊監督式微調)</strong>，模型表現出了驚人的優勢。我們不僅解決了長度不匹配的問題，還發現一個有趣的操作心得：與傳統的 <strong>AR LLMs (Auto-Regressive Large Language Models，即傳統從左到右一個字一個字寫出來的模型)</strong> 不同，遮蔽式模型（dLLMs）非常「耐練」。</p>
+            <p>我們發現給予它們長達 200 個 Epoch（訓練輪次，即把數據集完整看過一遍的次數）的訓練時間，模型的效果會持續進步。這就像是這類模型需要透過更長時間的「反覆咀嚼」，才能從遮蔽的數據中體會到邏輯的精髓。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>dLLMs</strong></td>
+            <td style="text-align: left;">一種特殊的語言模型，它不是一個字一個字接龍，而是像修圖一樣同時處理整段文字並逐步優化。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>KV Cache</strong></td>
+            <td style="text-align: left;">模型的「短期記憶」，用來存儲先前計算過的資訊，避免重複勞動，加速生成。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Token</strong></td>
+            <td style="text-align: left;">模型處理文字的基本單位，可以視為一個單字或一個中文字。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>SFT</strong></td>
+            <td style="text-align: left;">給模型看正確答案的練習題，讓它模仿人類的回答方式進行微調。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>RL</strong></td>
+            <td style="text-align: left;">強化學習，讓模型透過嘗試錯誤來獲得獎勵，從而提升表現。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>AR LLMs</strong></td>
+            <td style="text-align: left;">最常見的語言模型結構，像寫作文一樣，根據前文預測下一個字是什麼。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Epoch</strong></td>
+            <td style="text-align: left;">訓練模型時，將所有訓練數據完整看過一遍的週期次數。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Length-Aligned SFT</strong></td>
+            <td style="text-align: left;">一種特殊的微調方法，強制訓練數據的長度符合模型實際運作時的長度限制。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-7">
+        <h2>Section 7 - Experiments</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗設計：解開數學推理的黑盒子</h3>
+            <p>想像一下，你是一位正在訓練 AI 成為「數學小老師」的教練。你手上有一個很聰明的學生（<strong>LLaDA</strong>），但它有時會像個過度自信的考生，在計算過程中「迷路」或「卡死」。我們設計了一系列實驗，就像是要為這位學生進行一場全方位的「診斷測試」，看看我們提出的新訓練方法是否真的能讓它變強。</p>
+            <p>我們主要想解決三個核心疑問：</p>
+            <ol>
+            <li><strong>全套特訓真的有效嗎？</strong> 我們結合了「長度對齊的監督式微調（Length-aligned SFT）」與「IGPO 強化學習」，這就像是先教學生正確的解題格式，再給他實戰演練的機會。我們想確認這套組合拳能不能減少他直接放棄（導致全錯）的壞習慣。</li>
+            <li><strong>適度提示的魔力：</strong> 在訓練過程中，我們引入了「部分提示注入（Partial hint injection）」。這就像考試時，老師不會直接告訴你完整答案，而是適度引導你往正確方向想。我們想知道這種方式，比起「直接給標準答案」的死記硬背，到底好在哪裡？</li>
+            <li><strong>微調參數的影響：</strong> 就像調整收音機的頻率，我們會嘗試改變「熵過濾門檻（Entropy filtering thresholds）」和「推理路徑重寫（Reasoning trace rewriting）」。我們想確認這些精細的調整，能不能讓訓練過程更平穩，不會讓模型學到一半就「崩潰」。</li>
+            </ol>
+            <p>我們透過這些實驗，不只是為了看分數，更重要的是理解 AI 是如何透過這些機制，從原本的胡亂瞎猜，進化到有邏輯的解題專家。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>LLaDA</strong></td>
+            <td style="text-align: left;">一種以擴散模型為基礎的語言模型，負責進行推理生成。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Length-aligned SFT</strong></td>
+            <td style="text-align: left;">長度對齊的監督式微調，透過調整訓練資料，讓模型學習適當長度的推導過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">一種強化學習方法（Iterative Ground-truth Policy Optimization），透過迭代讓模型產生的答案更接近標準答案。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Partial hint injection</strong></td>
+            <td style="text-align: left;">部分提示注入，在訓練時提供部分關鍵線索，而非直接給出完整解答。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Entropy filtering</strong></td>
+            <td style="text-align: left;">熵過濾，一種篩選機制，用來過濾掉模型過度自信但可能錯誤的推理過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Reasoning trace rewriting</strong></td>
+            <td style="text-align: left;">推理路徑重寫，將原本混亂的思考過程修改為有邏輯、結構清晰的步驟。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>深入評估：實作細節與數據洞察</h3>
+            <p>在進入實驗數據前，我們先拆解一下核心技術的運作邏輯，看看為什麼這些設計能夠發揮效用。</p>
+            <h4>1. 關於推理路徑的優化</h4>
+            <p>如果 AI 的思考過程雜亂無章，就像寫了一篇沒有大綱的文章，學生很難理解。我們透過 <strong>Reasoning trace rewriting</strong> 將推理過程標準化，確保模型的每一步都能邏輯推導。</p>
+            <h4>2. 關於 IGPO 的運作機制</h4>
+            <p>IGPO 的核心邏輯在於如何讓模型在訓練時，既能自由探索，又能被拉回正軌。其數學目標函數通常包含對策略的優化：</p>
+            <div class="formula">$$ \max_{\pi_\theta} \mathbb{E}_{x \sim \mathcal{D}, y \sim \pi_\theta} [R(x, y)] - \beta D_{KL}(\pi_\theta || \pi_{ref}) $$</div>
+            
+            <ul>
+            <li>
+            <p><strong>公式白話解：</strong></p>
+            <ul>
+            <li><span class="math inline">$\max_{\pi_\theta}$</span>：我們在調整 AI 的大腦參數（<span class="math inline">$\theta$</span>），目標是讓表現最大化。</li>
+            <li><span class="math inline">$\mathbb{E}[R(x, y)]$</span>：這是「獎勵期望值」，指模型產出正確答案時給予正向鼓勵。</li>
+            <li><span class="math inline">$D_{KL}$</span>：這是「KL 散度」，用來衡量 AI 現在的思考方式（<span class="math inline">$\pi_\theta$</span>）與原始穩定的思考方式（<span class="math inline">$\pi_{ref}$</span>）差多遠。</li>
+            <li><span class="math inline">$\beta$</span>：這是一個「保守係數」，如果 <span class="math inline">$\beta$</span> 很大，模型就不敢亂發揮，會緊跟著參考範本；如果 <span class="math inline">$\beta$</span> 很小，模型就敢大膽嘗試。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>數值範例：</strong><br />
+                假設我們設定 <span class="math inline">$\beta = 0.1$</span>，這代表我們允許 AI 在維持與標準解題邏輯 90% 相似度的前提下，有 10% 的空間進行靈活的探索。如果經過訓練後，模型產出的 <span class="math inline">$R$</span>（準確率獎勵）從 0.6 提升到 0.8，即便稍微增加了與參考範本的差異（<span class="math inline">$D_{KL}$</span> 稍微變大），但整體總分依然提升。這意味著：<strong>適度的靈活，能換來更高的解題潛能。</strong></p>
+            </li>
+            </ul>
+            <h4>3. 為什麼這些設計有效？</h4>
+            <p>透過 <strong>Entropy filtering</strong>，我們剔除掉那些「模型本身也很困惑」的樣本（熵值高，代表模型在多個選項間猶豫不決）。這能有效避免 AI 在學習過程中產生「學習雜訊」，讓梯度更新方向更精確。</p>
+            <p>這種設計不僅是為了讓分數好看，更重要的是讓 AI 建立起一套「自我檢查」機制，當它遇到困難的數學題時，會優先選擇最穩定的推導路徑。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Reasoning trace rewriting</strong></td>
+            <td style="text-align: left;">推理路徑重寫，將推理過程修改為邏輯通順的步驟。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">一種透過迭代學習來優化解題策略的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>KL 散度 (<span class="math inline">$D_{KL}$</span>)</strong></td>
+            <td style="text-align: left;">衡量兩個機率分布之間差異的指標，數值越小代表越相似。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Entropy filtering</strong></td>
+            <td style="text-align: left;">透過測量模型的猶豫程度（熵）來過濾掉不確定性過高的訓練樣本。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>梯度更新</strong></td>
+            <td style="text-align: left;">指 AI 根據錯誤進行自我修正、調整內部參數的過程。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-8">
+        <h2>Section 8 - Complete Training Recipe</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>第一階段：打好基礎——長度對齊的監督式微調</h3>
+            <p>想像你要訓練一位學生解數學題。如果我們平時練習的題目步驟都很短，但考試時卻要求長篇大論的推導，學生肯定會不知所措。這就是為什麼我們在訓練模型時，必須先進行「長度對齊」。</p>
+            <p>我們第一步採用的是 <strong>監督式微調（Supervised Fine-Tuning, SFT）</strong>。簡單來說，就是找來一堆正確的「題目 + 解題過程」範本，讓模型直接模仿。我們以 LLaDA-8B-Instruct 這個模型為基礎，餵給它 OpenR1-Math-220K 數據集裡的 9.4 萬道數學題。</p>
+            <p>關鍵就在於，我們把所有解題過程（Reasoning Traces）全部「重新改寫」了。我們確保這些練習用的步驟長度，與後面模型真正上戰場（進行強化學習或評測）時會遇到的長度是一致的。這樣做就像是告訴模型：「別偷懶，之後考試要寫多長，現在練習就寫多長」，確保它不會產生「訓練時習慣寫兩句，實戰時卻要寫兩百句」的認知落差。</p>
+            <p>📖 <strong>本節術語表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>監督式微調 (SFT)</strong></td>
+            <td style="text-align: left;">透過提供「問題與標準答案」的範例，手把手教模型怎麼回答。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>LLaDA-8B-Instruct</strong></td>
+            <td style="text-align: left;">本次實驗使用的基礎語言模型，擁有 80 億個參數，且已經過基本的指令微調。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>OpenR1-Math-220K</strong></td>
+            <td style="text-align: left;">包含 22 萬筆數學題目的大型數據集，我們從中挑選了 9.4 萬筆來使用。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>推理軌跡 (Reasoning Traces)</strong></td>
+            <td style="text-align: left;">模型從問題出發，到得出最終答案之間，所產生的完整思考過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>長度對齊 (Length-Aligned)</strong></td>
+            <td style="text-align: left;">讓練習時的回答長度與正式考試時要求的長度保持一致，避免模型出現長度偏差。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>第二階段：深度進化——IGPO 強化學習</h3>
+            <p>如果說第一階段是模仿寫作，那第二階段就是「自我超越」。我們引入了 <strong>IGPO (Inpainting-Guided Policy Optimization，填充引導策略優化)</strong>。</p>
+            <p>這個技術的核心邏輯非常聰明，叫做「彈性填充」。你可以把它想像成修復一幅破損的油畫：如果模型在解題中間卡住了，我們利用 MetaMathQA 數據集提供的豐富推理過程作為「拼圖」，引導模型學會如何把缺少的關鍵步驟補上去。</p>
+            <p>為什麼要這樣做？因為直接讓模型自己亂猜，會消耗極大的運算資源且容易失敗。透過 <strong>彈性填充 (Elastic Inpainting)</strong>，我們給了模型一條清晰的輔導軌跡。這就像是在教練陪同下進行深蹲練習，教練會給予適度的動作糾正（引導訊號），既能達到強化推理能力的目標，又不會讓我們的運算伺服器過載。</p>
+            <h4>核心公式拆解</h4>
+            <p>在策略優化中，我們的目標函數通常表示為：</p>
+            <div class="formula">$$ \mathcal{L}_{IGPO} = \mathbb{E}_{q \sim \pi_{\theta}} [R(q) \cdot \log \pi_{\theta}(q|p)] $$</div>
+            
+            <ul>
+            <li>
+            <p><strong>變數意義：</strong></p>
+            <ul>
+            <li><span class="math inline">$\pi_{\theta}$</span>：目前模型的大腦參數，我們想要優化的對象。</li>
+            <li><span class="math inline">$q$</span>：模型生成的推理過程。</li>
+            <li><span class="math inline">$R(q)$</span>：獎勵函數，評估這個推理過程 <span class="math inline">$q$</span> 好不好，好的話給高分。</li>
+            <li><span class="math inline">$p$</span>：輸入的問題。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>舉例說明：</strong><br />
+                假設模型解出一道題目獲得獎勵 <span class="math inline">$R(q) = 0.9$</span> (滿分1)，而該步驟的機率對數 <span class="math inline">$\log \pi_{\theta}$</span> 為 <span class="math inline">$-0.5$</span>。<br />
+                計算結果為 <span class="math inline">$0.9 \times (-0.5) = -0.45$</span>。<br />
+                這個負數值在優化算法中會透過梯度上升，推動模型調整參數，讓該路徑的發生機率在下次變得更高。</p>
+            </li>
+            <li>
+            <p><strong>實務意義：</strong><br />
+                這代表如果模型生成的推理軌跡能拿到高分（例如準確算出答案），系統就會透過這個數學公式「強化」該路徑的權重。就像是告訴模型：「這條路走對了，下次再遇到類似題目，請優先考慮這麼思考。」</p>
+            </li>
+            </ul>
+            <p>📖 <strong>本節術語表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">一種讓模型透過「填補正確步驟」來自我修正與進化的強化學習方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>填充引導策略優化</strong></td>
+            <td style="text-align: left;">透過給予局部正確的步驟引導，讓模型在策略選擇上更精準。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>MetaMathQA</strong></td>
+            <td style="text-align: left;">一個專門提供高品質數學解題邏輯的數據集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>彈性填充 (Elastic Inpainting)</strong></td>
+            <td style="text-align: left;">在解題序列中，靈活地補入關鍵推理步驟，就像補齊拼圖一樣。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>獎勵函數 (Reward Function)</strong></td>
+            <td style="text-align: left;">一種評分機制，用來判定模型產出的答案與思考過程是否正確或有效。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-9">
+        <h2>Section 9 - Experimental Setup</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗室的準備工作：如何打造強大的數學模型？</h3>
+            <p>想像一下，你要訓練一位選手參加「數學奧林匹克競賽」。你不能只給他看題目，還得提供優質的練習題、專業的教練方法，以及強大的硬體設備讓他能快速運算。在這個研究中，我們就是為了這場數學挑戰賽，搭建了一個頂尖的實驗室。</p>
+            <h4>1. 基底與練習題：給模型最好的教材</h4>
+            <p>我們選擇了 <strong>LLaDA-8B-Instruct</strong> 作為核心引擎。為什麼選它？因為它已經具備了不錯的基礎理解能力。為了讓它更擅長解題，我們餵給它 <strong>MetaMathQA</strong> 資料集。</p>
+            <p>特別的是，我們使用了其中的「答案增強（Answer Augmentation）」版本。這就像是給練習題加上了詳盡的「解題思路筆記」，而不僅僅是正確答案。我們整合了兩個著名的數學題庫：<strong>GSM8K</strong>（國小至國中水準的數學應用題）與 <strong>MATH500</strong>（更高難度的競賽數學），剔除掉重複的題目後，我們手上總共掌握了 12,794 道獨特的數學考題。這就是模型練功的核心素材。</p>
+            <h4>2. 學習策略：從模仿到自我突破</h4>
+            <p>為了讓模型進步，我們採用了兩個階段：</p>
+            <ul>
+            <li><strong>監督式微調（Supervised Fine-tuning, SFT）</strong>：這是基礎訓練。我們使用 <strong>OpenR1-Math-220K</strong> 資料集，這些題目都附帶了經過改寫、邏輯更清晰的「推導步驟」。這就像是讓選手先看懂標準答案的寫法，學會如何「思考與敘述」。</li>
+            <li><strong>強化學習（Reinforcement Learning, RL）</strong>：這是進階訓練。我們設定了 <span class="math inline">$1.2$</span> 的 <strong>採樣溫度（Sampling Temperature）</strong>。</li>
+            </ul>
+            <p>這裡的公式邏輯很直觀：</p>
+            <div class="formula">$$ \text{Output} \propto \exp\left(\frac{\text{Logits}}{T}\right) $$</div>
+            
+            <ul>
+            <li><strong>變數解釋</strong>：<ul>
+            <li><span class="math inline">$\text{Logits}$</span>：模型對於每個答案選項的信心分數。</li>
+            <li><span class="math inline">$T$</span> (Temperature)：決定模型發揮空間的參數。</li>
+            <li><span class="math inline">$\text{Output}$</span>：模型最終決定要輸出什麼內容的機率。</li>
+            </ul>
+            </li>
+            <li><strong>數值範例</strong>：若模型有兩個答案選項，分數分別為 <span class="math inline">$2.0$</span> 和 <span class="math inline">$1.0$</span>。<ul>
+            <li>當 <span class="math inline">$T=1.0$</span>（標準），兩者機率差距明顯。</li>
+            <li>當 <span class="math inline">$T=1.2$</span>（我們使用的設定），分母變大，這會讓機率分佈變「平坦」，鼓勵模型多嘗試不同的解題思路，避免它在訓練初期就太過保守，只死守在單一解法上。</li>
+            </ul>
+            </li>
+            <li><strong>實務意義</strong>：提高溫度能增加模型在生成答案時的「探索性（Exploration）」，這對於訓練模型在強化學習中尋找正確的解題路徑至關重要。</li>
+            </ul>
+            <h4>3. 戰場實測與硬體規模</h4>
+            <p>我們在三個戰場上驗證模型的實力：GSM8K、MATH500 以及難度更高的 <strong>AMC</strong>（美國數學競賽）。為了支撐這些高強度運算，我們動用了 8 張 H100 顯示卡（每張具備 80GB 顯存）。這就像是擁有了一台超級電腦，確保我們可以同時處理大量的數據流，讓模型快速迭代與進化。</p>
+            <p>最後，我們也完整複現了 <strong>UniGRPO</strong> 這套方法，把它當作基準線（Baseline）來進行比較，確保我們的成果是有憑有據的進步。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">LLaDA-8B-Instruct</td>
+            <td style="text-align: left;">本研究所選用的基礎人工智慧模型，具備理解指令的能力。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">MetaMathQA</td>
+            <td style="text-align: left;">一個專門用於提升模型數學解題能力的訓練數據集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Answer Augmentation</td>
+            <td style="text-align: left;">將原本只有答案的題目，補充上詳細解題思路的處理方式。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">GSM8K</td>
+            <td style="text-align: left;">一個包含國小到國中難度數學題的標準測試集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">MATH500</td>
+            <td style="text-align: left;">一個包含高中競賽難度數學題的測試集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Supervised Fine-tuning</td>
+            <td style="text-align: left;">透過給予題目與標準答案，訓練模型進行模仿學習的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">OpenR1-Math-220K</td>
+            <td style="text-align: left;">一個含有大量數學推理過程的訓練資料集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Sampling Temperature</td>
+            <td style="text-align: left;">控制模型生成結果時隨機性的參數，數值越高，輸出內容越有創意且多變。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">AMC</td>
+            <td style="text-align: left;">美國數學競賽，用來測試模型解決高難度數學問題的能力。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">H100</td>
+            <td style="text-align: left;">一種高效能的顯示卡，專門用來處理龐大的人工智慧模型運算。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">UniGRPO</td>
+            <td style="text-align: left;">一種用於強化學習的演算法，作為本文比較效果的基準對象。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Baseline</td>
+            <td style="text-align: left;">指標基準，用來衡量新方法是否真的比現有方法更好的比較對象。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-10">
+        <h2>Section 10 - Main Results</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>成果解密：為什麼這套配方能讓模型變得更聰明？</h3>
+            <p>想像一下你正在訓練一位學生參加數學奧林匹亞競賽。過去你只給他題目和答案，他卻總是在過程中迷路。現在，我們換了一種教法：我們不僅要求他寫出正確答案，還要求他把「思考步驟」寫得更精簡、更有條理。這就是我們這套訓練配方（Training Recipe）的核心——透過 <strong>Length-Aligned SFT</strong>（長度對齊的監督式微調，即讓模型的思考長度與最佳解法一致）來重寫推理過程，讓模型的思考路徑更清晰。</p>
+            <p>我們發現，這不僅是微調，更像是一場「思維升級」。以 LLaDA-8B-Instruct 為基線（基準模型），在加入這套訓練後，模型在 GSM8K（小學數學題庫）的正確率提升了 2.1%，在難度更高的 MATH500（高中數學競賽題庫）更是一舉提升了 6.2%。這就像是學生練習了更正確的解題路徑，自然成績就上去了。</p>
+            <p>如果再加上我們精心設計的 <strong>IGPO</strong>（迭代群體偏好優化，這是一種強化學習方法，透過比較多種解法並獎勵較好的路徑來調整模型），成績還能再上一層樓，最終實現了 GSM8K 提升 4.9%、MATH500 提升 8.4% 的巨大跨越。特別是在 AMC（美國數學競賽）這種大魔王等級的題目上，我們比原始模型進步了整整 9.9%。</p>
+            <h3>穩定性：為什麼 IGPO 比傳統方法更好用？</h3>
+            <p>訓練人工智慧就像是教小朋友騎腳踏車，最怕的就是他突然因為挫折而放棄嘗試。傳統的 <strong>GRPO</strong>（群體相對策略優化，一種讓模型在多個方案中互相競爭、篩選出最好方案的方法）有時候會讓模型在訓練過程中變得非常焦慮，導致所有嘗試都失敗，也就是我們說的「全錯組（all-wrong group）」。</p>
+            <p>我們觀察到，<strong>IGPO</strong> 帶來了更穩定的訓練節奏。相比於傳統的 GRPO，IGPO 能有效地將「全錯組」的比例大幅降低約 60%。這意味著模型在學習過程中，不再因為偶爾的失誤而徹底毀掉之前的學習成果，它能更穩定地保持正確的思考方向。</p>
+            <h4>核心洞察：為什麼這套方法能成為標竿？</h4>
+            <p>或許你會問：「如果我不做 SFT（微調），直接用 IGPO 行不行？」實驗結果告訴我們：行！即便不經過預先的微調，直接對基底模型施加 IGPO，它的表現依然超越了之前的 LLaDA-1.5 等強大模型。</p>
+            <p>這告訴我們一個關鍵洞察：<strong>方法論比蠻力更重要</strong>。透過精準的「思維路徑對齊」與「穩定的強化學習」，我們為遮蔽式擴散語言模型（Masked Diffusion Language Models，這是一種讓模型像畫圖一樣，逐步把正確答案填入空白處的技術）建立了一套全新的、效能領先的黃金標準。這不僅是數字的提升，更代表了我們掌握了讓這類模型進行深度數學推理的關鍵鑰匙。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Length-Aligned SFT</strong></td>
+            <td style="text-align: left;">一種訓練手段，強制要求模型思考的長度要與邏輯正確的範例一致。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>GSM8K</strong></td>
+            <td style="text-align: left;">一個包含數千題小學程度數學應用題的標準測試集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>MATH500</strong></td>
+            <td style="text-align: left;">一個難度較高、包含五百題高中競賽等級數學題的測試集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">我們提出的優化方法，讓模型透過自我迭代與比較，找出最優解。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>GRPO</strong></td>
+            <td style="text-align: left;">一種傳統的演算法，讓模型同時產生多個答案並互相評分。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>AMC</strong></td>
+            <td style="text-align: left;">美國數學競賽，題目極具挑戰性，用來測試模型推理極限。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Masked Diffusion LM</strong></td>
+            <td style="text-align: left;">一種語言模型架構，它像是在拼圖，從一堆亂碼中逐步填入正確的字詞。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>all-wrong group</strong></td>
+            <td style="text-align: left;">指模型在訓練時，產生的一組答案全部都是錯誤的情況。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>SFT</strong></td>
+            <td style="text-align: left;">監督式微調，指透過人工給出的「題目+正確解法」進行定向訓練。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-11">
+        <h2>Section 11 - Analysis and Ablation Studies</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>為什麼「半猜半做」反而比直接看答案學得快？</h3>
+            <p>想像一下你在學解數學題。如果你看著詳解（Ground Truth Trace）硬背步驟，考試時遇到稍微變形的題目，腦袋很容易就一片空白，因為你只記住了「標準答案」，卻沒學會「思考路徑」。</p>
+            <p>我們在訓練人工智慧模型時也遇到了同樣的問題。這段研究發現，與其讓模型完全看著標準答案學習，不如只給它一部分提示（Partial Hint Injection），讓剩下的部分由模型自己「補完」。這種讓模型參與「自我推理」的過程，就像是老師只畫了地圖的起點與終點，剩下的路徑讓學生自己摸索。</p>
+            <h4>為什麼部分提示更好？</h4>
+            <p>研究數據顯示，<strong>部分提示（Partial Hint Injection）</strong> 產生的效果，竟然比<strong>全提示（Full Hint Injection）</strong> 還要好。這背後的直覺其實很簡單：當模型被迫進行「自我填補推理（Self-generated Inpainted Traces）」時，它必須想辦法把自己產生的思考步驟，與給定的提示邏輯串連起來。</p>
+            <p>這個過程產生了一種強大的「學習訊號」：</p>
+            <ol>
+            <li><strong>更貼近當前能力（On-policy）</strong>：如果直接照搬標準答案，對模型來說可能太過跳躍。但透過自我填補，模型產生的 reasoning（推理步驟）反映的是它「當下」能理解的邏輯。</li>
+            <li><strong>結構化引導</strong>：因為我們給了它一部分正確的片段作為骨架，模型不會漫無目的地亂猜，而是在正確的框架內進行合理的推理。</li>
+            <li><strong>縮小分佈偏移（Distributional Mismatch）</strong>：這是機器學習中很關鍵的概念。簡單來說，就是「模型學到的思考方式」與「它在實際應用時會產生的思考方式」之間的落差。透過讓模型自己寫推理過程，這種落差被抹平了，模型學到的就不再是死板的答案，而是真正的解題思維。</li>
+            </ol>
+            <h4>這種訓練方式的魔力</h4>
+            <p>我們將這種方法稱為「SFT（監督式微調）與線上 RL（強化學習）的橋樑」。簡單來說，SFT 是告訴模型「你要這樣做」，而 RL 是讓模型「自己試著把事情做對」。</p>
+            <p>當我們只給一部分提示時，模型只有在產出的推理步驟最終能導向正確答案時，我們才會用這些資料來更新模型的參數（Gradient Updates）。這就像是一個嚴格但開明的教練：他不直接給答案，但他會確認你的思路是否正確，如果你走對了，就給你獎勵。</p>
+            <p><strong>關鍵洞察：</strong><br />
+            這種機制有效地在「給定正確方向」與「模型自主推理」之間找到了平衡點，讓模型在優化時，能減少因為過度依賴標準答案而產生的呆板行為，從而達到更有效的策略優化。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Ground Truth Traces</strong></td>
+            <td style="text-align: left;">標準答案路徑，即完美的解題步驟。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Partial Hint Injection</strong></td>
+            <td style="text-align: left;">部分提示注入，指只給模型一部分正確的線索，讓模型補完剩下的部分。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Self-generated Inpainted Traces</strong></td>
+            <td style="text-align: left;">自我填補推理路徑，指模型自己補上的思考步驟。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>On-policy</strong></td>
+            <td style="text-align: left;">與當前策略一致，指模型目前的思考方式反映了它真實的水平。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Distributional Mismatch</strong></td>
+            <td style="text-align: left;">分佈偏移，指模型訓練時看到的資料分佈，與它實際運作時產生的行為分佈不一致。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>SFT (Supervised Fine-Tuning)</strong></td>
+            <td style="text-align: left;">監督式微調，指透過大量的正確範例（問題加標準答案）來訓練模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Online RL (Reinforcement Learning)</strong></td>
+            <td style="text-align: left;">線上強化學習，指模型在與環境互動中，根據結果好壞進行自我調整的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Gradient Updates</strong></td>
+            <td style="text-align: left;">梯度更新，指模型根據計算出的誤差，進行內部數值的自我修正以進步的過程。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>當「過度努力」反而壞事：熵裁切（Entropy Clipping）的魔法</h3>
+            <p>想像你在教一名新進員工寫程式，他現在手上有兩種教材：一種是「簡單、大家都知道的基礎知識」，另一種是「極度複雜、充滿模糊地帶的進階難題」。如果你要求他同時對這兩類問題進行深入探討，他很可能會因為負荷不了而變得手忙腳亂，甚至因為搞錯重點而產生混亂。</p>
+            <p>在 AI 訓練中也一樣。當模型進行 <strong>離線政策（Off-policy）</strong> 學習——也就是參考過去的經驗來學習時，那些「充滿模糊地帶」的數據（也就是 <strong>高熵值（High-entropy）</strong> 的 token，代表模型對此處的預測非常不確定，資訊量很大）就像是那種進階難題。如果模型對這些不確定的地方做出巨大的梯度修正，很容易導致訓練崩潰。</p>
+            <p>這時候，我們需要一個「篩選機制」，這就是 <strong>熵裁切（Entropy Clipping）</strong> 的作用。</p>
+            <h3>為什麼選出「前 20%」就能表現最好？</h3>
+            <p>我們來拆解這個篩選機制的核心參數：<span class="math inline">$\tau$</span>。我們可以把它想像成「專注度門檻」，代表我們只選擇那些「最不確定」的前 <span class="math inline">$\tau$</span> 比例的關鍵點（hint tokens）來進行學習。</p>
+            <p>研究顯示，設定 <span class="math inline">$\tau = 0.2$</span> 時，模型表現最好。這是什麼意思呢？</p>
+            <ul>
+            <li><strong>當 <span class="math inline">$\tau = 0.2$</span></strong>：我們就像一位精明的教練，只挑出那 20% 最具挑戰性、模型最拿不準的地方讓它反覆練習。這樣做既能攻克難點，又不會因為資訊過多而干擾模型穩定的判斷邏輯。</li>
+            <li><strong>當 <span class="math inline">$\tau = 1.0$</span></strong>：這相當於讓模型不分青紅皂白，把所有資訊量大的地方全都抓來學。結果模型反而因為「消化不良」，導致訓練過程像是在坐雲霄飛車，表現忽高忽低。</li>
+            </ul>
+            <h4>數值演示</h4>
+            <p>假設我們有 100 個關鍵點需要評估，我們使用熵值來衡量不確定性：</p>
+            <ul>
+            <li>假設某點的熵值（不確定程度）為 <span class="math inline">$H$</span>。</li>
+            <li>設定 <span class="math inline">$\tau = 0.2$</span> 表示選取熵值排名前 20% 的點。</li>
+            <li>運算邏輯：排序 <span class="math inline">$H_{1}, H_{2}, ..., H_{100}$</span>，並選取前 20 個進行權重更新。</li>
+            </ul>
+            <p>如果我們調整為 <span class="math inline">$\tau = 0.8$</span>，雖然學習的範圍變廣，但模型會被迫去修正那些原本就已經足夠穩定的邏輯，這導致了「梯度爆炸」或「學習發散」。簡單來說：<strong>專注於最具價值的不確定點，比盲目學習所有數據更有效率。</strong></p>
+            <h3>洞察：為什麼這會有效？</h3>
+            <p>這背後的關鍵洞察在於，訓練過程中的「大梯度」往往來自於那些極度不確定的位置。如果我們允許模型對所有高熵點進行無限制的調整，這些極端值會像一顆顆地雷，瞬間破壞原本已經訓練好的穩定策略。</p>
+            <p>透過熵裁切，我們強迫模型「分批、精準地進步」。這不僅證實了在引入 <strong>提示引導填補（Hint-guided inpainting）</strong> 時，對數據進行篩選是必要的，也為我們提供了一套標準：不要追求全知全能的學習，專注於解決模型最感到「困惑」的 20%，才是通往穩定與高效的最佳路徑。</p>
+            <hr />
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>離線政策 (Off-policy)</strong></td>
+            <td style="text-align: left;">模型學習時參考的是過去的數據或別人的經驗，而不是直接在當下環境即時操作。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>高熵值 (High-entropy)</strong></td>
+            <td style="text-align: left;">指模型在某個選項上非常猶豫，不確定該選哪一個，資訊量與混亂程度極高。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>熵裁切 (Entropy Clipping)</strong></td>
+            <td style="text-align: left;">一種過濾機制，只允許模型針對那些「非常不確定」的數據點進行學習，避免被雜訊干擾。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>提示引導填補 (Hint-guided inpainting)</strong></td>
+            <td style="text-align: left;">利用給定的關鍵提示點，幫助模型補全或修復缺失的數據資訊。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>梯度 (Gradient)</strong></td>
+            <td style="text-align: left;">AI 學習的方向與強度，告訴模型要往哪個方向修改參數，才能讓預測更準確。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong><span class="math inline">$\tau$</span> (tau)</strong></td>
+            <td style="text-align: left;">代表選取數據的比例閾值，在此指「選取排名前多少比例的高熵數據」。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>為什麼要把思考過程「瘦身」？重寫推理路徑的魔力</h3>
+            <p>想像一下，你正在教一位學生解題。如果學生在紙上寫滿了雜亂無章的喃喃自語、自我懷疑和冗長的廢話，反而會讓重點變得模糊；但如果你讓他練習把思路簡化成「條理清晰的重點筆記」，他解題的速度和正確率一定會大幅提升。</p>
+            <p>這就是我們在處理 <strong>SFT（監督式微調，即讓 AI 透過閱讀範例來學習特定任務的過程）</strong> 時，對 AI 的「推理軌跡（Reasoning Traces）」進行「重寫」的核心原因。</p>
+            <p>我們發現，原本模型產生的思考過程往往太過囉唆。透過把這些軌跡「瘦身」並壓縮到 1024 個標記（Tokens，即 AI 處理文字的基本單位）以內，我們能讓它更符合 <strong>LLaDA（本研究使用的一種生成式模型架構）</strong> 原本設定的「生成預算」（即模型一次能處理的長度限制，約 256 個標記）。</p>
+            <p><strong>為什麼這樣做更有效？</strong><br />
+            這其實是一種「對齊」的概念。當思考過程變精簡，AI 在進行第一次正式考試（即 SFT 訓練後的 Step 0）時，就不用因為思考路徑太長而漏掉重點或因超時而出錯。簡單來說，縮短思考路徑，讓模型的表達與它的能力邊界達成同步，準確率自然就提升了。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>SFT</strong></td>
+            <td style="text-align: left;">監督式微調，透過人類提供的正確範例，訓練 AI 學會如何回答問題。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Reasoning Traces</strong></td>
+            <td style="text-align: left;">推理軌跡，指 AI 在給出最終答案前，內部的推導與思考過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Tokens</strong></td>
+            <td style="text-align: left;">標記，AI 處理資訊的單位，可以是一個字或一個詞。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>LLaDA</strong></td>
+            <td style="text-align: left;">本研究所採用的特定 AI 模型架構。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Generation Budget</strong></td>
+            <td style="text-align: left;">生成預算，模型在處理單次任務時，所能分配到的最大輸出空間。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>從好的起跑點出發：為什麼起點決定了終點？</h3>
+            <p>現在我們進入下一個階段：<strong>RL（強化學習，透過獎勵機制不斷修正模型的行為）</strong>。</p>
+            <p>有人可能會問：「如果初始的 SFT 訓練得不夠完美，之後透過強化學習（RL）補救不就好了嗎？」我們的實驗發現，RL 的確像是個強力的補習班，即便初始模型表現較差（例如使用長達 4096 個標記的冗長推理軌跡），在進入 RL 訓練初期，正確率也能迅速回升。</p>
+            <p><strong>但重點來了：起跑點的高低，決定了你能跑多遠。</strong></p>
+            <p>從經過重寫、精簡後的「強大起點」出發，最終模型能達到的巔峰表現，遠遠超過那些從「弱小起點」出發的模型。這就像登山，如果你從半山腰的營地出發，肯定比從山腳下起跑更容易登頂。</p>
+            <p>更重要的是，我們引入了 <strong>IGPO（迭代式生成偏好優化，一種特殊的強化學習策略）</strong>。相比於傳統的 RL，IGPO 展現了驚人的穩定性：</p>
+            <ol>
+            <li><strong>多樣性（Diversity）：</strong> 它讓 AI 保持思考的多樣性，不會只會用一種方式解題。</li>
+            <li><strong>穩定性（Pass@k）：</strong> 傳統 RL 常見的問題是「模式崩潰（Mode Collapse）」，即 AI 為了追求獎勵，變得只會產出一種答案，導致整體正確率（Pass@k，指給予模型 k 次機會能解對的機率）反而下滑。而 IGPO 透過「填補（Inpainting）」機制，成功穩住了成績。</li>
+            </ol>
+            <p><strong>公式拆解：Pass@k 的意義</strong><br />
+            我們用一個簡單的公式來理解 <span class="math inline">$Pass@k$</span>：</p>
+            <div class="formula">\[ P = 1 - \frac{\binom{n-c}{k}}{\binom{n}{k}} \]</div>
+            
+            <ul>
+            <li><span class="math inline">$n$</span>: AI 總共產出的嘗試次數。</li>
+            <li><span class="math inline">$c$</span>: 其中正確的數量。</li>
+            <li><span class="math inline">$k$</span>: 我們允許 AI 嘗試的次數上限。</li>
+            </ul>
+            <p>舉例：若 <span class="math inline">$n=10$</span>（總共產出 10 個答案），<span class="math inline">$c=2$</span>（裡面有 2 個是正確的），我們設定 <span class="math inline">$k=5$</span>（給予 5 次機會）。<br />
+            計算結果約為 <span class="math inline">$0.72$</span>。這代表給予 5 次機會下，模型有 72% 的機率能答對。<br />
+            實務意義：這個指標越高，代表 AI 不僅聰明，還更可靠，不會因為過度優化而變成「只會死記硬背單一答案的機器」。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>RL</strong></td>
+            <td style="text-align: left;">強化學習，透過給 AI 回饋（獎勵或懲罰），讓它在過程中自動學會正確行為。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">迭代式生成偏好優化，一種用來訓練模型、使其更貼近人類偏好的方法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Inpainting</strong></td>
+            <td style="text-align: left;">填補，指在已有的文字中，針對缺失或錯誤的片段進行修復的技術。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Pass@k</strong></td>
+            <td style="text-align: left;">一種評估指標，代表模型有 k 次回答機會時，至少答對一次的機率。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Mode Collapse</strong></td>
+            <td style="text-align: left;">模式崩潰，指 AI 喪失多樣性，對所有問題都只給出大同小異的重複答案。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-12">
+        <h2>Section 12 - 5 RelatedWork</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>擴散語言模型的進化：從連續到離散的變革</h3>
+            <p>想像一下，傳統的語言模型（像是你常用的 ChatGPT）就像是一個嚴謹的「排隊寫作員」，它必須一個字一個字、依照順序寫出來。而「擴散模型」（Diffusion Models）則是位「藝術修復師」，它從一堆雜亂無章的噪點中，一步步推敲出清晰的圖畫。如果我們把這個修復師請來寫作，會發生什麼事？這就是「擴散語言模型」（dLLM）誕生的背景。</p>
+            <p>最早的嘗試有點「轉彎」，研究者們試圖把文字這種「離散的符號」（就是我們用的字詞）強行轉換成「連續的向量」（也就是一串數字座標）。這就像是把寫文章變成了在空間中調整坐標點，雖然邏輯上可行，但總覺得有點隔靴搔癢。</p>
+            <h3>離散擴散與掩碼建模：讓修復師直接處理文字</h3>
+            <p>後來，技術迎來了轉折點。研究人員發現，我們其實不需要強行轉換，而是可以讓模型直接在「離散空間」中進行擴散。這裡的核心概念叫做 <strong>Masked Diffusion（掩碼擴散）</strong>，你可以把它想像成一種「填字遊戲」。</p>
+            <p>我們故意遮住文章中的某些詞（Masking），然後讓模型根據剩下的文字來猜測原本的詞是什麼。這就像是考卷上有空格，模型不斷地透過反覆猜測、驗證、修正，直到這張考卷填得完美為止。</p>
+            <p>在這一領域中，出現了不少明星模型：</p>
+            <ul>
+            <li><strong>DiffuLLaMA</strong> 與 <strong>Dream</strong>：它們聰明地站在巨人的肩膀上，將現有的「自動回歸式大型語言模型」（這類模型擅長一個接一個預測文字）改造成擴散版本。</li>
+            <li><strong>LLaDA</strong>：這是一個重要的里程碑，它從零開始訓練，並且使用了「全注意力機制」（Full-attention，讓模型在寫每個字時，都能同時參考整篇文章的上下文），效果已經能與傳統模型一較高下。</li>
+            </ul>
+            <h3>效率的突破：區塊與快取的力量</h3>
+            <p>雖然掩碼擴散效果很好，但它有一個弱點：運算速度。如果每次都要從頭考慮全篇文章，那代價可不小。於是，新的解決方案出現了：</p>
+            <ul>
+            <li><strong>Block Diffusion（區塊擴散）</strong>：它不一次處理整篇文章，而是把文字切成一個個「區塊」。這就像是在寫報告時，我們先專注寫好一個段落，再接下一個。這種作法不僅更靈活，還透過「KV快取」（Key-Value Caching，這是一種記憶技術，把模型算過的上下文存起來，不用重複計算）大幅提升了速度。</li>
+            <li><strong>商用模型的跟進</strong>：像 Mercury 或 Gemini Diffusion 這類模型證明了，擴散模型不只是學術玩具，它們在寫程式碼時，速度甚至能超越傳統模型。</li>
+            <li><strong>平行解碼</strong>：為了更快，近期的研究更引入了「平行解碼算法」。想像原本是排隊領票，現在變成開了十個櫃檯同時處理，效率瞬間倍增。</li>
+            </ul>
+            <p>在我們這項研究中，我們決定回歸到最純粹、強大的架構——也就是<strong>全注意力掩碼擴散語言模型（Full-attention Masked dLLMs）</strong>，我們要深入挖掘這種架構在生成質量與效率上的極限。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">擴散語言模型 (dLLM)</td>
+            <td style="text-align: left;">將修復雜訊的技術應用在文字生成上，透過迭代修正來產生文章的模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">連續與離散表示</td>
+            <td style="text-align: left;">連續是用數字座標表示字詞；離散則是直接操作字詞符號本身。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Masked Diffusion (掩碼擴散)</td>
+            <td style="text-align: left;">將部分文字遮蔽後，讓模型不斷猜測填補，類似「填字遊戲」的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">自動回歸 LLM</td>
+            <td style="text-align: left;">最常見的語言模型，像接龍一樣，依賴上一個詞來預測下一個詞。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">全注意力機制 (Full-attention)</td>
+            <td style="text-align: left;">模型在處理任何一個字時，都能同時綜觀整篇文章，擁有完整的全局視野。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Block Diffusion</td>
+            <td style="text-align: left;">將文章拆分成小段落處理，以提升生成長度的靈活性與計算效率。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">KV快取 (KV-caching)</td>
+            <td style="text-align: left;">像是一個「記憶筆記本」，將模型算過的資訊存起來，避免重複浪費力氣。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">平行解碼</td>
+            <td style="text-align: left;">改變排隊寫作的模式，讓模型能同時產生多個字，大幅縮短等待時間。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>為什麼將強化學習用於擴散模型這麼難？</h3>
+            <p>想像一下，你正在教一位畫家作畫。如果是傳統的「自動回歸模型」（Autoregressive models，像是一筆一畫依序寫字的 AI），教導它就像是在指導一個人寫句子，從左到右，一步一步來，老師很容易看出哪一個字寫錯了。但如果是<strong>擴散模型</strong>（Diffusion models），它的作畫方式更像是一張照片從滿是雜訊的畫布中，一點一點清晰起來。</p>
+            <p>這時候，當我們想用「強化學習」（Reinforcement Learning，透過給予獎勵來引導 AI 進化）來調整它的行為時，困難點在於：我們很難計算出「整個作畫過程」到底有多大機率發生。這就像是無法量化「這幅畫為什麼會長成這樣」的機率公式（likelihood functions），這導致我們無法直接用傳統方法來調整它的決策。</p>
+            <p>為了繞過這個困難，科學家們必須用「近似值」來估算。但問題來了：這會帶來額外的運算負擔，而且如果估算得不準，就像是老師給了錯誤的評分標準，AI 就會學歪了（也就是偏差與變異數問題）。</p>
+            <h3>業界是如何過關斬將的？</h3>
+            <p>為了克服這些挑戰，研究界提出了幾種聰明的「修正策略」：</p>
+            <ul>
+            <li><strong>Diffu-GRPO</strong>：它使用了一種「平均場近似」（Mean-field approximation），簡單說，就是把複雜的群體行為簡化成平均狀態，讓計算變得快一點。</li>
+            <li><strong>MMaDA 與 Coupled-GRPO</strong>：這兩位選手則是調整了「遮罩策略」（Masking strategy），這就像是在計算機率時，選擇性地遮住不重要的雜訊，只盯著關鍵特徵，讓學習效率大幅提升。</li>
+            <li><strong>LLaDA 1.5</strong>：它則避開了直接算機率的坑，改用「偏好優化」（Preference optimization），直接告訴 AI「這張畫比那張畫好」，不需要去算那些複雜的數學機率。</li>
+            <li><strong>Weighted Likelihood</strong>：這是最新的進展之一，它巧妙地改寫了數學目標，把「機率比值」（Policy ratios，這是誤差的主要來源）整個拔掉，直接優化加權後的機率，徹底解決了數值不穩的問題。</li>
+            <li><strong>SDPO</strong>：它將原本要一氣呵成的任務，拆解成「每一步的子問題」，確保擴散過程中的每一個步驟都能準確對齊目標。</li>
+            </ul>
+            <p>這些研究告訴我們，想要駕馭擴散模型，關鍵就在於如何聰明地「估算」與「簡化」複雜的數學目標。我們的方法不僅兼容這些策略，還能在這些基礎上，透過「局部修補」（Inpainting）技術來讓效果更好。相比之下，過去針對傳統語言模型的方法（如 Prefix-RFT），受限於只能「從左到右」思考，完全發揮不出擴散模型這種「同時從全域觀看」的強大潛力。</p>
+            <p>📖 本節術語表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">強化學習 (RL)</td>
+            <td style="text-align: left;">一種訓練 AI 的方式，透過給予成功獎勵、失敗懲罰，讓 AI 自己學會做更好的決策。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">擴散模型 (Diffusion models)</td>
+            <td style="text-align: left;">一種生成 AI，透過從「純雜訊」中一點一滴過濾出清晰圖像或文字的過程來生成內容。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">自動回歸模型 (AR models)</td>
+            <td style="text-align: left;">傳統的生成方式，像寫字一樣，必須先有第一個字，才能產出下一個字。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">機率函數 (Likelihood functions)</td>
+            <td style="text-align: left;">用來計算某個特定結果發生的可能性大小的數學工具。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">平均場近似</td>
+            <td style="text-align: left;">將複雜且互相關聯的系統，簡化為每個個體獨立與平均環境互動，以降低計算難度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">遮罩策略</td>
+            <td style="text-align: left;">在運算時選擇性地隱藏某些資訊，讓模型專注在最重要的特徵上。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">偏好優化</td>
+            <td style="text-align: left;">不要求模型去算機率，而是直接根據人類喜好資料進行調整的技術。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">機率比值 (Policy ratios)</td>
+            <td style="text-align: left;">在強化學習中，用於衡量「新決策」與「舊決策」差異的指標，容易產生計算偏差。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">擴散軌跡對齊</td>
+            <td style="text-align: left;">確保模型在生成過程的每一步，都朝向正確的方向（如正確的文字或圖像）演進。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">局部修補 (Inpainting)</td>
+            <td style="text-align: left;">針對圖像或文字中缺失的部分進行填補與修正的技術。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">雙向條件能力</td>
+            <td style="text-align: left;">指模型可以同時考慮前後文，而不是被限制只能從左往右閱讀。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-13">
+        <h2>Section 13 - Conclusion</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>總結：從塗鴉到推理的進化之路</h3>
+            <p>想像你在學畫畫，傳統的方法是給你一張空白畫布，讓你憑空創作；但如果老師在畫布上先畫好幾條「關鍵引導線」，你是不是就能更快畫出完美作品？這就是我們這項研究的核心概念——<strong>IGPO (Inpainting-Guided Policy Optimization)</strong>。</p>
+            <p>我們將「遮罩擴散語言模型」（Masked Diffusion Language Models，一種透過填補空缺來產生文字的 AI 模型）的能力，轉化為強化的「推理加速器」。透過在去雜訊（Denoising，指將隨機雜訊逐步修正成正確文字的過程）階段加入正確的推理暗示，我們就像為 AI 開了導航，讓它避開混亂的探索，直接往高回報的正確答案衝刺。</p>
+            <h4>為什麼要這樣設計？突破僵局的關鍵</h4>
+            <p>過去的 AI 在學習時常遇到「零優勢困境」（Zero-advantage dilemma），簡單來說，就是 AI 覺得每個選擇看起來都一樣好，導致它無法判斷哪一個動作才是真正能拿高分的關鍵。這就像你在路口看導航，但導航顯示所有路徑距離都一樣，你根本無法決定走哪條。</p>
+            <p>IGPO 的妙處在於它刻意創造了「獎勵差異」（Reward variance）。這就像是把原本平坦的路線圖，加了高低起伏的地形，讓 AI 能明確感受到：這條路能讓你更快到終點。有了這種差異，我們才能透過<strong>策略梯度更新</strong>（Policy gradient updates，一種讓 AI 根據獲勝經驗調整行為的數學方法）來真正改進模型。</p>
+            <h4>關鍵配方：長度對齊與穩定機制</h4>
+            <p>為了讓這一切運作得更順暢，我們還準備了兩個關鍵「調味料」：</p>
+            <ol>
+            <li><strong>長度對齊監督式微調 (Length-Aligned SFT)</strong>：我們發現，模型在練習時寫出的答案長度，跟實際考試時的習慣常常對不上。透過這個方法，我們強行讓練習與考試的邏輯長度一致，讓模型一開始就站得比別人穩。</li>
+            <li><strong>熵值導向梯度過濾 (Entropy-based gradient filtering)</strong>：想像在團隊討論時，總是有人亂講話，這會干擾決策品質。我們設計了一個過濾機制，如果某個學習過程太混亂（熵值高），系統就會自動降低它的權重，確保學習品質的穩定。</li>
+            </ol>
+            <h4>為什麼這會有效？</h4>
+            <p>將這些技術結合，我們在處理複雜的數學推理任務時，創造了新的「最強紀錄」（State-of-the-art）。這不僅僅是跑分變高了，更重要的是，我們找到了一種全新的方式——利用模型本身的架構特性，主動克服了機器學習中那些最難搞的優化難題。這就像是從「盲目嘗試」，進化到了「精準導航」，讓 AI 學習不再是碰運氣，而是有跡可循。</p>
+            <hr />
+            <h3>📖 本節術語表</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>IGPO</strong></td>
+            <td style="text-align: left;">本研究提出的強化學習演算法，透過填充提示來引導學習。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>遮罩擴散語言模型</strong></td>
+            <td style="text-align: left;">一種 AI 模型，透過把一段話挖空，再學習如何精準填補回去。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>去雜訊 (Denoising)</strong></td>
+            <td style="text-align: left;">將雜亂無章的隨機字元，逐步修正成合理語句的過程。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>零優勢困境</strong></td>
+            <td style="text-align: left;">指 AI 無法從眾多相似選擇中，區分出哪個動作比較好的學習瓶頸。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>策略梯度更新</strong></td>
+            <td style="text-align: left;">一種數學手段，用來根據當下的表現好壞，調整 AI 的行為策略。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>長度對齊監督式微調 (Length-Aligned SFT)</strong></td>
+            <td style="text-align: left;">讓 AI 在訓練階段學到的文章長度，與實際應用時的長度需求保持一致。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>熵值導向梯度過濾</strong></td>
+            <td style="text-align: left;">一種穩定機制的濾網，用來剔除那些過於隨機、不穩定的學習訊號。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>狀態最強表現 (SOTA)</strong></td>
+            <td style="text-align: left;">指在該領域目前所有模型中，表現最好的技術水準。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>全注意力 (Full-attention)</strong></td>
+            <td style="text-align: left;">模型在閱讀時，能同時看見並關聯整篇文章所有字詞的機制。</td>
+            </tr>
+            </tbody>
+            </table>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

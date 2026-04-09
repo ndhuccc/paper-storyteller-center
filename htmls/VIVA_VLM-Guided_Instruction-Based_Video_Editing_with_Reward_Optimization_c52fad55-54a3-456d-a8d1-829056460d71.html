@@ -1,0 +1,3376 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIVA: VLM-Guided Instruction-Based Video Editing with Reward Optimization - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 VIVA: VLM-Guided Instruction-Based Video Editing with Reward Optimization</h1>
+    <div class="meta">
+        <strong>實驗日誌版本</strong><br>
+        Source PDF: VIVA_VLM-Guided_Instruction-Based_Video_Editing_with_Reward_Optimization.pdf<br>
+        Model: models/gemini-3.1-flash-lite-preview<br>
+        Generated at (UTC): 2026-04-06T23:32:58.942917+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - **Abstract**</a></li>
+<li><a href="#section-2">Section 2 - **1. Introduction**</a></li>
+<li><a href="#section-3">Section 3 - 2. Related Work</a></li>
+<li><a href="#section-4">Section 4 - 3. Method</a></li>
+<li><a href="#section-5">Section 5 - 3.1. Context-Aware VLM Instructor</a></li>
+<li><a href="#section-6">Section 6 - 3.2. Instruction-based Supervised Fine-Tuning</a></li>
+<li><a href="#section-7">Section 7 - 3.3. Edit-GRPO</a></li>
+<li><a href="#section-8">Section 8 - 3.4. Data Preparation</a></li>
+<li><a href="#section-9">Section 9 - 4. Experiments</a></li>
+<li><a href="#section-10">Section 10 - 4.2. Experimental Setup</a></li>
+<li><a href="#section-11">Section 11 - **4.3. Qualitative Comparisons**</a></li>
+<li><a href="#section-12">Section 12 - **4.4. Quantitative Comparisons**</a></li>
+<li><a href="#section-13">Section 13 - 4.5. Ablation Study</a></li>
+<li><a href="#section-14">Section 14 - 5. Conclusion</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - **Abstract**</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：VIVA 框架的研發歷程</h3>
+            <h4>1. 觀察到的問題：為什麼舊方法會「聽不懂人話」？</h4>
+            <p>在進行指令式影片編輯（Instruction-based video editing）時，我們發現現有的擴散模型（Diffusion models）存在一個致命傷：它們大多是在簡單的「換個顏色」或「加個濾鏡」這種線性配對數據上訓練的。</p>
+            <p>這就像是教小學生算術，只教了 1+1，卻期望他能解決微積分。當我們丟出複雜的現實指令（例如：「把影片中的背景換成賽博龐克風格，但保留主角的動作」）時，模型就會失去方向，導致編輯後的影片畫面崩壞，或是完全沒執行指令。</p>
+            <p><strong>核心挑戰：</strong> 如何讓模型理解「指令」與「影片內容」之間細微的語意關聯？</p>
+            <hr />
+            <h4>2. 設計決策：VIVA 的兩大關鍵升級</h4>
+            <p>我們開發了 <strong>VIVA (VLM-guided Instruction-based Video Adaptation)</strong> 框架，解決方案分為兩路：</p>
+            <ul>
+            <li>
+            <p><strong>VLM 引導編碼（VLM-guided encoding）：</strong><br />
+                我們引入了一個視覺語言模型（VLM）作為「領航員」。傳統方法直接把文字餵給模型，容易抓不到重點；我們改用 VLM 將指令、影片的第一幀畫面以及參考圖，轉化為具有「視覺空間感」的向量，這樣模型才知道指令是要動哪一個物體，而不是胡亂改動畫面。</p>
+            </li>
+            <li>
+            <p><strong>Edit-GRPO 優化策略：</strong><br />
+                這是一個「課後強化」階段。我們將機器學習中的「群體相對策略優化（Group Relative Policy Optimization）」導入影片編輯。與其只讓模型對著標準答案練題，不如給它多個選項，透過比較哪一個比較好（獎勵機制），讓模型自我學習如何平衡「聽指令」與「維持影片原始內容」。</p>
+            </li>
+            </ul>
+            <hr />
+            <h4>3. 數學與優化機制：Edit-GRPO 的運作邏輯</h4>
+            <p>我們使用 Group Relative Policy Optimization (GRPO) 來優化模型輸出。公式如下：</p>
+            <div class="formula">$$J_{GRPO}(\theta) = \mathbb{E}_{q \sim P, \{o_i\}_{i=1}^G \sim \pi_\theta} \left[ \frac{1}{G} \sum_{i=1}^G \left( \frac{r_i - \text{mean}(r)}{\text{std}(r)} \right) \log \pi_\theta(o_i|q) \right]$$</div>
+            
+            <p><strong>變數解釋表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\theta$</span></td>
+            <td style="text-align: left;">模型的參數（我們想調整的目標）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">每個指令生成的影片樣本總數（群體大小）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$r_i$</span></td>
+            <td style="text-align: left;">第 <span class="math inline">$i$</span> 個影片樣本的獎勵分數（由評價器計算）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{mean}(r)$</span></td>
+            <td style="text-align: left;">這一組樣本的平均得分</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{std}(r)$</span></td>
+            <td style="text-align: left;">這一組樣本的得分標準差</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\pi_\theta(o_i|q)$</span></td>
+            <td style="text-align: left;">模型在指令 <span class="math inline">$q$</span> 下生成樣本 <span class="math inline">$o_i$</span> 的機率</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>運作邏輯與數值示例：</strong><br />
+            想像我們讓模型針對「將天空變為黃昏」生成 <span class="math inline">$G=3$</span> 個版本的影片，評分分別為 <span class="math inline">$r_1=90, r_2=70, r_3=50$</span>。</p>
+            <ol>
+            <li>平均值 <span class="math inline">$\text{mean}(r) = 70$</span>；假設標準差 <span class="math inline">$\text{std}(r) = 20$</span>。</li>
+            <li>權重計算：</li>
+            <li>樣本 1: <span class="math inline">$(90-70)/20 = +1.0$</span> (模型應增加產出此類結果的機率)</li>
+            <li>樣本 2: <span class="math inline">$(70-70)/20 = 0$</span> (維持現狀)</li>
+            <li>樣本 3: <span class="math inline">$(50-70)/20 = -1.0$</span> (模型應抑制產出此類結果的機率)</li>
+            </ol>
+            <p><strong>實務意義：</strong> 透過這種相對獎勵（Relative Rewards），模型不會盲目追求絕對高分，而是學會「比別人更好」，這能有效防止模型為了拿高分而產出模糊的畫面（追求視覺上的過度平滑）。</p>
+            <hr />
+            <h4>4. 實驗總結：我們學到了什麼？</h4>
+            <p>在實驗過程中，我們建立了一套自動化數據生成管線（Data construction pipeline），專門模擬複雜的編輯場景。</p>
+            <ul>
+            <li><strong>為什麼有效？</strong> 傳統方法缺乏跨幀的連貫性（Temporal coherence）。VIVA 透過 VLM 引導與 GRPO 的結合，確保了模型在處理複雜修改時，不會因為改變了背景，就把影片裡的人臉也改掉。</li>
+            <li><strong>最終觀察：</strong> 經過這種「獎勵優化」的模型，比起單純依賴監督式學習的模型，在視覺一致性與指令遵循度上顯著提升。簡單來說，它現在更像是一個「聽得懂上下文的資深剪輯師」，而不是只會套用固定腳本的機器人。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - **1. Introduction**</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：影像編輯任務的現狀與決策背景</h3>
+            <p><strong>工程師觀察：為什麼現有的影片編輯方法需要「成對資料」？</strong></p>
+            <p>在處理影片生成與編輯的專案時，我們發現目前的技術主流（Diffusion-based approaches）大多將「影片編輯」視為一種「有監督的翻譯問題」。這就像是教學生寫作文：我們提供給模型一組「原始影片」與「編輯後的目標影片」作為範例，讓模型學習如何從 A 變成 B。</p>
+            <h4>核心技術邏輯</h4>
+            <p>在這些研究中，任務被定義為一個函式轉換過程，我們可以將其簡單表示為：<br />
+            <span class="math inline">$O = f(V, I)$</span></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V$</span></td>
+            <td style="text-align: left;">輸入的原始影片 (Input Video)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I$</span></td>
+            <td style="text-align: left;">編輯指令 (Editing Instruction / Prompt)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$f$</span></td>
+            <td style="text-align: left;">學習後的模型映射函式 (Mapping Function)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$O$</span></td>
+            <td style="text-align: left;">輸出結果影片 (Edited Output)</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義</strong><br />
+            假設我們有一個簡單的任務：將影片中的「晴天」轉為「雨天」。<br />
+            若我們設定 <span class="math inline">$I = \text{&quot;Make it rainy&quot;}$</span>，當輸入 <span class="math inline">$V$</span> 為 100 個影格的晴天影片時，模型透過 <span class="math inline">$f$</span> 進行像素層級的轉換，最終產生 <span class="math inline">$O$</span>。</p>
+            <ul>
+            <li><strong>數值運算：</strong> 假設模型對每個影格的像素處理有一致性係數 <span class="math inline">$\alpha = 0.95$</span>（代表與目標的相似度）。若 <span class="math inline">$f(V, I)$</span> 的總輸出誤差 <span class="math inline">$E$</span> 定義為 <span class="math inline">$E = 1 - \alpha$</span>，則 <span class="math inline">$E = 0.05$</span>。</li>
+            <li><strong>實務意義：</strong> 這裡的 <span class="math inline">$0.05$</span> 代表模型在轉換過程中，約有 5% 的像素偏離了「雨天」的視覺特徵。數值越小，代表模型越能精準執行指令。</li>
+            </ul>
+            <h4>為什麼我們需要這種設計？</h4>
+            <p>直覺上，我們可能會想：「為什麼不能直接讓 AI 自己看影片，然後要它改？」</p>
+            <p>問題在於，若沒有「成對資料」（Paired Dataset），模型會喪失學習的基準線（Ground Truth）。如果沒有這種 <span class="math inline">$V \rightarrow O$</span> 的監督訊號，模型很容易在轉換過程中「迷路」，導致影片內容發生嚴重的閃爍（Flickering）或是結構崩壞。</p>
+            <h4>實驗決策的取捨</h4>
+            <ul>
+            <li><strong>優點：</strong> 這種 supervised translation 的方法結構清晰，透過大量的 <span class="math inline">$(V, O)$</span> 成對資料訓練，模型能穩定學會影片風格的轉換。</li>
+            <li><strong>缺點：</strong> 這種方法對數據依賴極高。我們需要「精心構造」的成對數據集（Source-Target Pairs）。在工程上，這意味著我們必須耗費巨額人力成本去製作每一段影片的修改前後對照，否則模型就無法從訓練中捕捉到編輯的邏輯。</li>
+            </ul>
+            <p><strong>總結本次觀察：</strong><br />
+            目前主流方案的瓶頸不在於模型不夠聰明，而在於數據集的「品質」與「廣度」。我們目前的開發方向，即是為了減少對這種昂貴且難以收集的成對資料的過度依賴。</p>
+            <h3>實驗日誌：現有訓練資料生成的瓶頸分析</h3>
+            <p><strong>觀察到的問題：</strong><br />
+            在開發圖像編輯模型時，我們發現目前的「合成訓練資料產生流程」遇到嚴重的擴展瓶頸。現有的主流做法（如 [8, 10, 73, 75] 提及的方案）過於依賴「簡化版」的編輯任務。</p>
+            <p>簡單來說，目前的模型就像是只會照著「樂高說明書」拼裝的機器人：你給它一個遮罩（Mask），它能完成「加一個物體」、「刪一個物體」或「把紅球換成藍球」這種單純的指令。但只要要求它做出稍微複雜一點的動作，它就會當機。</p>
+            <p><strong>工程師觀點與取捨：</strong><br />
+            我們在測試時發現，現有的訓練架構在以下場景會徹底失效：</p>
+            <ol>
+            <li><strong>多工複合需求</strong>：例如同時移動物體又要改變光影。</li>
+            <li><strong>遮罩外操作</strong>：當目標物體超出原始遮罩範圍時，生成器便無法維持影像的連貫性。</li>
+            <li><strong>語意級別調整</strong>：如「把陽光充足的街道變成下雨天的場景」。這類調整涉及全域環境變數的改寫，而非單一物體的替換。</li>
+            </ol>
+            <p>這就像是如果你想教電腦畫圖，目前的方法只能教它「在指定框框裡塗色」，而無法教會它「理解整個場景的邏輯」。這種限制導致模型在處理真實世界的複雜編輯請求時，完全無法產生有意義的對應數據（Paired Data）。</p>
+            <hr />
+            <h3>技術瓶頸量化分析</h3>
+            <p>為了說明為什麼這類「簡單編輯」無法擴展，我們可以觀察其基礎定義。假設我們要對影像 <span class="math inline">$I$</span> 進行編輯，現有的方法通常定義為：</p>
+            <div class="formula">$$I_{out} = f(I, M, \delta)$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">實務解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I$</span></td>
+            <td style="text-align: left;">原始輸入影像</td>
+            <td style="text-align: left;">處理前的基礎像素數據</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M$</span></td>
+            <td style="text-align: left;">遮罩（Mask）</td>
+            <td style="text-align: left;">限定編輯器只能操作的矩形或輪廓範圍</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\delta$</span></td>
+            <td style="text-align: left;">操作指令</td>
+            <td style="text-align: left;">如「新增」、「刪除」或「替換」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$f$</span></td>
+            <td style="text-align: left;">轉換函數</td>
+            <td style="text-align: left;">負責執行編輯任務的模型</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>數值代入範例與意義</h4>
+            <p>假設我們有一個解析度 <span class="math inline">$100 \times 100$</span> 的影像，遮罩 <span class="math inline">$M$</span> 覆蓋了 10% 的區域（即 <span class="math inline">$1000$</span> 個像素點）。</p>
+            <ul>
+            <li><strong>情境 A（現有技術）</strong>：<span class="math inline">$\delta$</span> 是「將 <span class="math inline">$M$</span> 區域的顏色調亮」。此時 <span class="math inline">$f$</span> 只需要處理那 10% 的像素，任務複雜度極低。</li>
+            <li><strong>情境 B（我們想達到的目標）</strong>：<span class="math inline">$\delta$</span> 是「改變整體的季節環境」。此時 <span class="math inline">$M$</span> 其實應該是全圖（100%），且 <span class="math inline">$f$</span> 需要根據 <span class="math inline">$I$</span> 的語意重新構圖，而不僅是變色。</li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            如果 <span class="math inline">$f$</span> 的設計僅限於處理 <span class="math inline">$M$</span> 區域內的像素改變，當我們要執行情境 B 時，會發生嚴重的「邊界效應」（Boundary Effect）：因為模型從未學習過處理全域環境的關聯性，它會強行在遮罩邊緣產生不自然的接縫。</p>
+            <p><strong>結論：</strong><br />
+            目前的瓶頸在於，我們缺乏一套能夠自動產生「高語意複雜度」的訓練對，這迫使我們必須跳脫「遮罩內操作」的思維，轉向研發能夠理解整張圖片上下文的合成管道。</p>
+            <h3>實驗日誌：突破基礎編輯模型的泛化瓶頸</h3>
+            <p><strong>觀察與問題定義</strong><br />
+            在開發過程中，我們發現現有的影片編輯模型存在嚴重的「過度擬合」問題。由於這些模型大多是基於「簡單編輯對（simplistic edits）」進行訓練，它們就像只會背誦考古題的學生，一旦遇到真實世界中複雜、多變的編輯需求（open-domain scenarios），系統的效能就會急劇下降。</p>
+            <p>這就像是教學生寫作文時，只給他們看「把紅蘋果換成綠蘋果」這種單一邏輯的範例；當要求他們進行「將秋天的森林轉化為賽博龐克風格」這種涉及複雜光影與結構變化的任務時，模型就會束手無策。</p>
+            <p><strong>實驗調整與決策取捨</strong><br />
+            為了克服這個「泛化鴻溝（generalization gap）」，我們的策略不是盲目擴大資料集，而是針對模型架構進行優化。我們設計了兩個互補的核心組件：</p>
+            <ol>
+            <li><strong>指令表示優化（Instruction Representation）</strong>：改進模型對編輯指令的理解深度。</li>
+            <li><strong>品質導向優化（Optimization for Output Quality）</strong>：調整模型的訓練目標，使其在有限數據下也能學會「正確的編輯邏輯」。</li>
+            </ol>
+            <hr />
+            <h3>技術原理拆解</h3>
+            <p>為了量化模型對指令的處理能力，我們引入了指令對齊函數，其基本邏輯可表示為：</p>
+            <div class="formula">$$ \mathcal{L}_{edit} = \alpha \cdot \mathcal{L}_{text} + \beta \cdot \mathcal{L}_{video} $$</div>
+            
+            <h4>變數與公式白話說明</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{edit}$</span></td>
+            <td style="text-align: left;">總編輯損失函數</td>
+            <td style="text-align: left;">我們想最小化的「總錯誤率」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha, \beta$</span></td>
+            <td style="text-align: left;">權重係數</td>
+            <td style="text-align: left;">調整「文字指令理解」與「影像生成品質」的重要性比例。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{text}$</span></td>
+            <td style="text-align: left;">文字對齊損失</td>
+            <td style="text-align: left;">模型對指令理解的誤差（模型聽懂了嗎？）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{video}$</span></td>
+            <td style="text-align: left;">影像品質損失</td>
+            <td style="text-align: left;">輸出影像的畫質與一致性誤差（畫得好嗎？）。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>數值代入示例</h4>
+            <p>假設我們正在訓練模型執行「將影片轉為油畫風格」的任務：</p>
+            <ul>
+            <li>設定權重 <span class="math inline">$\alpha = 0.3$</span>, <span class="math inline">$\beta = 0.7$</span>（代表我們更看重影像畫質）。</li>
+            <li>假設模型在文字理解上測得誤差 <span class="math inline">$\mathcal{L}_{text} = 0.8$</span>。</li>
+            <li>模型在影像生成上測得誤差 <span class="math inline">$\mathcal{L}_{video} = 0.2$</span>。</li>
+            </ul>
+            <p><strong>計算過程：</strong></p>
+            <div class="formula">$$ \mathcal{L}_{edit} = (0.3 \times 0.8) + (0.7 \times 0.2) = 0.24 + 0.14 = 0.38 $$</div>
+            
+            <p><strong>實務意義：</strong><br />
+            這個數值 <span class="math inline">$0.38$</span> 代表了模型目前的「不滿意度」。在實務優化中，如果下一次迭代產出的 <span class="math inline">$\mathcal{L}_{edit}$</span> 小於 <span class="math inline">$0.38$</span>，就代表我們設計的這兩個組件成功讓模型更精準地同時兼顧了「聽指令」與「執行畫圖」。若 <span class="math inline">$\beta$</span> 過小，模型可能會畫出高品質但完全不符合指令的內容；若 <span class="math inline">$\alpha$</span> 過小，模型則可能忠實執行指令，但畫面細節崩壞。</p>
+            <hr />
+            <p><strong>階段性實驗心得</strong><br />
+            我們觀察到，透過這兩項組件，即便訓練數據量維持不變，模型處理複雜場景的能力顯著提升。核心在於我們不僅是在訓練模型「做什麼」，更是在訓練它「如何理解指令後的影像結構變化」。後續實驗將聚焦於如何動態調整 <span class="math inline">$\alpha$</span> 與 <span class="math inline">$\beta$</span>，以應對不同類型的複雜編輯任務。</p>
+            <h3>實驗日誌：VLM Instructor 的整合架構設計</h3>
+            <h4>觀察到的問題與核心決策</h4>
+            <p>在開發影片編輯模型時，我們發現傳統方法只依賴「純文字指令」（Text Embeddings）來控制生成過程，存在嚴重的資訊損耗。想像你在跟一位素描師溝通，若只用文字說「把那隻貓變色」，他很難精確定位是哪隻貓、範圍在哪。</p>
+            <p>因此，我們決定引入 <strong>VLM Instructor</strong>。我們不再只傳給模型文字，而是讓視覺語言模型（VLM）先「讀懂」畫面與指令，再轉換成一組更精細的「多模態 Token」。這就像是給素描師一張圈出重點的草圖，讓他一眼就能抓到修改目標。</p>
+            <h4>技術實作邏輯</h4>
+            <p>我們將流程拆解為兩個階段：</p>
+            <ol>
+            <li><strong>編碼階段</strong>：輸入影片的第一幀圖像與用戶指令，VLM 產出一組「多模態 Token」，這些 Token 包含了物件位置、區域座標與屬性變更需求。</li>
+            <li><strong>條件注入階段</strong>：將這些 Token 作為條件訊號注入 Diffusion Transformer (DiT) 的骨幹網路，直接取代傳統的文字 Embedding。</li>
+            </ol>
+            <h4>公式解析：多模態條件映射</h4>
+            <p>雖然該機制涉及多維度特徵投影，其核心數學映射關係可表達成：</p>
+            <div class="formula">$$H_{cond} = f_{VLM}(I_{first}, T_{inst})$$</div>
+            
+            <div class="formula">$$O_{gen} = DiT(z_t, H_{cond}, t)$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$H_{cond}$</span></td>
+            <td style="text-align: left;">最終注入 DiT 的多模態條件訊號（即編輯指令的「視覺化密碼」）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{first}$</span></td>
+            <td style="text-align: left;">輸入影片的第一幀原始圖像</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$T_{inst}$</span></td>
+            <td style="text-align: left;">用戶的原始文字指令</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$f_{VLM}$</span></td>
+            <td style="text-align: left;">VLM 的編碼運算過程，負責將影像與文字對齊</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$z_t$</span></td>
+            <td style="text-align: left;">當前擴散模型生成的雜訊影片潛空間狀態</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$O_{gen}$</span></td>
+            <td style="text-align: left;">最終生成的影片輸出結果</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值計算與實務意義示例</strong>：<br />
+            假設我們有一個簡單的指令「把紅色杯子變藍」。</p>
+            <ul>
+            <li><strong>計算意義</strong>：若傳統文字嵌入向量長度為 <span class="math inline">$768$</span> 維，僅代表「紅色、杯子、藍色」等語意；而我們的 <span class="math inline">$H_{cond}$</span> 透過 VLM 擴展後，包含邊界框（Bounding Box）座標（例如 <span class="math inline">$[x_1, y_1, x_2, y_2] = [100, 200, 150, 250]$</span>）。</li>
+            <li><strong>數值結果</strong>：假設系統將目標區域的顯著性權重提升至 <span class="math inline">$0.95$</span>（滿分 <span class="math inline">$1.0$</span>），而非預設的 <span class="math inline">$0.1$</span>。</li>
+            <li><strong>實務意義</strong>：這代表模型在生成影片時，將 <span class="math inline">$95\%$</span> 的注意力資源集中在 <span class="math inline">$[100, 200, 150, 250]$</span> 這個像素區間內進行變色處理，避免了背景色誤變的風險，大幅提升了編輯的「精確度」。</li>
+            </ul>
+            <h4>為什麼這樣設計有效？</h4>
+            <ul>
+            <li><strong>去模糊化 (Disambiguation)</strong>：直接用文字描述目標物，模型常會搞混（例如畫面中有兩個杯子）。透過 VLM 視覺對齊，我們將文字指令與特定像素區域「綁定」。</li>
+            <li><strong>高保真 (High-Fidelity)</strong>：利用 VLM 的視覺理解力（負責「看懂」）與 DiT 的生成力（負責「畫好」），我們達成了一種分工合作。這比直接微調大型模型效率更高，且保留了 DiT 原有的影片生成品質。</li>
+            </ul>
+            <p>透過這種結構，我們成功將「模糊的指令」轉化為「可計算的空間條件」，確保生成的影片在變更屬性時，不會破壞原始影片的結構與細節。</p>
+            <h3>實驗日誌：Edit-GRPO 訓練流程優化</h3>
+            <h4>1. 研究動機：為什麼需要 Edit-GRPO？</h4>
+            <p>在進行文字引導影片編輯（Text-guided video editing）時，我們發現模型常陷入「過度重視像素細節」的陷阱，導致影片雖然看起來很清晰，但卻偏離了使用者的指令要求（例如：說好要把貓變成狗，結果貓只是變成了雜訊很多的貓）。</p>
+            <p>過去的做法（如 RWR, Rejection-with-resampling）像是在進行「海選」：先產出一堆版本，人工或模型挑出好的存起來，再拿回去訓練。這種做法效率極低，像是把大把時間花在挑選樣本上，卻沒能從失敗樣本中學到教訓。</p>
+            <p>因此，我們引入了 <strong>Edit-GRPO</strong>，將強化學習（RL）的核心思想引入編輯任務：不只是挑出「最好的」，而是透過比較同組內的生成結果，讓模型學會「為什麼這個版本比那個版本更好」。</p>
+            <h4>2. 方法論：GRPO 在編輯任務的應用</h4>
+            <p>GRPO（Group Relative Policy Optimization）的原理是：對同一個指令，讓模型同時生成多個候選版本，計算各版本的獎勵值（Reward），並利用這些獎勵值的相對關係來更新模型。</p>
+            <p>其數學核心公式如下：</p>
+            <div class="formula">\[ J(\theta) = \mathbb{E}_{q \sim P, \{o_i\}_{i=1}^G \sim \pi_\theta} \left[ \frac{1}{G} \sum_{i=1}^G \text{clip} \left( \frac{\pi_\theta(o_i|q)}{\pi_{\theta_{old}}(o_i|q)}, 1-\epsilon, 1+\epsilon \right) A_i \right] \]</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話定義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\pi_\theta(o_i|q)$</span></td>
+            <td style="text-align: left;">模型針對輸入 <span class="math inline">$q$</span> 產生編輯結果 <span class="math inline">$o_i$</span> 的機率</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$A_i$</span></td>
+            <td style="text-align: left;">歸一化後的優勢函數（Advantage），代表該結果的好壞程度</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">一組產出的候選數量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\epsilon$</span></td>
+            <td style="text-align: left;">限制參數（Clipping），防止更新幅度過大導致模型崩潰</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>為什麼這樣設計？</strong><br />
+            這就像是一位老師在教學生：與其說「你這題錯了」，不如給他 5 份作業副本，標記出哪幾份比較接近正確答案，讓學生透過「橫向比較」領悟規律。</p>
+            <h4>3. 數值案例解讀</h4>
+            <p>假設我們對「將影片中的車子改為紅色」進行訓練，設定 <span class="math inline">$G=3$</span>（即產生 3 個候選版本），計算出的獎勵值與相對分數（<span class="math inline">$A_i$</span>）如下：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">候選版本</th>
+            <th style="text-align: left;">獎勵分數 (Raw Reward)</th>
+            <th style="text-align: left;">優勢函數值 <span class="math inline">$A_i$</span></th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$o_1$</span> (車子變紅但變形)</td>
+            <td style="text-align: left;">0.5</td>
+            <td style="text-align: left;">-0.8</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$o_2$</span> (車子未變色)</td>
+            <td style="text-align: left;">0.2</td>
+            <td style="text-align: left;">-1.2</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$o_3$</span> (車子變紅且穩定)</td>
+            <td style="text-align: left;">0.9</td>
+            <td style="text-align: left;">+2.0</td>
+            </tr>
+            </tbody>
+            </table>
+            <ul>
+            <li><strong>解讀：</strong> <ul>
+            <li><span class="math inline">$A_3 = 2.0$</span> 為正值，模型會接收到強烈的「加強訊號」，增加產生 <span class="math inline">$o_3$</span> 這類特徵的機率。</li>
+            <li><span class="math inline">$A_2 = -1.2$</span> 為負值，模型會接收到「抑制訊號」，降低產生 <span class="math inline">$o_2$</span> 這類失敗結果的機率。</li>
+            </ul>
+            </li>
+            <li><strong>實務意義：</strong> 透過 <span class="math inline">$A_i$</span> 的計算，模型不需要外部數據庫也能自我修正。即便所有的生成結果都不完美，模型也會傾向於選擇那個「較不差」的結果來進行優化。</li>
+            </ul>
+            <h4>4. 工程決策總結</h4>
+            <ul>
+            <li><strong>拋棄傳統合成迭代：</strong> 不再浪費算力在「產出-標註-儲存-重訓」的循環，改為直接在線訓練（Online RL）。</li>
+            <li><strong>優化目標轉移：</strong> 從單純的「像素對齊」（Pixel-level reconstruction）轉向「語義正確性」（Semantic correctness）。</li>
+            <li><strong>效益：</strong> 相比傳統方法，Edit-GRPO 能從極少量的編輯指令範例中，提取出更細緻的語義規則，讓模型更懂得「指令」與「視覺特徵」之間的對應關係。</li>
+            </ul>
+            <h3>實驗日誌：高質量合成數據集的建構管線 (Data Pipeline Construction)</h3>
+            <h4>1. 核心任務與設計動機</h4>
+            <p>在訓練影片編輯模型時，我們遇到了一個經典的「雞生蛋，蛋生雞」難題：現有的公開數據集大多是單純的「影片＋文字」，缺乏精準的「原始影片 vs. 編輯後影片」成對數據（Paired Data）。如果直接拿網路影片訓練，模型根本學不會「如何精確修改特定區域」而不破壞其他細節。</p>
+            <p>為了突破這個瓶頸，我們設計了一套數據生成管線。這就像是請了一位超級細心的「數位編輯教練」，自動幫我們製作教材，確保模型能理解什麼是「局部編輯」與「高度還原」。</p>
+            <h4>2. 工程決策：為什麼要這麼做？</h4>
+            <p>直覺的做法是直接找現成的影片剪輯軟體手動編輯，但這在成本上完全不可行。我們開發的自動化管線核心在於：</p>
+            <ul>
+            <li><strong>嚴格的局部性 (Strict Local Editing)</strong>：確保編輯操作（如換裝、改物件顏色）只影響目標區塊，背景絲毫不動。</li>
+            <li><strong>高保真度 (High Fidelity)</strong>：確保生成的影片在像素層級上與原始影格對齊，避免產生閃爍或模糊。</li>
+            </ul>
+            <p>我們將整個管線視為一個「配對生成器」，目標是建立 <span class="math inline">$\{V_{orig}, V_{edit}, T_{instr}\}$</span> 的三元組，其中 <span class="math inline">$V_{orig}$</span> 為原始影格，<span class="math inline">$V_{edit}$</span> 為編輯後影格，<span class="math inline">$T_{instr}$</span> 為執行指令。</p>
+            <h4>3. 技術運作邏輯解析</h4>
+            <p>為了量化數據集的品質，我們引入了衡量編輯偏移量的指標。假設我們定義一個像素點的編輯前後差距函數 <span class="math inline">$D(p)$</span>，其數學表達式如下：</p>
+            <div class="formula">$$ D(p) = \| f(p)_{orig} - f(p)_{edit} \|_2 \cdot M(p) $$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$f(p)_{orig}$</span></td>
+            <td style="text-align: left;">原始影片在像素點 <span class="math inline">$p$</span> 的顏色數值</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$f(p)_{edit}$</span></td>
+            <td style="text-align: left;">編輯後影片在同一位置的數值</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M(p)$</span></td>
+            <td style="text-align: left;">遮罩（Mask），判定該點是否在編輯範圍內（1 為範圍內，0 為範圍外）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\| \cdot \|_2$</span></td>
+            <td style="text-align: left;">歐式距離，計算兩點顏色差距</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值代入範例：</strong><br />
+            假設我們對一頂帽子進行「顏色變更」：</p>
+            <ul>
+            <li>若某點 <span class="math inline">$p$</span> 在帽子範圍內，<span class="math inline">$M(p) = 1$</span>，原始色彩值為 <span class="math inline">$(100, 50, 50)$</span>，編輯後為 <span class="math inline">$(150, 50, 50)$</span>。</li>
+            <li>計算：<span class="math inline">$D(p) = \| (100, 50, 50) - (150, 50, 50) \|_2 = \sqrt{(100-150)^2 + 0 + 0} = 50$</span>。</li>
+            <li>若某點 <span class="math inline">$p$</span> 在背景範圍，<span class="math inline">$M(p) = 0$</span>，即使背景受壓縮影響有些微色差（例如數值差距為 5）。</li>
+            <li>計算：<span class="math inline">$D(p) = 5 \cdot 0 = 0$</span>。</li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            這個公式的意義在於「強制歸零法」。透過 <span class="math inline">$M(p)$</span> 的乘法操作，我們確保了模型訓練時，非編輯區塊的誤差被強制視為零。這意味著如果模型在非編輯區塊產生了任何「誤改動」，損失函數會直接放大該錯誤，迫使模型學會「只動該動的地方」。</p>
+            <h4>4. 實驗階段總結</h4>
+            <p>這套管線解決了以往數據集「訓練目標模糊」的問題。透過這種方式生成的數據，不僅涵蓋了多樣化的編輯操作（如物件替換、風格遷移、局部調色），更重要的是提供了清晰的「錯誤參考基準」。現在我們擁有了一個穩固的基礎，可以讓模型在訓練過程中，像是在嚴格的指導下練習，精確掌握對特定區域的操作權限。</p>
+            <h3>實驗日誌：研發核心貢獻歸檔</h3>
+            <p>本次專案的目標是解決「影片編輯 AI 難以準確遵循複雜語意指令」的問題。在開發過程中，我們發現現有模型大多將影像與指令拆分處理，導致語意對齊效果不佳。經過數輪迭代，我們歸納出以下四項關鍵技術突破，作為本次系統的核心架構。</p>
+            <h4>1. VLM Instructor：視覺語意橋接器</h4>
+            <p>我們設計了 VLM Instructor，不再將「文字指令」與「影片影格」視為互不相干的輸入。它的運作邏輯類似於「精準翻譯官」，在處理影片的第一幀時，會同步將文字指令的特徵嵌入視覺空間。</p>
+            <ul>
+            <li><strong>為什麼這樣做？</strong> 直覺的做法是讓模型看完整段影片再去理解指令，但這會造成資訊過載。我們先將首幀與文字結合，等於是先設定好「編輯目標的錨點」，讓後續的編輯動作都有跡可循。</li>
+            </ul>
+            <h4>2. Edit-GRPO：結果導向的強化學習</h4>
+            <p>為了讓模型不僅「聽得懂」還能「做得好」，我們引入了 <strong>Edit-GRPO (Group Relative Policy Optimization)</strong> 後訓練階段。</p>
+            <ul>
+            <li><strong>技術原理：</strong><br />
+              我們定義了一個獎勵函數 <span class="math inline">$R(I, V_{out})$</span>，其中 <span class="math inline">$I$</span> 代表使用者的原始指令，<span class="math inline">$V_{out}$</span> 是模型輸出的影片結果。</li>
+            </ul>
+            <div class="formula">$$R = \alpha \cdot \text{Alignment}(I, V_{out}) + \beta \cdot \text{Quality}(V_{out})$$</div>
+            
+            <ul>
+            <li>
+            <p><strong>變數對照表</strong><br />
+                | 變數 | 白話定義 |<br />
+                | :--- | :--- |<br />
+                | <span class="math inline">$R$</span> | 給予模型的總獎勵分數 (越高越好) |<br />
+                | <span class="math inline">$\alpha, \beta$</span> | 指令遵循度與影片畫質的權重係數 |<br />
+                | <span class="math inline">$\text{Alignment}$</span> | 編輯結果與指令目標的匹配度 |<br />
+                | <span class="math inline">$\text{Quality}$</span> | 影片視覺品質指標 (如解析度、連貫性) |</p>
+            </li>
+            <li>
+            <p><strong>數值示例與意義：</strong><br />
+              假設我們給予指令「將畫面色調變為暖色」，<span class="math inline">$\alpha=0.7, \beta=0.3$</span>。若模型輸出色調正確但畫面模糊，<span class="math inline">$\text{Alignment}=0.9, \text{Quality}=0.4$</span>。<br />
+              計算：<span class="math inline">$R = 0.7(0.9) + 0.3(0.4) = 0.63 + 0.12 = 0.75$</span>。</p>
+            </li>
+            <li>
+            <p><strong>實務解讀：</strong> 這代表模型在「達成任務」上做得很好，但「畫質細節」還需優化。透過這套公式，我們能直接懲罰那些「亂改但畫質很差」的輸出，強制模型在兩者間取得平衡。</p>
+            </li>
+            </ul>
+            <h4>3. 資料建構管線 (Data Construction Pipeline)</h4>
+            <p>模型好壞取決於資料。我們建立了一套自動化管線，專門生成「基礎編輯動作」的配對數據（原始影片 + 指令 + 修改後影片）。</p>
+            <ul>
+            <li><strong>工程決策：</strong> 過去的數據多半是單一類型的修改。我們透過管線，刻意製造出包含「亮度調整」、「物件新增」、「風格變換」等多元組合，確保模型能處理非單一的複雜指令。</li>
+            </ul>
+            <h4>4. 實驗驗證與基準對照</h4>
+            <p>在對比強大的 Baseline 模型後，我們的評測顯示：</p>
+            <ul>
+            <li><strong>指令遵循度 (Instruction Following)：</strong> 在嚴格的語意測試中，我們的模型能更精準地識別「不要改動背景」等負向約束條件。</li>
+            <li><strong>影片質量 (Video Quality)：</strong> 與傳統編輯模型相比，我們在維持畫質的前提下，大幅提升了操作靈活性。</li>
+            </ul>
+            <p><strong>總結：</strong> 透過這套結合「視覺語意對齊」與「結果導向獎勵」的架構，我們成功解決了編輯模型常出現的「語意失真」問題。目前的實驗紀錄顯示，此路徑已達到生產環境所需的穩定度。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - 2. Related Work</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：指令式影片編輯技術的演進脈絡</h3>
+            <h4>1. 核心任務與初期探索（Inversion-based Approaches）</h4>
+            <p>早期的研究目標很明確：<strong>「使用者輸入一句話，影片內容就要自動變身」</strong>。<br />
+            工程師最初的策略是利用「反轉（Inversion）」技術。簡單來說，就像是把已經渲染好的影片倒帶回到「原始噪點」狀態，再透過文字引導生成新的畫面。</p>
+            <ul>
+            <li><strong>問題點</strong>：這類方法通常是一次性（Zero-shot）的，模型對影片的理解力很弱，細節容易飄移。</li>
+            <li><strong>決策轉折</strong>：隨著預訓練影片擴散模型（Video Diffusion Models）開源，我們開始從「通用模型」轉向「特定任務模型」，例如針對填補缺失（Inpainting）或虛擬試穿（Virtual Try-on）進行特化。</li>
+            </ul>
+            <h4>2. 工程瓶頸：手動限制（Manual Priors）</h4>
+            <p>在嘗試上述方法時，我們發現一個致命傷：<strong>「過度依賴外部引導」</strong>。<br />
+            這些模型就像一個很會畫畫但沒有想像力的工匠，必須給它遮罩（Mask）、骨架（Pose）或軌跡（Trajectory）才能運作。這限制了使用的靈活性，不像我們想要的「純指令編輯」。</p>
+            <h4>3. 指令式編輯的實驗演進（Instruction-only Editing）</h4>
+            <p>為了擺脫手動限制，研究界嘗試了幾種演進路徑：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">發展階段</th>
+            <th style="text-align: left;">核心策略</th>
+            <th style="text-align: left;">工程師觀察</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>初代挑戰 (InsV2V)</strong></td>
+            <td style="text-align: left;">利用 InstructPix2Pix 生成配對數據</td>
+            <td style="text-align: left;">創意很好，但受限於背骨模型（Backbone）性能與數據品質，效果卡關。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>近期突破 (Ditto)</strong></td>
+            <td style="text-align: left;">在預訓練模型中加入「可訓練模組」</td>
+            <td style="text-align: left;">就像在原本的模型旁增加輔助處理器（Context-blocks），顯著提升細節控制力。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>最新趨勢 (VLM 輔助)</strong></td>
+            <td style="text-align: left;">引入視覺語言模型 (VLM)</td>
+            <td style="text-align: left;">讓模型具備「看懂」影片內容的能力，而不僅僅是處理像素對應。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>4. 公式解讀：編輯強度的量化（概念性模型）</h4>
+            <p>雖然原文側重文獻回顧，但在處理指令式編輯時，我們通常會用到一個權重分配公式來決定「原始資訊」與「指令修改」的比例，例如：</p>
+            <div class="formula">$$ E_{final} = (1 - \alpha) \cdot V_{original} + \alpha \cdot T_{instruction} $$</div>
+            
+            <p><strong>變數解釋表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">工程視角解讀</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$E_{final}$</span></td>
+            <td style="text-align: left;">最終輸出的影片訊號</td>
+            <td style="text-align: left;">編輯完成的成品</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V_{original}$</span></td>
+            <td style="text-align: left;">原始影片資訊</td>
+            <td style="text-align: left;">保留原影片的一致性</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$T_{instruction}$</span></td>
+            <td style="text-align: left;">文字指令帶來的變更</td>
+            <td style="text-align: left;">使用者的創意輸入</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha$</span></td>
+            <td style="text-align: left;">權重參數 (0 到 1)</td>
+            <td style="text-align: left;">編輯強度的「濾鏡程度」</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義</strong></p>
+            <p>假設我們設定 <span class="math inline">$\alpha = 0.3$</span>：</p>
+            <ul>
+            <li><strong>計算</strong>：最終結果 = <span class="math inline">$0.7 \times (\text{原始影片}) + 0.3 \times (\text{指令變更})$</span></li>
+            <li><strong>實務意義</strong>：這個設定表示模型傾向於<strong>保留原影片 70% 的架構</strong>，只做小幅度的修飾。如果 <span class="math inline">$\alpha$</span> 調高到 0.8，則模型會大幅改動內容，可能導致影片閃爍或背景崩潰。</li>
+            </ul>
+            <h4>5. 結論與當前實驗觀察</h4>
+            <p>從「手動給參數」轉向「自然語言理解」，是當前領域的核心轉移。最新的研究（如 Omni-Video, Univideo）都在驗證一件事：<strong>影片編輯不再只是數學上的像素重組，而是「理解影片內容後進行合理的邏輯修正」。</strong> 目前的實驗指標顯示，結合 VLM（視覺語言模型）理解能力的架構，已經成為現階段提升編輯品質的最佳路徑。</p>
+            <h3>實驗日誌：視覺語言模型（VLM）的技術演進與定位</h3>
+            <p>在建構視覺感知系統的過程中，我們面臨的核心挑戰是如何讓電腦「看懂」影像並「用文字表達」。早期的研究將此視為一個跨領域的翻譯問題，而 VLMs 就是連接影像感知（Visual Perception）與文字描述（Textual Description）的橋樑。</p>
+            <h4>1. 研究觀察：從「聯合表示」到「指令微調」的轉折</h4>
+            <p>我們檢視了領域內的幾個關鍵里程碑：</p>
+            <ul>
+            <li>
+            <p><strong>第一階段：聯合表示學習（Joint Representations）</strong></p>
+            <ul>
+            <li>代表作：CLIP [49]、BLIP-2 [32]、Flamingo [1]。</li>
+            <li><strong>技術決策：</strong> 這些模型的核心邏輯是將影像空間與文字空間對齊（Alignment）。想像這就像是為圖片與文字建立一個「共同翻譯字典」，讓電腦能判斷某張圖片是否符合特定描述。</li>
+            <li><strong>為什麼這樣設計：</strong> 若不進行聯合學習，電腦對影像的認知僅止於像素統計，對文字則止於語法結構。透過對齊，模型能學會將「貓的圖片」與「貓的文字」映射到向量空間中鄰近的位置。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>第二階段：指令微調（Instruction-tuning）</strong></p>
+            <ul>
+            <li>代表作：LLaVA [37]、Video-ChatGPT [45]、Qwen2.5-VL [4]。</li>
+            <li><strong>技術決策：</strong> 我們觀察到單純的聯合表示雖然能進行初步分類，但缺乏對複雜情境的對話能力。因此，研究者引入了指令微調，讓模型不只是「識別」，還能「理解指令並回應」。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>2. 技術原理：相似度對齊的數學解釋</h4>
+            <p>VLMs 進行對齊時，通常會計算影像向量 <span class="math inline">$v$</span> 與文字向量 <span class="math inline">$t$</span> 之間的內積。其目標是讓模型學會計算餘弦相似度（Cosine Similarity）：</p>
+            <div class="formula">$$S(v, t) = \frac{v \cdot t}{\|v\| \|t\|}$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$v$</span></td>
+            <td style="text-align: left;">視覺編碼器輸出的特徵向量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t$</span></td>
+            <td style="text-align: left;">文字編碼器輸出的特徵向量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S(v, t)$</span></td>
+            <td style="text-align: left;">兩者在向量空間的相似度分數，範圍 <span class="math inline">$[-1, 1]$</span></td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義：</strong><br />
+            假設我們有一個描述「一隻狗在跑步」的向量 <span class="math inline">$t$</span>，以及兩張圖片向量 <span class="math inline">$v_1$</span>（狗）、<span class="math inline">$v_2$</span>（樹）。</p>
+            <ul>
+            <li>若計算出 <span class="math inline">$S(v_1, t) = 0.85$</span>，而 <span class="math inline">$S(v_2, t) = 0.12$</span>。</li>
+            <li><strong>實務結果：</strong> <span class="math inline">$0.85$</span> 代表模型高度確信影像與文字高度相關（高相似度）；而 <span class="math inline">$0.12$</span> 代表模型認為兩者幾乎無關。模型在訓練過程中，就是透過不斷更新權重，讓正確的配對數值趨近於 <span class="math inline">$1$</span>。</li>
+            </ul>
+            <h4>3. 實驗反思：為什麼這比直覺做法更好？</h4>
+            <ul>
+            <li><strong>直覺做法（失敗路徑）：</strong> 直接將影像像素（Raw Pixels）硬塞給語言模型。這就像是強迫一位只讀過文字的學者，去辨識未經處理的 RGB 訊號，學者根本無法從雜訊中提取特徵。</li>
+            <li><strong>本方案優勢：</strong> 透過 VLMs 的「橋樑設計」，我們先將影像轉換成與文字同維度的向量，這相當於將影像「翻譯」成語言模型聽得懂的專業術語。這種「感知對齊」策略，正是讓模型具備視覺接地（Visual Grounding）與上下文感知（Context-aware）能力的基礎。</li>
+            </ul>
+            <p>這項演進告訴我們：要讓 VLM 具備高階思考能力，必須先打好「感知對齊」的地基，才能進一步透過指令微調，讓模型真正學會與人類進行複雜的視覺對話。</p>
+            <h3>實驗日誌：從視覺語言模型（VLM）切入影片控制的決策記錄</h3>
+            <p><strong>觀察到的問題</strong><br />
+            在先前的影片生成研究中，我們發現單純依賴「文字提示（Text Prompt）」來控制影片生成時，模型常常出現「語意偏移」或「對視覺細節掌握不足」的情況。就好比你叫一個畫家「畫一隻正在跑步的狗」，如果沒有給他參考圖，他畫出來的狗可能跟你腦中的樣子完全不同。我們觀察到，VLM 具備極強的視覺感知與語言理解能力，理應是理想的「導師」。</p>
+            <p><strong>研究決策與調整</strong><br />
+            為了提升對影片內容的精準控制，我們決定引入 VLM 作為「指令編碼器（Instructor）」。我們的設計邏輯如下：</p>
+            <ol>
+            <li><strong>雙重輸入融合</strong>：不僅輸入使用者的文字指令，還強制模型讀取原始影片的視覺上下文（Visual Context）。</li>
+            <li><strong>條件控制優化</strong>：將 VLM 輸出的特徵向量作為條件，導引擴散模型（Diffusion Model）進行生成，確保編輯動作與原影片的物理空間結構維持一致。</li>
+            </ol>
+            <p><strong>技術邏輯拆解：條件控制公式</strong><br />
+            我們在生成過程中使用以下條件機率模型來引導輸出：</p>
+            <div class="formula">$$P(x_t | y, c) = \frac{\exp(\text{score}(x_t, y, c))}{\sum \exp(\text{score}(x_{t&#x27;}, y, c))}$$</div>
+            
+            <p><strong>變數與公式意義表</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">符號</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$P(x_t | y, c)$</span></td>
+            <td style="text-align: left;">條件機率</td>
+            <td style="text-align: left;">在給定文字 <span class="math inline">$y$</span> 與視覺內容 <span class="math inline">$c$</span> 下，生成當下片段 <span class="math inline">$x_t$</span> 的可能性。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_t$</span></td>
+            <td style="text-align: left;">影片片段</td>
+            <td style="text-align: left;">目前正在生成的影格。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$y$</span></td>
+            <td style="text-align: left;">文字指令</td>
+            <td style="text-align: left;">使用者想做的編輯（如：「讓貓變色」）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$c$</span></td>
+            <td style="text-align: left;">視覺上下文</td>
+            <td style="text-align: left;">原影片的參考物件輪廓與動作資訊。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{score}$</span></td>
+            <td style="text-align: left;">分數函式</td>
+            <td style="text-align: left;">評估生成結果與需求吻合程度的打分機制。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義</strong><br />
+            假設我們設定分數函式為簡單的餘弦相似度，若滿分為 1.0：</p>
+            <ul>
+            <li><strong>情境 A（傳統方法）</strong>：僅使用 <span class="math inline">$y$</span>，忽略 <span class="math inline">$c$</span>。模型得分僅為 <span class="math inline">$0.65$</span>（因為貓的動作雖然正確，但顏色變更導致原有的背景透視崩潰）。</li>
+            <li><strong>情境 B（本方法）</strong>：同時使用 <span class="math inline">$y$</span> 與 <span class="math inline">$c$</span>。模型得分為 <span class="math inline">$0.92$</span>。</li>
+            </ul>
+            <p><strong>結果解讀</strong>：在實務上，這 <span class="math inline">$0.27$</span> 的落差代表了「穩定度」。數值越高，代表編輯後的影片越不容易出現閃爍（flickering）或物件變形。透過 VLM 充當導師，我們成功讓生成器「看著原圖畫圖」，大幅提升了影片編輯的指令忠誠度（Instruction Fidelity）。</p>
+            <p><strong>總結</strong><br />
+            這就像是請一位經驗豐富的設計師（VLM），讓他看著草圖（Visual Context）並參考修改意見（Textual Instructions）來工作，比單靠口頭描述更有成效。實驗證明，這種「看圖說故事」的控制機制，比單純的文字輸入更能確保影片生成品質的穩定。</p>
+            <h3>實驗日誌：從語言模型對齊到影像編輯的遷移路徑</h3>
+            <p><strong>觀察到的問題與工程目標</strong><br />
+            在大型語言模型（LLM）的開發經驗中，我們發現單純依靠預訓練（Pre-training）很難確保模型完全符合人類的意圖。工程上，我們傾向使用強化學習（RL）作為「校正機制」，將模型的生成邊界拉回人類偏好的範圍內。現在的問題是：我們是否能將這套成熟的對齊邏輯，遷移到更複雜的「影片編輯」任務中？</p>
+            <p><strong>技術決策與調整</strong><br />
+            我們回顧了強化學習在生成式模型中的應用發展，並確認了以下關鍵路徑：</p>
+            <ol>
+            <li><strong>語言領域的基準（Foundation）：</strong> 使用 PPO（近端策略優化）、RPO 或 GRPO 等演算法，這些方法的核心在於透過獎勵模型（Reward Model）來懲罰不符合指令的行為，確保模型生成的穩定性。</li>
+            <li><strong>視覺領域的擴展（Adaptation）：</strong> 過去的研究 [39, 40, 65, 69] 成功將上述機制移植到圖片生成中。我們注意到，目前的做法多是透過「獎勵導向微調（Reward-guided fine-tuning）」來達成目標。</li>
+            <li><strong>我們的技術轉折點（The Extension）：</strong> 不同於單純的圖片處理，影片編輯涉及時間軸一致性。我們將強化學習的框架延伸至影片領域，重點在於提升模型的「魯棒性（Robustness）」與「泛化能力（Generalization）」。</li>
+            </ol>
+            <p><strong>數學邏輯與直覺解釋</strong><br />
+            強化學習在生成式模型的運作基礎通常建立在策略目標函數上，以 PPO 為例，其更新的核心目標公式如下：</p>
+            <div class="formula">$$J(\theta) = \mathbb{E}_{t} \left[ \min(r_t(\theta) \hat{A}_t, \text{clip}(r_t(\theta), 1-\epsilon, 1+\epsilon) \hat{A}_t) \right]$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話定義</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$r_t(\theta)$</span></td>
+            <td style="text-align: left;">策略比例</td>
+            <td style="text-align: left;">新舊模型輸出結果的比值</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{A}_t$</span></td>
+            <td style="text-align: left;">優勢估計值</td>
+            <td style="text-align: left;">該次編輯動作比預期好多少</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\epsilon$</span></td>
+            <td style="text-align: left;">截斷參數</td>
+            <td style="text-align: left;">防止模型因為一次優化過大而「變笨」</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務解讀</strong><br />
+            假設模型目前正在進行一個影片的「色彩調整」編輯。</p>
+            <ul>
+            <li>假設 <span class="math inline">$r_t(\theta) = 1.2$</span>（代表新模型的機率提升了 20%），且 <span class="math inline">$\hat{A}_t = 0.5$</span>（代表這是一個正面回饋），<span class="math inline">$\epsilon = 0.2$</span>。</li>
+            <li>計算結果：<span class="math inline">$\min(1.2 \times 0.5, \text{clip}(1.2, 0.8, 1.2) \times 0.5) = \min(0.6, 1.2 \times 0.5) = 0.6$</span>。</li>
+            </ul>
+            <p><strong>結果說明：</strong> 如果計算出的目標函數值為 0.6，這代表模型在這次迭代中「穩健地」向使用者偏好的方向優化。若沒有 <code>clip</code>（截斷）函數，模型可能會為了追求高回饋而產生激進的權重跳躍，導致影片出現閃爍或雜訊。</p>
+            <p><strong>工程觀點總結</strong><br />
+            這就像是教導一個新手攝影師（生成模型）：</p>
+            <ul>
+            <li><strong>初期：</strong> 給他看幾萬張照片（預訓練）。</li>
+            <li><strong>強化階段：</strong> 當他拍出符合風格的照片時，我們給予獎勵；若拍出過曝的照片，則給予懲罰。</li>
+            <li><strong>我們的貢獻：</strong> 我們不僅是給予獎勵，更調整了獎勵的計算方式，讓攝影師在處理「動態影片」時，不會因為單一幀（Frame）的獎勵極高，就毀掉整部影片的連貫性。這就是為什麼我們的方法能比傳統方法更具備魯棒性的原因。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - 3. Method</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：VIVA 系統架構開發與優化策略</h3>
+            <p>本次研發目標是構建一個具備高度指令遵循能力的影片編輯系統（VIVA）。我們採用了「理解（Understanding）」與「生成（Generation）」雙分支架構，並引入強化學習策略提升編輯品質。</p>
+            <hr />
+            <h4>1. 架構總覽：雙腦協作模式</h4>
+            <p>為了讓模型既能「看懂」複雜指令，又能「精確重繪」影片，我們將系統拆分為兩大核心：</p>
+            <ul>
+            <li><strong>VLM Instructor (理解分支)：</strong> 扮演大腦角色。負責消化原始影片、文字指令以及參考圖，將這些多模態資訊轉化為模型能聽懂的語義向量。</li>
+            <li><strong>Diffusion Transformer (DiT, 生成分支)：</strong> 扮演畫手角色。我們選用預訓練的 T2V DiT 作為基底，將上述語義向量整合進去，執行像素級的影片編輯。</li>
+            </ul>
+            <p><strong>為什麼要這樣設計？</strong><br />
+            如果直接把複雜指令餵給生成模型，模型很容易「聽不懂」或「畫錯重點」。分開處理就像是「翻譯官（VLM）先整理重點，畫手（DiT）再依據清單動筆」，能顯著降低編輯任務的模糊性。</p>
+            <hr />
+            <h4>2. 核心機制：Edit-GRPO 優化策略</h4>
+            <p>在預訓練後，我們發現模型對指令的順從度仍有不足，且生成的影片常出現細節崩壞。為此，我們設計了 <strong>Edit-GRPO (Group Relative Policy Optimization)</strong>，這是一種基於群體相對策略的優化方法。</p>
+            <p><strong>公式解讀：</strong><br />
+            我們透過優化目標函數來調整權重：</p>
+            <div class="formula">$$J(\theta) = \mathbb{E}_{q \sim P_{\theta_{old}}} \left[ \frac{1}{G} \sum_{i=1}^{G} \text{clip}\left(\frac{\pi_\theta(a_i|s)}{\pi_{\theta_{old}}(a_i|s)}, 1-\epsilon, 1+\epsilon\right) A_i \right]$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\pi_\theta$</span></td>
+            <td style="text-align: left;">當前訓練中的模型策略</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\pi_{\theta_{old}}$</span></td>
+            <td style="text-align: left;">舊版模型策略（參考基線）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$A_i$</span></td>
+            <td style="text-align: left;">相對優勢分數（群體內比較）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">採樣組的數量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\epsilon$</span></td>
+            <td style="text-align: left;">限制更新幅度的超參數（防止模型壞掉）</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義：</strong><br />
+            假設我們生成 <span class="math inline">$G=4$</span> 個編輯後的影片版本。模型會計算每個版本的「指令一致性分數」，並計算相對優勢 <span class="math inline">$A_i$</span>。<br />
+            若 <span class="math inline">$A = [0.8, -0.5, 0.3, -0.6]$</span>，模型會強化前兩個正值樣本的生成邏輯，並抑制後兩個負值樣本的特徵。</p>
+            <ul>
+            <li><strong>實務結果：</strong> 這讓模型在訓練時不是盲目地「變得更好」，而是「學會挑選哪種改動最符合人類指令」，類似於教導畫手從 4 張草稿中挑出最正確的一張去強化筆觸，而非單純疊加所有資訊。</li>
+            </ul>
+            <hr />
+            <h4>3. 實驗流程與數據準備</h4>
+            <p>為了確保模型「見多識廣」，我們在 3.4 節採取了系統化的數據準備流程：</p>
+            <ol>
+            <li><strong>數據合成：</strong> 利用 VLM 生成高品質的編輯指令集，涵蓋物件替換、風格轉換、背景修改等場景。</li>
+            <li><strong>內容一致性維護：</strong> 我們不僅訓練模型編輯影片，還強制模型保留「源影片」的關鍵時空資訊（如人物臉部輪廓、物體位置），避免編輯時產生畫面閃爍（flickering）。</li>
+            <li><strong>迭代路徑：</strong><ul>
+            <li><strong>Phase 1：</strong> 訓練 VLM 理解各種多模態輸入（文字 + 影片 + 參考圖）。</li>
+            <li><strong>Phase 2：</strong> 微調 DiT 模型，使其學會利用 VLM 提供的語義情境。</li>
+            <li><strong>Phase 3：</strong> 執行 Edit-GRPO，針對指令遵循與視覺美學進行強化。</li>
+            </ul>
+            </li>
+            </ol>
+            <p><strong>總結：</strong><br />
+            這套實驗流程的關鍵在於「解耦」。透過將理解與生成分工，並利用群體優化（GRPO）而非單純的損失函數下降，模型能更穩定地在編輯過程中保持內容 fidelity（忠實度），這是傳統端到端（End-to-End）生成模型常面臨的難點。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-5">
+        <h2>Section 5 - 3.1. Context-Aware VLM Instructor</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：Context-Aware VLM Instructor 的選型策略</h3>
+            <p><strong>觀察到的問題：影片編輯的「語境破碎」</strong><br />
+            在處理影片編輯任務時，模型必須同時理解文字指令、原始影片內容，甚至參考圖。我們發現，如果只用像 T5 這種「純語言模型」作為編碼器（Encoder），模型會嚴重缺乏視覺語境的覺察力。</p>
+            <p>這就像是請一位只讀過文字小說、從沒看過電影的人去修圖：他知道「把天空變亮」的字面意思，但他無法理解影片中光影與物體的實際空間關係。這種語意引導的不足，會導致後續生成分支面臨極高的模糊性，產出的結果往往與預期不符。</p>
+            <p><strong>決策取捨：為什麼選擇 VLM 而非純語言模型？</strong><br />
+            為了改善語意對齊，視覺語言模型（VLM）是更優秀的替代方案。VLM 天生具備將「文字空間」與「視覺特徵空間」對齊的能力。目前的常見做法是將現有的 VLM（如 QWEN2.5-VL）強行對接到以 T5 為基礎的 DiT 模型（如 Wan）。</p>
+            <p>但工程上的挑戰在於：這種「異質拼裝」需要進行極其沉重的預訓練，才能讓 VLM 的特徵空間能被 DiT「聽懂」。這就像是讓講中文的人去跟講德文的人共事，中間需要漫長的磨合期。</p>
+            <p><strong>最終方案：HunYuuan-T2V-13B 的選型優勢</strong><br />
+            我們採取了捷徑：直接選用 Hunyuan-T2V-13B 作為骨幹。原因在於它底層已經與 LLaVA-Llama-3-8B 的視覺空間完成了對齊。這就像是直接聘用了一組已經磨合好的雙語團隊，省去了昂貴且冗長的對齊訓練成本。</p>
+            <hr />
+            <h3>技術對齊邏輯說明</h3>
+            <p>我們定義一個語境映射函數 <span class="math inline">$f(C)$</span>，用來衡量輸入條件（文字 <span class="math inline">$T$</span>、影片 <span class="math inline">$V$</span>、參考圖 <span class="math inline">$R$</span>）如何轉化為生成模型的指導特徵 <span class="math inline">$Z$</span>：</p>
+            <div class="formula">$$ Z = f(T, V, R) $$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$T$</span></td>
+            <td style="text-align: left;">文字指令</td>
+            <td style="text-align: left;">例如「將影片中的人物換裝」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V$</span></td>
+            <td style="text-align: left;">原始影片</td>
+            <td style="text-align: left;">模型需參考的時序內容</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R$</span></td>
+            <td style="text-align: left;">參考影像</td>
+            <td style="text-align: left;">提供目標風格或細節的圖</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$Z$</span></td>
+            <td style="text-align: left;">特徵向量</td>
+            <td style="text-align: left;">最終輸入給 DiT 的多模態指令</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義</strong><br />
+            假設我們定義對齊分數 <span class="math inline">$S = \text{Alignment}(Z, G)$</span>，其中 <span class="math inline">$G$</span> 為生成模型的潛在空間，數值範圍為 <span class="math inline">$[0, 1]$</span>：</p>
+            <ul>
+            <li><strong>直覺做法（T5 Based）</strong>：因缺乏視覺編碼，對齊分數可能僅為 <span class="math inline">$S \approx 0.45$</span>。這代表模型經常「聽不懂」視覺內容，生成時容易產生畫面閃爍或物體畸變。</li>
+            <li><strong>本實驗做法（Hunyuan-T2V-13B）</strong>：因已預先完成空間對齊，對齊分數可達 <span class="math inline">$S \approx 0.85$</span>。</li>
+            </ul>
+            <p><strong>結果解讀：</strong><br />
+            分數從 0.45 提升至 0.85，意味著生成模型接收到的指令特徵中，包含更多「視覺一致性」資訊。在實務上，這直接解決了「指令遵循性」問題，模型不再只是根據文字隨意生成，而是真正能基於原始影片的語境進行精準編輯。</p>
+            <h3>實驗日誌：優化 VLM 導航信號的結構化調整</h3>
+            <h4>1. 觀察到的問題：指令過於「稀疏」</h4>
+            <p>在早期的開發階段，我們僅依賴純文字指令 <span class="math inline">$\mathbf{t}_{ins}$</span> 來驅動模型。實驗發現這存在顯著瓶頸：文字就像是一張寫著「把那棵樹變綠」的紙條，但模型根本不知道「那棵樹」到底是指畫面左邊的那棵，還是遠處模糊的影子。</p>
+            <p>這種「語義稀疏（Semantically Sparse）」的輸入導致模型在理解編輯範圍時極度困惑（Ambiguity）。這好比你要一個畫家只聽描述而不看底稿就作畫，結果往往是藝術風格對了，但位置完全偏離。</p>
+            <h4>2. 調整策略：引入視覺錨點</h4>
+            <p>為了修正這種模糊性，我們決定引入源影片的第一影格 <span class="math inline">$\mathbf{I}_{src}$</span> 作為參考。這不僅是增加一張圖，而是提供了一個「實體接地（Grounded）」的空間基準。</p>
+            <ul>
+            <li><strong>為什麼有效？</strong> 當模型同時看到 <span class="math inline">$\mathbf{t}_{ins}$</span>（做什麼）與 <span class="math inline">$\mathbf{I}_{src}$</span>（對誰做）時，它能從像素層面區分出：「編輯區域」與「編輯對象」到底在哪裡。</li>
+            <li><strong>靈活度提升：</strong> 我們進一步增加了可選的參考圖像 <span class="math inline">$\mathbf{I}_{ref}$</span>。如果說 <span class="math inline">$\mathbf{t}_{ins}$</span> 定義了「動作」，那麼 <span class="math inline">$\mathbf{I}_{ref}$</span> 就直接定義了「樣貌」。</li>
+            </ul>
+            <h4>3. 公式解析與實務意義</h4>
+            <p>最終，我們從 VLM 的輸出層獲取最後的隱藏狀態（Last hidden states），將其轉化為多模態條件標記 <span class="math inline">$\mathbf{x}_{vlm}$</span>：</p>
+            <div class="formula">$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref})$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">角色</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{ins}$</span></td>
+            <td style="text-align: left;">文字指令</td>
+            <td style="text-align: left;">定義編輯任務（動詞，如「替換」、「變色」）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{src}$</span></td>
+            <td style="text-align: left;">源影片首影格</td>
+            <td style="text-align: left;">定義編輯對象的空間位置（主體錨點）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{ref}$</span></td>
+            <td style="text-align: left;">參考圖像</td>
+            <td style="text-align: left;">定義最終視覺外觀（具體樣貌）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{vlm}$</span></td>
+            <td style="text-align: left;">多模態條件標記</td>
+            <td style="text-align: left;">輸出給 DiT 的控制訊號</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值代入示例：</strong><br />
+            假設我們定義一個維度轉換過程，VLM 將三種輸入壓縮後映射成固定維度的向量。若 <span class="math inline">$\mathbf{t}_{ins}$</span> 佔 <span class="math inline">$20\%$</span> 的資訊量，<span class="math inline">$\mathbf{I}_{src}$</span> 提供 <span class="math inline">$50\%$</span> 的空間位置資訊，<span class="math inline">$\mathbf{I}_{ref}$</span> 提供 <span class="math inline">$30\%$</span> 的視覺特徵細節：</p>
+            <ul>
+            <li>計算：<span class="math inline">$0.2 + 0.5 + 0.3 = 1.0$</span> (代表資訊完整度)</li>
+            <li><strong>實務意義：</strong> 若缺乏 <span class="math inline">$\mathbf{I}_{ref}$</span>（即無參考圖），資訊量降為 <span class="math inline">$0.7$</span>。這意味著模型對「最終長什麼樣」的把握度下降了 <span class="math inline">$30\%$</span>，導致生成出的影片可能與預期風格不符，或是細節遺失。</li>
+            </ul>
+            <h4>4. 實驗結論</h4>
+            <p>透過這種方式，我們將原本單薄的文字指令升級為「文字+視覺」的雙重導航。</p>
+            <ul>
+            <li><strong>直覺做法的差異：</strong> 直覺上可能只想用更強的文字編碼器，但實驗證明，將影像作為「Condition」直接放入 VLM 的處理流程中，能讓下游模型（DiT）獲得更精確的控制訊號。</li>
+            <li><strong>成果：</strong> 這大幅提升了影片編輯的保真度（Fidelity），因為模型不再需要「猜」用戶在說哪一個像素，而是直接「看」著該區域進行操作。</li>
+            </ul>
+            <h3>實驗日誌：Context-Aware VLM Instructor 的運作機制</h3>
+            <p>在開發自動化視覺模型標註工具時，我們面臨的核心問題是：如何讓模型在判斷圖片時，不只是「瞎猜」，而是能參考特定的基準資料？我們設計了 Context-Aware VLM Instructor，旨在透過引入參考影像來校準模型的判斷力。</p>
+            <h4>1. 公式定義與設計初衷</h4>
+            <p>我們將模型的運作抽象化為公式 (1)：</p>
+            <div class="formula">$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref})$$</div>
+            
+            <p>此設計的核心邏輯在於將「任務」與「情境」分層處理。相比於只輸入指令的傳統做法，我們引入了 <span class="math inline">$\mathbf{I}_{ref}$</span>，這就像是給學生一份「範本」，讓模型在處理 <span class="math inline">$\mathbf{I}_{src}$</span> 時有跡可循。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數名稱</th>
+            <th style="text-align: left;">定義與物理意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{vlm}$</span></td>
+            <td style="text-align: left;">模型輸出的標註結果（預測後的文字或座標資訊）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{ins}$</span></td>
+            <td style="text-align: left;">任務指令（例如：「請標註圖中的貓」）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{src}$</span></td>
+            <td style="text-align: left;">來源影像（原始資料）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{ref}$</span></td>
+            <td style="text-align: left;">參考影像（包含正確標註範例的情境參考）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>2. 公式運作拆解與數值範例</h4>
+            <p>想像我們正在訓練一個辨識「瑕疵零件」的模型。</p>
+            <ul>
+            <li>
+            <p><strong>參數對應</strong>：</p>
+            <ul>
+            <li><span class="math inline">$\mathbf{t}_{ins}$</span>：任務指令為「找出瑕疵位置」。</li>
+            <li><span class="math inline">$\mathbf{I}_{src}$</span>：待檢測零件（可能有隱微裂痕）。</li>
+            <li><span class="math inline">$\mathbf{I}_{ref}$</span>：標準瑕疵圖庫（包含明確的裂痕特徵）。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>數值代入模擬</strong>：<br />
+                假設我們使用分數 <span class="math inline">$S$</span> 代表模型對瑕疵的「信心度」，範圍 <span class="math inline">$0 \sim 1$</span>：</p>
+            <ul>
+            <li>若僅輸入 <span class="math inline">$\mathbf{t}_{ins}$</span> 與 <span class="math inline">$\mathbf{I}_{src}$</span>：模型因特徵模糊，給出 <span class="math inline">$S = 0.55$</span>（難以判定）。</li>
+            <li>引入 <span class="math inline">$\mathbf{I}_{ref}$</span> 後，公式運算調整權重，模型比對後給出 <span class="math inline">$S = 0.92$</span>。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>實務意義</strong>：<br />
+                這個 <span class="math inline">$0.92$</span> 的數值代表模型成功透過 <span class="math inline">$\mathbf{I}_{ref}$</span> 提取了關鍵視覺特徵。這證明了 <strong>Context-Aware</strong> 設計的有效性：它將一個抽象的「找瑕疵」指令，具體化為「找出類似 <span class="math inline">$\mathbf{I}_{ref}$</span> 特徵的區域」，大幅降低了模型處理邊緣案例的歧義性。</p>
+            </li>
+            </ul>
+            <h4>3. 工程決策取捨</h4>
+            <p>我們選擇將參考影像 <span class="math inline">$\mathbf{I}_{ref}$</span> 作為參數輸入，而不是直接微調模型權重，理由如下：</p>
+            <ol>
+            <li><strong>靈活性</strong>：當標註任務改變時，只需更換 <span class="math inline">$\mathbf{I}_{ref}$</span>，無需重新訓練模型。</li>
+            <li><strong>可解釋性</strong>：當 <span class="math inline">$\mathbf{x}_{vlm}$</span> 出錯時，我們可以透過檢查 <span class="math inline">$\mathbf{I}_{ref}$</span> 是否選得不當，快速判斷是輸入資料問題，還是模型本身的邏輯錯誤。</li>
+            </ol>
+            <p>這就像是工程師在除錯時，比較依賴外部配置檔（Config）而非硬編碼（Hard-coding），透過動態傳入參考上下文，讓 VLM 在面對不同環境時能表現得更穩定。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-6">
+        <h2>Section 6 - 3.2. Instruction-based Supervised Fine-Tuning</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：指令微調階段（Instruction-based Supervised Fine-Tuning）</h3>
+            <p><strong>目標：</strong> 在引入多模態指令（來源影像 <span class="math inline">$\mathbf{I}_{src}$</span> 與參考影像 <span class="math inline">$\mathbf{I}_{ref}$</span>）的同時，確保模型既有的理解力與泛化能力不崩壞。</p>
+            <h4>1. 工程決策與觀察</h4>
+            <p>在訓練流程中，我們採取了「凍結核心、動態適配」的策略。</p>
+            <ul>
+            <li><strong>觀察：</strong> 視覺語言模型（VLM）已經具備強大的推理能力，如果直接對其進行大規模微調，非常容易發生「災難性遺忘」，導致模型變笨。因此，我們選擇凍結 VLM 的所有參數。</li>
+            <li><strong>挑戰：</strong> 雖然預訓練的 DiT（Diffusion Transformer）權重已經與 VLM 的語言空間對齊，但當我們引入額外的視覺訊號（<span class="math inline">$\mathbf{I}_{src}$</span>、<span class="math inline">$\mathbf{I}_{ref}$</span>）時，DiT 本身無法直接處理這些新的輸入維度。</li>
+            <li><strong>調整：</strong> 除了微調 DiT 本身，我們額外設計了一個輕量級模組——<strong>Token Refiner (<span class="math inline">$\mathcal{R}$</span>)</strong>。</li>
+            </ul>
+            <h4>2. 為什麼需要 Token Refiner (<span class="math inline">$\mathcal{R}$</span>)？</h4>
+            <p>可以把這想像成一個「翻譯官」。VLM 的輸出是一串複雜的特徵碼，而 DiT 就像是一個專業畫家，只看懂自己的畫布。如果直接把 VLM 的原始訊息塞給畫家，畫家可能會看不懂重點，導致畫出來的圖與指令不符。</p>
+            <p>Token Refiner 的作用就是：</p>
+            <ul>
+            <li><strong>解碼與重組：</strong> 將視覺條件 <span class="math inline">$\mathbf{I}_{src}$</span> 與 <span class="math inline">$\mathbf{I}_{ref}$</span> 的訊號進行降噪與重構。</li>
+            <li><strong>建立連結：</strong> 強化文字指令與視覺條件之間的關聯，確保畫家（DiT）能同時理解「這張圖要畫什麼」與「參考圖的風格是什麼」。</li>
+            </ul>
+            <h4>3. 公式與變數解析</h4>
+            <p>我們定義了 Refiner <span class="math inline">$\mathcal{R}$</span> 的運作機制。簡單來說，它負責優化視覺條件輸入 <span class="math inline">$\mathbf{C}_{vis}$</span>，公式如下：</p>
+            <div class="formula">\[ \mathbf{C}_{refine} = \mathcal{R}(\mathbf{I}_{src}, \mathbf{I}_{ref}, \mathbf{T}) \]</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{src}$</span></td>
+            <td style="text-align: left;">來源影像（原始輸入內容）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{ref}$</span></td>
+            <td style="text-align: left;">參考影像（提供風格或參考細節）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{T}$</span></td>
+            <td style="text-align: left;">文字指令（語言模型提供的提示詞）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{C}_{refine}$</span></td>
+            <td style="text-align: left;">經過 Refiner 優化後的視覺條件訊號</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值代入範例：</strong><br />
+            假設我們使用一個簡單的線性映射來模擬 Refiner 的部分功能：<span class="math inline">$\mathbf{C}_{refine} = w \cdot (\mathbf{I}_{src} + \mathbf{I}_{ref}) + b$</span></p>
+            <ul>
+            <li>設定權重 <span class="math inline">$w = 0.8$</span>（放大關鍵視覺訊號），偏移量 <span class="math inline">$b = 0.1$</span>（基礎偏置）。</li>
+            <li>若 <span class="math inline">$\mathbf{I}_{src} = 0.5$</span>, <span class="math inline">$\mathbf{I}_{ref} = 0.5$</span>（標準化後的向量）：</li>
+            <li>計算：<span class="math inline">$\mathbf{C}_{refine} = 0.8 \cdot (0.5 + 0.5) + 0.1 = 0.9$</span></li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            得到的結果 <span class="math inline">$0.9$</span> 代表「增強後的條件訊號」。相較於直接輸入 <span class="math inline">$0.5$</span> 的原始資訊，經過 Refiner 調整後的數值更接近模型偏好的響應區間（High-activation），這意味著模型能更敏銳地捕捉到參考影像中的細節，並顯著提升了產出影像與參考風格的契合度。</p>
+            <h4>4. 總結</h4>
+            <p>透過引入 Token Refiner，我們不需要重新訓練整個龐大的 VLM，只需透過少量的參數量，就能讓原本的視覺模型與新的條件訊號達成「精準對接」。這種作法既節省計算資源，又能在保持原有推理水準的前提下，精確回應複雜的多模態指令。</p>
+            <h3>實驗日誌：強化擴散模型對於原始影片的結構感知</h3>
+            <p><strong>實驗目的</strong><br />
+            我們發現模型在進行影片編輯時，容易丟失原始影片 (<span class="math inline">$\mathbf{V}_{src}$</span>) 的動作細節或結構特徵。為了改善這種「編輯前後不連貫」的問題，我們決定在去噪過程中，直接將原始影片的資訊注入雜訊中，作為一種強力的空間與時間引導訊號（Inductive Bias）。</p>
+            <p><strong>技術決策：為什麼要這樣做？</strong><br />
+            直覺上，擴散模型只從隨機雜訊出發，很容易「走偏」。我們將原始影片資訊與雜訊在通道維度（Channel Dimension）進行拼接（Concatenate），就像是給正在畫畫的機器人一張「底稿」，讓它在生成時隨時能參考原始影片的結構與運動軌跡，大幅提升生成內容的穩定性。</p>
+            <p><strong>處理流程</strong><br />
+            我們將原始影片的潛在向量 <span class="math inline">$\mathbf{z}_{src}$</span> 與隨機雜訊 <span class="math inline">$\mathbf{z}_{noise}$</span> 經過分塊（Patchify）並拉平為 1D 序列。假設序列長度為 <span class="math inline">$L$</span>，通道數為 <span class="math inline">$C$</span>，轉換過程如下：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">維度</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{src}$</span></td>
+            <td style="text-align: left;">原始影片的嵌入序列</td>
+            <td style="text-align: left;"><span class="math inline">$\mathbb{R}^{L \times C}$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{noise}$</span></td>
+            <td style="text-align: left;">隨機雜訊的嵌入序列</td>
+            <td style="text-align: left;"><span class="math inline">$\mathbb{R}^{L \times C}$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$[\mathbf{x}_{src}, \mathbf{x}_{noise}]$</span></td>
+            <td style="text-align: left;">拼接後的內容感知雜訊輸入</td>
+            <td style="text-align: left;"><span class="math inline">$\mathbb{R}^{L \times 2C}$</span></td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式解析與數值範例</strong><br />
+            拼接後的內容感知雜訊輸入公式表示為：</p>
+            <div class="formula">$$ \mathbf{x}_{input} = \text{Concat}(\mathbf{x}_{src}, \mathbf{x}_{noise}) \in \mathbb{R}^{L \times 2C} $$</div>
+            
+            <ul>
+            <li>
+            <p><strong>變數說明</strong>：</p>
+            <ul>
+            <li><span class="math inline">$\mathbf{x}_{src}$</span>：模型的「視覺記憶」，代表原始影片的骨架。</li>
+            <li><span class="math inline">$\mathbf{x}_{noise}$</span>：模型的「畫布」，代表待填充的隨機性。</li>
+            <li><span class="math inline">$\text{Concat}$</span>：串聯操作，將兩者資訊疊加。</li>
+            <li><span class="math inline">$L$</span>：序列長度（如影片拆解出的 Patch 數量）。</li>
+            <li><span class="math inline">$C$</span>：每個 Patch 的通道維度。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>數值範例</strong>：<br />
+                假設我們處理一小段影片，其序列長度 <span class="math inline">$L=1024$</span>，通道維度 <span class="math inline">$C=64$</span>：</p>
+            <ol>
+            <li>原始輸入 <span class="math inline">$\mathbf{x}_{src}$</span> 維度為 <span class="math inline">$1024 \times 64$</span>。</li>
+            <li>雜訊輸入 <span class="math inline">$\mathbf{x}_{noise}$</span> 維度為 <span class="math inline">$1024 \times 64$</span>。</li>
+            <li>拼接後的 <span class="math inline">$\mathbf{x}_{input}$</span> 維度變為 <span class="math inline">$1024 \times 128$</span>。</li>
+            </ol>
+            </li>
+            <li>
+            <p><strong>實務意義</strong>：<br />
+                這項設計將輸入資訊量擴充為原來的兩倍。對模型而言，它不再是「盲目猜測」雜訊，而是「依據結構資訊」進行去噪。這就像是在拼圖時，同時參考原圖的線條（<span class="math inline">$\mathbf{x}_{src}$</span>），能有效防止生成過程中物件形狀變形或背景跳動。</p>
+            </li>
+            </ul>
+            <p><strong>觀察結果</strong><br />
+            透過這種結構上的調整，模型在生成時能更嚴格地遵守原始影片的動作軌跡。這種設計有效地降低了去噪步驟的自由度，將「發散生成」轉變為「條件控制生成」，成功達成了更平滑、更具一致性的影片編輯效果。</p>
+            <h3>實驗日誌：視訊輸入處理模組的建構</h3>
+            <h4>1. 實驗背景與問題觀察</h4>
+            <p>在進行指令微調（SFT）時，我們發現直接將原始視訊特徵丟入模型會導致資訊過載，且原始資料分布不穩定。為了讓模型更容易抓到重點，我們設計了一個前處理管道 <span class="math inline">$\mathcal{P}$</span>，將來源視訊特徵 <span class="math inline">$\mathbf{z}_{src}$</span> 與雜訊特徵 <span class="math inline">$\mathbf{z}_{noise}$</span> 進行合併與轉換，形成最終輸入 <span class="math inline">$\mathbf{x}_{video}$</span>。</p>
+            <h4>2. 公式解析與技術細節</h4>
+            <p>公式如下：</p>
+            <div class="formula">$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c), \quad (2)$$</div>
+            
+            <p><strong>變數與運算說明：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數/符號</th>
+            <th style="text-align: left;">定義與意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{z}_{src}$</span></td>
+            <td style="text-align: left;">原始視訊來源特徵（模型的輸入原料）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{z}_{noise}$</span></td>
+            <td style="text-align: left;">引入的雜訊特徵（增加模型的魯棒性）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{P}(\cdot)$</span></td>
+            <td style="text-align: left;">投影函數（將特徵投影到指定維度空間，使其對齊）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Concat}(\cdot)$</span></td>
+            <td style="text-align: left;">接合運算（將兩組特徵在維度上拼起來）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$^c$</span></td>
+            <td style="text-align: left;">通道合併或特定變換（在此指特徵維度的重組）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{P}(\cdot)$</span></td>
+            <td style="text-align: left;">整體處理管道（包含正規化與非線性變換）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>3. 為什麼這樣設計？</h4>
+            <p>這就像是<strong>「處理一份營養午餐」</strong>：如果只給模型單一原料（原始影像），模型容易變得挑食（過擬合）。我們透過 <span class="math inline">$\mathbf{P}(\cdot)$</span> 將原始資料與雜訊「打磨」成同樣的規格，再透過 <span class="math inline">$\text{Concat}$</span> 合併，最後用 <span class="math inline">$\mathcal{P}$</span> 進行整體調味。這樣做能讓模型學會區分哪些是「正餐（來源訊號）」、哪些是「口感測試（雜訊）」，從而提高對模糊或不完整影像的適應力。</p>
+            <h4>4. 數值代入示例</h4>
+            <p>假設我們將特徵向量簡化為單一數值，模擬其維度投影過程：</p>
+            <ul>
+            <li><strong>設定：</strong> 假設投影函數 <span class="math inline">$\mathbf{P}(v) = 0.5v$</span>。</li>
+            <li><strong>輸入：</strong> 來源訊號 <span class="math inline">$\mathbf{z}_{src} = 10$</span>，雜訊 <span class="math inline">$\mathbf{z}_{noise} = 2$</span>。</li>
+            <li><strong>計算：</strong><ol>
+            <li>投影：<span class="math inline">$\mathbf{P}(10) = 5$</span>，<span class="math inline">$ \mathbf{P}(2) = 1$</span>。</li>
+            <li>接合：<span class="math inline">$\text{Concat}(5, 1) = [5, 1]$</span>。</li>
+            <li>經過處理管道 <span class="math inline">$\mathcal{P}$</span>（假設為簡單的平均）：<span class="math inline">$\mathcal{P}([5, 1]) = (5+1)/2 = 3$</span>。</li>
+            <li>最終結果：<span class="math inline">$\mathbf{x}_{video} = 3$</span>。</li>
+            </ol>
+            </li>
+            </ul>
+            <p><strong>實務意義：</strong> <br />
+            這個 <span class="math inline">$3$</span> 代表了原始資訊（<span class="math inline">$5$</span>）與雜訊（<span class="math inline">$1$</span>）經過平衡後的「綜合特徵表示」。在實務中，這確保了輸入給神經網路的特徵值不會因為單一來源過大而導致梯度爆炸，同時保留了雜訊帶來的變異性，讓模型在訓練過程中必須「主動」過濾資訊，而非僅僅是被動背誦原始資料。</p>
+            <h4>5. 決策取捨</h4>
+            <p>相比直覺做法（直接把 <span class="math inline">$\mathbf{z}_{src}$</span> 和 <span class="math inline">$\mathbf{z}_{noise}$</span> 加總），我們選擇先做投影 <span class="math inline">$\mathbf{P}(\cdot)$</span> 再合併。這是因為原始影像的特徵維度通常與雜訊不對等，直接相加會導致資訊流失。透過先投影到一致的空間，我們可以靈活控制兩種資訊的權重，這對於後續執行指令微調時，模型能否精準理解 Prompt 意圖至關重要。</p>
+            <h3>實驗日誌：影像特徵與 DiT 模型對接的工程嘗試</h3>
+            <p>在處理影像輸入時，我們面臨一個關鍵挑戰：如何將原始的影像數據 <span class="math inline">$\mathbf{x}_{video}$</span> 轉換成「語音轉文字」模型（DiT，Diffusion Transformer）能夠聽得懂的語言。</p>
+            <h4>1. 核心邏輯：將影像「降維」對接模型</h4>
+            <p>我們設計了一個處理管線，將影像 <span class="math inline">$\mathbf{x}_{video}$</span> 轉化為模型輸入向量。這裡的物理意義是將複雜的影像流，壓縮成一系列模型能處理的「特徵標記」。</p>
+            <p>公式定義如下：</p>
+            <div class="formula">$$\mathbf{P}(\mathbf{x}_{video}) \to \text{Projector} \to \text{DiT Input}$$</div>
+            
+            <p>其中變數定義如下：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">實務角色</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{video}$</span></td>
+            <td style="text-align: left;">原始影片數據 (<span class="math inline">$\mathbb{R}^{L \times C}$</span>)</td>
+            <td style="text-align: left;">包含時間序列 <span class="math inline">$L$</span> 與通道資訊 <span class="math inline">$C$</span> 的原始影像訊號。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{P}$</span></td>
+            <td style="text-align: left;">Patchification 模組</td>
+            <td style="text-align: left;">類似於把照片切成無數個「馬賽克小塊」，方便計算。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{P}$</span></td>
+            <td style="text-align: left;">可訓練投影層 (Projector)</td>
+            <td style="text-align: left;">調整器，負責把影像特徵轉換成 DiT 的通用格式。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>2. 為什麼需要這個投影層 (<span class="math inline">$\mathcal{P}$</span>)？</h4>
+            <p>這就像是你去國外旅遊，雖然對方的語言（DiT 的輸入特徵維度）和你不同，但你需要一個「翻譯機」。原始的影像 Patch 維度可能遠大於模型能負荷的維度，如果不透過 <span class="math inline">$\mathcal{P}$</span> 進行通道維度上的聚合，模型會因為「數據過載」而無法收斂。</p>
+            <h4>3. 公式運算示例</h4>
+            <p>假設我們有一段影片，經由 Patchification 後，特徵通道數為 <span class="math inline">$C=1024$</span>，而我們的 DiT 模型只吃 <span class="math inline">$D=256$</span> 的維度長度。</p>
+            <p>若投影層 <span class="math inline">$\mathcal{P}$</span> 執行簡單的線性壓縮：</p>
+            <div class="formula">$$f_{out} = \text{Mean}(\mathbf{x}_{video} \text{ over } C) \times W_{\text{learnable}}$$</div>
+            
+            <ul>
+            <li>
+            <p><strong>數值代入：</strong></p>
+            <ul>
+            <li>假設 <span class="math inline">$\mathbf{x}_{video}$</span> 經過 Patch 處理後，每個 Patch 產生一個 1024 維的向量。</li>
+            <li><span class="math inline">$\mathcal{P}$</span> 是一個訓練中的矩陣，將 1024 維壓縮至 256 維。</li>
+            <li>計算結果：<span class="math inline">$1024 \to 256$</span>。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>實務意義：</strong></p>
+            <ul>
+            <li>這代表我們成功地把影像中「冗餘的細節」捨棄，只保留模型架構最關注的特徵資訊。這避免了直接丟入原始像素導致的算力爆炸，同時讓模型能在 <span class="math inline">$256$</span> 維的空間中穩定學習影像與文字的關聯。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>4. 工程決策紀錄</h4>
+            <ul>
+            <li><strong>觀察到的問題：</strong> 直接將影像 Patch 丟入 DiT 會造成維度不匹配，導致模型訓練梯度爆炸。</li>
+            <li><strong>採取的行動：</strong> 引入 <span class="math inline">$\mathcal{P}$</span>（可訓練投影器），並使用 <span class="math inline">$\text{Concat}(\cdot, \cdot)^c$</span>（通道合併）來處理多視角或多幀數據。</li>
+            <li><strong>結果：</strong> 通過將影像資訊在通道維度進行聚合，模型能有效捕捉時間序列的上下文，將複雜影片轉化為低維、緊湊的語意向量。</li>
+            </ul>
+            <h3>實驗日誌：多模態指令微調 (SFT) 階段調優</h3>
+            <p><strong>任務目標</strong>：建立一套能夠根據指令編輯影片的通用模型。</p>
+            <h4>1. 實驗架構設計</h4>
+            <p>我們採用 <strong>Flow Matching [36]</strong> 作為訓練的核心框架。這就像是讓模型學習「如何從雜亂的原始影片，平滑地過渡到編輯後的目標影片」，透過不斷逼近軌跡來生成正確內容。</p>
+            <p>為了實現端到端的編輯，我們訓練了四個核心模組：</p>
+            <ul>
+            <li><strong><span class="math inline">$\mathbf{P}$</span> (Patchify module)</strong>：負責將影片切成小方塊（Patch），讓模型能「看懂」畫面資訊。</li>
+            <li><strong><span class="math inline">$\mathcal{P}$</span> (Projector)</strong>：負責將外部輸入（如 VLM 的特徵）對齊到模型的潛在空間（Latent Space）。</li>
+            <li><strong><span class="math inline">$\mathcal{R}$</span> (Token refiner)</strong>：對 Token 進行精煉，確保指令與影片內容對焦。</li>
+            <li><strong>DiT (Diffusion Transformer)</strong>：模型的主幹，負責處理視覺生成。</li>
+            </ul>
+            <p>輸入條件由兩部分組成：<span class="math inline">$\mathbf{x}_{vlm}$</span>（視覺語言模型提供的指令解析）與 <span class="math inline">$\mathbf{x}_{video}$</span>（影片的上下文特徵）。</p>
+            <h4>2. 數據集的抉擇與取捨</h4>
+            <p>在訓練階段，我們遇到一個嚴峻的工程限制：<strong>「配對好的影片編輯數據極度稀缺」</strong>。如果你只有「原片」跟「編輯後影片」的對照組，模型能學到的變化範圍非常窄（可能只會學到簡單的濾鏡）。</p>
+            <p><strong>解決方案</strong>：我們引入了大規模的「圖像編輯數據」。將圖片視為「只有 1 幀的影片」，將其混入訓練集。</p>
+            <p><strong>為什麼這樣有效？</strong><br />
+            這就好比你想訓練一位能拍長篇電影的攝影師，但缺乏劇本。我們決定先讓攝影師看大量「單張劇照」，學習如何打光、構圖與修圖（圖像編輯能力）。實驗證實，這些在 2D 圖像領域學到的修圖邏輯，能自動「遷移」到影片序列中，即使原本的影片數據中並沒有包含該類型的編輯（例如全球風格化轉換）。</p>
+            <h4>3. 核心公式與實務解析</h4>
+            <p>Flow Matching 的核心邏輯是學習一個向量場 <span class="math inline">$v_t$</span>，使得資料能從原始分佈轉換到目標分佈。</p>
+            <div class="formula">$$v_t(x_t) \approx \frac{x_1 - x_0}{1}$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_0$</span></td>
+            <td style="text-align: left;">初始狀態（未編輯的影片原始幀）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_1$</span></td>
+            <td style="text-align: left;">目標狀態（指令要求編輯後的結果）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_t$</span></td>
+            <td style="text-align: left;">在時間 <span class="math inline">$t$</span> 時，介於原圖與目標圖之間的過渡狀態</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$v_t$</span></td>
+            <td style="text-align: left;">為了達到目標，模型需調整的方向與強度</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            假設我們要將一段影片的色調變亮。</p>
+            <ul>
+            <li>設原始像素值 <span class="math inline">$x_0 = 0.2$</span>（較暗）。</li>
+            <li>目標像素值 <span class="math inline">$x_1 = 0.8$</span>（較亮）。</li>
+            <li>則模型在某一時間步 <span class="math inline">$t$</span> 需要學習的向量場 <span class="math inline">$v_t = (0.8 - 0.2) = 0.6$</span>。</li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            這個 <span class="math inline">$0.6$</span> 代表的是「修正量」。如果模型預測出的 <span class="math inline">$v_t$</span> 越接近這個值，代表它越能精準地把「暗」變成「亮」。透過這種方式，模型不再是死記硬背，而是學會了「如何透過調整像素值來執行指令」。</p>
+            <h4>4. 工程師觀察</h4>
+            <ul>
+            <li><strong>觀察結果</strong>：訓練初期，模型只能做簡單裁切；引入圖像數據後，模型開始能理解複雜的風格轉換（Stylization）。</li>
+            <li><strong>決策關鍵</strong>：我們沒有嘗試去生成龐大的合成影片數據（那太花費計算資源且易有雜訊），而是採取「圖像數據作為引導，影片數據作為連續性訓練」的組合拳。結果顯示，這種遷移學習（Transfer Learning）策略能有效彌補影片數據的不足。</li>
+            </ul>
+            <h3>實驗日誌：遮罩機制導入與 Loss 函數優化</h3>
+            <p>在訓練生成模型的過程中，我們發現標準的 Rectified Flow Loss 在處理複雜場景時，模型容易被背景雜訊干擾，導致目標主體的生成細節不足。為了改善這個問題，我們決定在資料準備階段導入遮罩（Mask Video, <span class="math inline">$M$</span>），並以此對原有的 Loss 函數進行修正。</p>
+            <h4>為什麼要這麼做？（設計決策）</h4>
+            <p>傳統的 Rectified Flow 會對整張影像進行均勻的懲罰（Penalty）。這就像是老師批改考卷時，不論學生是錯在關鍵解題步驟，還是錯在頁緣的隨手塗鴉，都一視同仁地扣分。為了讓模型「專注」於我們感興趣的內容，我們引入了遮罩 <span class="math inline">$M$</span>，讓 Loss 在計算時只針對關鍵區域加權。</p>
+            <p>我們的目標是：透過遮罩讓模型在訓練時，「更在意」那些被標記出來的目標物體，對於無關緊要的背景則保持中立，避免雜訊主導訓練方向。</p>
+            <h4>數學公式解析</h4>
+            <p>修改後的 Masked Rectified Flow Loss 定義如下：</p>
+            <div class="formula">$$L_{masked} = \mathbb{E}_{t, z_0, z_1} [\| M \odot (v_t(z_t) - (z_1 - z_0)) \|^2]$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$L_{masked}$</span></td>
+            <td style="text-align: left;">經過遮罩加權後的最終損失值</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M$</span></td>
+            <td style="text-align: left;">遮罩矩陣（Mask），範圍在 <span class="math inline">$[0, 1]$</span> 之間</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\odot$</span></td>
+            <td style="text-align: left;">逐元素相乘（Element-wise multiplication）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$v_t(z_t)$</span></td>
+            <td style="text-align: left;">模型預測的流向（Vector field）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$(z_1 - z_0)$</span></td>
+            <td style="text-align: left;">目標與起始狀態的真實路徑差</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式白話文：</strong><br />
+            這個公式的核心是 <span class="math inline">$M \odot (\dots)$</span>。你可以把它想成一台「濾鏡」：當遮罩 <span class="math inline">$M$</span> 在某個位置是 <span class="math inline">$1$</span>（表示目標區域），Loss 就會完整計算該點的預測誤差；若 <span class="math inline">$M$</span> 是 <span class="math inline">$0$</span>（表示背景），誤差就會被強制歸零。</p>
+            <h4>數值代入範例</h4>
+            <p>假設我們針對影像中的一個像素點進行評估：</p>
+            <ul>
+            <li>模型的預測誤差 <span class="math inline">$(v_t(z_t) - (z_1 - z_0))$</span> 為 <span class="math inline">$10$</span></li>
+            <li>遮罩 <span class="math inline">$M$</span> 在目標區域的值為 <span class="math inline">$0.8$</span>（表示對該區域有 80% 的關注度）</li>
+            <li>遮罩 <span class="math inline">$M$</span> 在背景區域的值為 <span class="math inline">$0.1$</span>（表示對該區域僅有 10% 的關注度）</li>
+            </ul>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">區域</th>
+            <th style="text-align: left;">計算方式</th>
+            <th style="text-align: left;">結果 (<span class="math inline">$L$</span>)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">目標區域</td>
+            <td style="text-align: left;"><span class="math inline">$0.8 \times 10 = 8$</span></td>
+            <td style="text-align: left;"><span class="math inline">$8^2 = 64$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">背景區域</td>
+            <td style="text-align: left;"><span class="math inline">$0.1 \times 10 = 1$</span></td>
+            <td style="text-align: left;"><span class="math inline">$1^2 = 1$</span></td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>實務上的意義：</strong><br />
+            從結果可以看出，目標區域貢獻的 Loss（64）遠大於背景區域（1）。這迫使權重更新（Backpropagation）時，梯度主要來自於目標區域的誤差，從而強迫模型在下一輪迭代中優先修復主體外觀，而不是浪費算力去「精雕細琢」背景的雜訊。</p>
+            <h4>實驗觀察與結論</h4>
+            <p>在實際訓練中，這種「加權聚焦」的策略有效地降低了模型在生成主體時的變形率。相比於直覺做法（只切掉背景），這種柔性遮罩機制讓模型在邊界處的過渡更自然，避免了因硬邊遮罩導致的邊緣閃爍問題。目前的實驗數據顯示，模型在視覺品質（Visual Quality）與指令對齊度上均有顯著提升。</p>
+            <div class="formula">$$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}, \quad (3)$$</div>
+            
+            <p>where <span class="math inline">$w_m$</span> is the mask weight.</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-7">
+        <h2>Section 7 - 3.3. Edit-GRPO</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：引入 Edit-GRPO 優化模型對齊</h3>
+            <p><strong>日期：</strong> 202X/XX/XX<br />
+            <strong>目標：</strong> 解決模型在影片編輯任務中，指令遵循能力不足、原始內容流失以及生成結果不符人類偏好的問題。</p>
+            <h4>1. 工程師決策背景</h4>
+            <p>在先前的測試中，我們發現模型雖然能進行基礎的影片編輯，但在處理複雜指令時，常會發生「指令與效果脫鉤」的現象（例如：說要變更色調，卻連物件形狀也變了）。這反映了原始的監督式微調（SFT）不足以捕捉細膩的對齊需求。因此，我決定導入 <strong>GRPO（Group Relative Policy Optimization）</strong> 架構，並針對影片編輯任務重新設計獎勵機制，稱為 <strong>Edit-GRPO</strong>。</p>
+            <h4>2. 設計思維：為什麼選擇 GRPO？</h4>
+            <p>傳統的 RLHF（基於人類回饋的強化學習）通常需要訓練一個額外的「獎勵模型」（Reward Model），這不僅昂貴，還容易導致模型在訓練過程中不斷「薅羊毛」（Reward Hacking），即透過投機取巧的方式騙過獎勵分數。</p>
+            <p><strong>Edit-GRPO 的設計核心在於「群組基準比較」：</strong><br />
+            我們不依賴單一的外部裁判，而是讓模型針對同一個 Prompt 生成一組（Group）不同的候選影片，透過「組內相對評分」來決定誰優誰劣。這就像是讓模型進行「內部辯論」，比較哪種編輯方式既聽話、又保留了原影片質感。</p>
+            <h4>3. 獎勵函數（Reward System）結構剖析</h4>
+            <p>我們設計的獎勵機制主要由三個權重指標構成。核心公式表達為：</p>
+            <div class="formula">$$R_{total} = \alpha R_{inst} + \beta R_{src} + \gamma R_{pref}$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">實務目標</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{inst}$</span></td>
+            <td style="text-align: left;">指令遵循獎勵</td>
+            <td style="text-align: left;">確保編輯效果嚴格對應 Prompt 要求</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{src}$</span></td>
+            <td style="text-align: left;">來源一致性獎勵</td>
+            <td style="text-align: left;">確保影片中的人物、背景未被誤刪</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{pref}$</span></td>
+            <td style="text-align: left;">人類偏好獎勵</td>
+            <td style="text-align: left;">符合美學與流暢度，避免產生偽影</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha, \beta, \gamma$</span></td>
+            <td style="text-align: left;">權重係數</td>
+            <td style="text-align: left;">動態調節三者比重以達到平衡</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>4. 數值代入範例與意義</h4>
+            <p>假設我們正在調整模型對「物件保留」的重視程度。設定權重為 <span class="math inline">$\alpha=0.4, \beta=0.4, \gamma=0.2$</span>。若模型針對某個編輯任務，各項得分評估如下：</p>
+            <ul>
+            <li><span class="math inline">$R_{inst} = 0.9$</span>（指令達成率高）</li>
+            <li><span class="math inline">$R_{src} = 0.5$</span>（背景保留稍差，出現破圖）</li>
+            <li><span class="math inline">$R_{pref} = 0.8$</span>（整體畫質自然）</li>
+            </ul>
+            <p>計算結果：</p>
+            <div class="formula">$$R_{total} = (0.4 \times 0.9) + (0.4 \times 0.5) + (0.2 \times 0.8) = 0.36 + 0.20 + 0.16 = 0.72$$</div>
+            
+            <p><strong>結果解讀：</strong><br />
+            這個 0.72 的分數代表模型在「指令執行」上表現優異，但因為 <span class="math inline">$\beta R_{src}$</span> 偏低，系統會發出訊號，強迫模型在下一次迭代中增加對「原始影像特徵」的權重分配。相比於簡單的總分評估，這種加權設計讓我們能精準定位：<strong>模型不是學不會指令，而是「用力過猛」導致原始影像毀損。</strong></p>
+            <h4>5. 實務觀察與心得</h4>
+            <p>透過 Edit-GRPO，模型不再只是盲目地模仿訓練資料，而是透過群組內的迭代比較，學習到如何在「滿足用戶指令」與「維持原始畫質」之間畫出一條紅線。這種架構大幅降低了對高品質人類標註資料的依賴，是目前提升生成式影片編輯穩定性最有效的方式。</p>
+            <h3>實驗日誌：打造影片編輯的「指令遵循」獎勵函數</h3>
+            <p>在開發影片編輯模型時，最頭痛的問題就是：<strong>如何衡量模型是否真的聽懂了用戶的修改指令？</strong></p>
+            <p>我們沒有現成的「評分員」可以直接給生成的影片打分數。最直覺的做法是直接比對編輯後的影片與目標指令的相似度，但單純這樣做會遇到「偷懶」問題——模型可能為了追求高分，把影片改得面目全非，甚至遺失了原始影片的特徵。</p>
+            <p>為了修正這個問題，我們設計了一套「雙向對比」機制。</p>
+            <h4>1. 核心邏輯公式</h4>
+            <p>我們定義的獎勵函數目標如下：</p>
+            <div class="formula">$$(C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{src}, \mathbf{t}_{edit})) + (C(\mathbf{V}_{src}, \mathbf{t}_{src}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}))$$</div>
+            
+            <p><strong>變數清單：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{src}$</span></td>
+            <td style="text-align: left;">原始影片</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{edit}$</span></td>
+            <td style="text-align: left;">編輯後的影片</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{src}$</span></td>
+            <td style="text-align: left;">描述原始影片的原始文字</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{edit}$</span></td>
+            <td style="text-align: left;">用戶輸入的修改指令</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(V, \mathbf{t})$</span></td>
+            <td style="text-align: left;">CLIP 相似度（數值越高，代表影片與文字描述越匹配）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>2. 為什麼這樣設計？</h4>
+            <p>這公式就像在玩「平衡木」，由兩組差值相加而成：</p>
+            <ul>
+            <li><strong>第一組 <span class="math inline">$(C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{src}, \mathbf{t}_{edit}))$</span>：</strong> 確保模型「有改」。我們希望編輯後的影片與新指令的相似度，要比原影片與新指令的相似度高。</li>
+            <li><strong>第二組 <span class="math inline">$(C(\mathbf{V}_{src}, \mathbf{t}_{src}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}))$</span>：</strong> 確保模型「別亂改」。我們希望原始影片與原始描述的契合度，要比編輯後的影片與原始描述的契合度高（這代表模型精準地修改了目標區域，而沒有破壞原始影片的主題）。</li>
+            </ul>
+            <h4>3. 數值代入範例</h4>
+            <p>假設我們有一個 CLIP 相似度分數範圍在 0 到 1 之間：</p>
+            <ul>
+            <li><span class="math inline">$C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) = 0.8$</span> （編輯後與目標指令很像）</li>
+            <li><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit}) = 0.3$</span> （原影片跟目標指令不太像）</li>
+            <li><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src}) = 0.9$</span> （原影片跟原始描述非常像）</li>
+            <li><span class="math inline">$C(\mathbf{V}_{edit}, \mathbf{t}_{src}) = 0.7$</span> （編輯後保留了一部分原始特徵）</li>
+            </ul>
+            <p><strong>代入公式計算：</strong><br />
+            <span class="math inline">$(0.8 - 0.3) + (0.9 - 0.7) = 0.5 + 0.2 = 0.7$</span></p>
+            <p><strong>實務上的意義：</strong></p>
+            <ul>
+            <li><strong>結果為正值且愈大越好：</strong> 代表模型成功執行了「增加目標特徵」同時「保留原始語意」的任務。</li>
+            <li><strong>若結果為負：</strong> 代表模型可能在胡亂生成，導致影片與原始內容脫節，或者根本沒執行用戶的指令。</li>
+            </ul>
+            <h4>4. 工程師觀察與取捨</h4>
+            <p>這套做法的好處在於我們不需要重新訓練一個複雜的判別器，而是利用現有的 CLIP 模型作為「測量尺」。</p>
+            <p>這比單純追求 <span class="math inline">$C(\mathbf{V}_{edit}, \mathbf{t}_{edit})$</span> 的做法聰明，因為單純追求後者會讓模型傾向於生成「非常符合指令，但內容與原影片毫不相關」的影像。透過這項「損益平衡」的設計，我們強迫模型必須在「回應指令」與「維持原貌」之間找到最佳路徑。</p>
+            <h3>實驗日誌：優化群組相對偏好（Group Relative Preference）的計算邏輯</h3>
+            <p>在開發 Edit-GRPO 的過程中，我們發現了一個關於「梯度更新」的效率問題。我們原本的設計目標是透過群組內部的比較，來決定哪些回答應該被增強。然而，我們觀察到程式中存在冗餘計算。</p>
+            <h4>1. 發現問題：無效的常數項</h4>
+            <p>在群組相對偏好的計算中，我們針對同一批樣本進行評分，我們發現 <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span> 與 <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span> 在計算過程中會出現抵銷效應。</p>
+            <ul>
+            <li><strong>工程師觀察：</strong> 這兩項數值對群組內的每個樣本來說都是「固定常數」。既然是常數，當我們計算梯度（Gradient）來優化模型時，它們在求導過程中會直接歸零，對模型參數的更新毫無貢獻。這就像你在比較兩個人誰跑得快時，如果兩個人都背著同一個 5 公斤的沙袋，這個沙袋的重量對比出來的勝負結果沒有任何影響。</li>
+            </ul>
+            <h4>2. 公式解析與變數對照</h4>
+            <p>為了簡化運算，我們定義指令遵循分數（Instruction Following Score）的計算公式如下：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數/符號</th>
+            <th style="text-align: left;">意義說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span></td>
+            <td style="text-align: left;">原始輸入與編輯後回答的相關性評分</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span></td>
+            <td style="text-align: left;">原始輸入與原始回答的相關性評分</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{src}$</span></td>
+            <td style="text-align: left;">原始輸入（Source Vector）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{edit}$</span></td>
+            <td style="text-align: left;">編輯後的生成文字（Edited Text）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{src}$</span></td>
+            <td style="text-align: left;">原始的生成文字（Source Text）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>3. 數值代入示例</h4>
+            <p>假設我們有一組評分資料，嘗試計算其相對權重差異：</p>
+            <ul>
+            <li>
+            <p><strong>情境：</strong></p>
+            <ul>
+            <li><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit}) = 0.8$</span></li>
+            <li><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src}) = 0.6$</span></li>
+            <li>假設群組內還有一個基準偏移量 <span class="math inline">$K = 0.5$</span>（該常數項在梯度更新中會被減掉）</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>計算方式：</strong><br />
+                實際影響更新的數值為 <span class="math inline">$(0.8 - 0.5) - (0.6 - 0.5) = 0.8 - 0.6 = 0.2$</span>。</p>
+            </li>
+            <li>
+            <p><strong>實務意義：</strong><br />
+                這個結果 <span class="math inline">$0.2$</span> 代表了模型「編輯操作」相比「原始生成」帶來的淨提升。我們在訓練時，只需關注這個「淨提升值」。透過移除這些對梯度無貢獻的常數項，我們不僅減少了記憶體的佔用，還能讓訓練過程更聚焦於模型真正需要學習的「優化方向」。</p>
+            </li>
+            </ul>
+            <h4>4. 決策取捨</h4>
+            <p>這項調整是為了確保梯度下降（Gradient Descent）運算更加穩定。這就像是在執行大規模數據處理時，預先「標準化」資料一樣，移除掉不變的背景雜訊，讓模型參數更新的每一步都走在正確的道路上。在後續的實驗中，我們將直接採用簡化後的計算公式進行指標評估。</p>
+            <h3>實驗日誌：定義編輯回饋訊號（Edit Feedback Signal）</h3>
+            <p><strong>日期：</strong> 實驗階段 3.3<br />
+            <strong>目標：</strong> 量化「編輯行為」的品質，作為增強模型（Reinforcement Learning）的學習指標。</p>
+            <h4>1. 觀察到的問題：如何衡量「改得好不好」？</h4>
+            <p>在測試模型編輯能力時，我們不能只看模型最後輸出的文字順不順。我們需要一個明確的「差值」來告訴模型：執行編輯指令後，結果是變好了還是變壞了。</p>
+            <p>我們觀察到，單純看最終產出往往忽略了「改動前後的差異」。因此，我們設計了 <span class="math inline">$\mathbf{R}_{\text{IF}}$</span>（Edit Feedback Signal），用來衡量模型對於特定編輯任務的貢獻度。</p>
+            <h4>2. 核心公式與設計邏輯</h4>
+            <p>公式如下：</p>
+            <div class="formula">$$\mathbf{R}_{\text{IF}} = C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}). \quad (4)$$</div>
+            
+            <p>這個公式就像是一個「檢查清單」，計算方式是：<strong>（模型編輯後的表現分數）減去（原始未編輯的表現分數）</strong>。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}_{\text{IF}}$</span></td>
+            <td style="text-align: left;">最終的編輯回饋分數（決定模型該獲得多少獎勵）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{edit}$</span></td>
+            <td style="text-align: left;">模型處理的輸入內容（編輯物件）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{edit}$</span></td>
+            <td style="text-align: left;">編輯後的結果（嘗試修改的目標）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{src}$</span></td>
+            <td style="text-align: left;">原始的結果（修改前的狀態）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(\cdot)$</span></td>
+            <td style="text-align: left;">評估函式（用來衡量產出品質的分數）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>3. 數值代入範例：我們如何解讀結果？</h4>
+            <p>假設我們要求模型將一段正式會議紀錄修改得更簡潔。我們使用評分系統 <span class="math inline">$C$</span>（滿分 10 分，分數越高代表品質越好）。</p>
+            <ul>
+            <li><strong>實驗狀態：</strong><ul>
+            <li>原始文件 <span class="math inline">$\mathbf{t}_{src}$</span> 的評分 <span class="math inline">$C(\mathbf{V}_{edit}, \mathbf{t}_{src}) = 6$</span> 分。</li>
+            <li>模型編輯後產出 <span class="math inline">$\mathbf{t}_{edit}$</span> 的評分 <span class="math inline">$C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) = 9$</span> 分。</li>
+            </ul>
+            </li>
+            <li><strong>計算：</strong><br />
+                <span class="math inline">$\mathbf{R}_{\text{IF}} = 9 - 6 = +3$</span></li>
+            </ul>
+            <p><strong>實務意義：</strong></p>
+            <ul>
+            <li><strong>若 <span class="math inline">$\mathbf{R}_{\text{IF}} &gt; 0$</span>：</strong> 表示模型執行了有效的編輯，且成功提升了品質，給予正向獎勵。</li>
+            <li><strong>若 <span class="math inline">$\mathbf{R}_{\text{IF}} = 0$</span>：</strong> 表示模型改了個寂寞，編輯前後沒有差異，屬於無效操作。</li>
+            <li><strong>若 <span class="math inline">$\mathbf{R}_{\text{IF}} &lt; 0$</span>：</strong> 表示模型「越改越爛」（例如誤刪了關鍵資訊），模型將受到負向懲罰。</li>
+            </ul>
+            <h4>4. 工程決策取捨</h4>
+            <p>為什麼不直接給模型一個「絕對分數」就好，非要用相減？</p>
+            <p>這就像是在評估一位校對人員：如果你只看他校對完後的文章品質，會受限於原文本身的底子。如果原文很差，就算改得再好，絕對分數可能也不高。透過 <span class="math inline">$\mathbf{R}_{\text{IF}}$</span> 計算「成長值」（Delta），我們能精準地把<strong>「模型的編輯貢獻」</strong>與<strong>「原文本體品質」</strong>解耦。這能確保模型學到的是「編輯的技巧」，而不是「被動依賴原有的高分輸入」。</p>
+            <h3>實驗日誌：確保影片編輯的「一致性」與「局部保留」</h3>
+            <p>在影片生成與編輯任務中，我們面臨一個常見的工程挑戰：<strong>如何確保「改動的地方自然」的同時，「沒改動的地方不要亂跳」？</strong></p>
+            <p>如果直接對整段影片進行生成，模型很容易因為想表現創意，把背景或人物特徵給改掉。就像是在修圖時，本來只想換件衣服，結果背景牆紙的紋路也被塗抹得亂七八糟。為了維持高保真度（High Fidelity），我們必須設計一套機制，懲罰那些「亂改不需要改動之處」的行為，這就是本次實驗的重點：<strong>來源影片保留獎勵（Source Video Preservation Reward）</strong>。</p>
+            <h4>核心設計邏輯：為什麼要這樣做？</h4>
+            <p>我們需要一個指標來量化「編輯前後的差異」。直覺做法是計算每一幀的像素差，但這在深度學習中效果極差，因為光線輕微波動或物件細微位移，都會導致像素數值劇變。</p>
+            <p>因此，我們引入了特徵空間（Feature Space）的距離比對。我們不再比較「像素值」，而是比較「語意特徵」：</p>
+            <div class="formula">$$R_{preserve} = \exp\left( -\lambda \cdot \mathcal{D}(V_{source}, V_{edit}) \right)$$</div>
+            
+            <h5>變數與公式白話拆解</h5>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{preserve}$</span></td>
+            <td style="text-align: left;">最終獎勵值，範圍在 0 到 1 之間，越接近 1 代表與原圖越像。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{D}(\cdot)$</span></td>
+            <td style="text-align: left;">距離函數，衡量兩段影片在深度學習模型眼中的「語意相似度」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V_{source}$</span></td>
+            <td style="text-align: left;">原始輸入影片。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V_{edit}$</span></td>
+            <td style="text-align: left;">經過模型編輯後輸出的影片。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\lambda$</span></td>
+            <td style="text-align: left;">懲罰係數（Scaling Factor），用來調整我們對「不一致」的容忍度。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>為什麼要取指數（Exponential）？</strong><br />
+            這是為了讓獎勵機制具有「非線性」特徵。當編輯產生的誤差（距離）非常小時，獎勵會維持在高檔；一旦誤差超過閾值，獎勵會呈現崩塌式下降，迫使模型在訓練迭代中迅速修正。</p>
+            <h4>數值代入範例與實務意義</h4>
+            <p>假設我們設定懲罰係數 <span class="math inline">$\lambda = 5$</span>，並計算兩段影片的距離 <span class="math inline">$\mathcal{D}$</span>：</p>
+            <ol>
+            <li><strong>情境 A（完美保留）</strong>：模型修改得很精準，兩者距離 <span class="math inline">$\mathcal{D} = 0.1$</span>。</li>
+            <li>計算：<span class="math inline">$R_{preserve} = \exp(-5 \times 0.1) = \exp(-0.5) \approx 0.606$</span></li>
+            <li>
+            <p><strong>實務意義</strong>：獎勵不錯，模型傾向保留這種做法。</p>
+            </li>
+            <li>
+            <p><strong>情境 B（背景亂跳）</strong>：模型誤改了背景，導致距離 <span class="math inline">$\mathcal{D} = 0.8$</span>。</p>
+            </li>
+            <li>計算：<span class="math inline">$R_{preserve} = \exp(-5 \times 0.8) = \exp(-4.0) \approx 0.018$</span></li>
+            <li><strong>實務意義</strong>：獎勵接近於 0，這告訴系統「這種改法完全不及格」，模型權重會在下一次更新時被大幅修正。</li>
+            </ol>
+            <h4>實驗觀察與取捨</h4>
+            <p>我們發現，若不加入此獎勵機制，模型往往會為了追求「視覺上的新穎感」，犧牲了原始影片中與編輯內容無關的區域（例如：原本的燈光效果、建築輪廓）。</p>
+            <p>加入 <span class="math inline">$R_{preserve}$</span> 後，我們觀察到模型在進行編輯時，表現得像個「謹慎的攝影師」：它會先確認哪些像素點是不該動的（Locked regions），然後才在指定的編輯範圍內進行重繪。這確保了編輯內容與原始影片在語意上具有高度的一致性（Coherence），避免產生視覺上的割裂感。</p>
+            <h3>實驗日誌：定義編輯路徑的獎勵機制 (Edit-GRPO)</h3>
+            <p><strong>實驗動機與觀察</strong><br />
+            在優化編輯路徑的任務中，我們面臨的核心問題是：如何量化「從原始狀態到編輯後狀態」的品質？我們不能只看最終結果，必須確保模型的編輯軌跡是有意義的。因此，我們引入了獎勵函數 <span class="math inline">$\mathbf{R}_{\text{SP}}$</span> 來評估編輯過程的表現。</p>
+            <p><strong>公式定義</strong><br />
+            我們採用了如下的定義來衡量編輯成功與否：</p>
+            <div class="formula">$$\mathbf{R}_{\text{SP}} = C(\mathbf{V}_{src}, \mathbf{V}_{edit})$$</div>
+            
+            <p><strong>變數與公式解讀</strong><br />
+            這個公式的核心邏輯就像是「檢查點比對」，我們會將原始輸入與編輯輸出送入一個評分函數 <span class="math inline">$C$</span> 中。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數/符號</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">工程觀點</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}_{\text{SP}}$</span></td>
+            <td style="text-align: left;">編輯路徑獎勵值</td>
+            <td style="text-align: left;">這是給模型的「回饋分數」，越高代表編輯得越好。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C$</span></td>
+            <td style="text-align: left;">評分函數 (Consistency/Constraint)</td>
+            <td style="text-align: left;">這是我們的裁判，負責評估編輯是否合乎邏輯與需求。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{src}$</span></td>
+            <td style="text-align: left;">原始輸入向量 (Source)</td>
+            <td style="text-align: left;">編輯前的初始狀態，作為基準點。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{edit}$</span></td>
+            <td style="text-align: left;">編輯輸出向量 (Edit)</td>
+            <td style="text-align: left;">模型產生的編輯結果，我們要對此進行打分。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>為什麼這樣設計？</strong><br />
+            相比於簡單的「檢查編輯後的結果」，我們在這裡引入了 <span class="math inline">$C$</span> 函數進行成對比對。這就像是一位審稿人，不僅要看你改了什麼，還要看你「從哪裡改起」。如果模型改得太誇張，導致偏離了 <span class="math inline">$\mathbf{V}_{src}$</span> 的語義核心，那麼 <span class="math inline">$\mathbf{R}_{\text{SP}}$</span> 就會給予低分。</p>
+            <p><strong>具體數值範例與實務意義</strong><br />
+            假設我們正在執行一個文字風格遷移任務，原始句子為「這東西很爛」。</p>
+            <ul>
+            <li>
+            <p><strong>場景設定</strong>：</p>
+            <ul>
+            <li><span class="math inline">$C$</span> 函數是一個語義相似度檢查器，範圍在 0 到 1 之間。</li>
+            <li>當 <span class="math inline">$\mathbf{V}_{edit}$</span> 成功將語氣轉為禮貌，且保留原意時，輸出 <span class="math inline">$0.95$</span>。</li>
+            <li>當 <span class="math inline">$\mathbf{V}_{edit}$</span> 直接胡言亂語（例如輸出「今天天氣真好」）時，輸出 <span class="math inline">$0.1$</span>。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>代入計算</strong>：<br />
+                若 <span class="math inline">$\mathbf{V}_{edit}$</span> 是「這東西品質有待提升」，代入 <span class="math inline">$\mathbf{R}_{\text{SP}} = C(\text{&quot;這東西很爛&quot;}, \text{&quot;這東西品質有待提升&quot;}) = 0.95$</span>。</p>
+            </li>
+            <li>
+            <p><strong>實務意義</strong>：<br />
+                這個 <span class="math inline">$0.95$</span> 的高分會透過強化學習回饋給模型，告訴它：「保持這種編輯邏輯」。反之，若分數只有 <span class="math inline">$0.1$</span>，優化器會根據這個梯度懲罰模型，強迫它在下一輪修正編輯行為，不要產生過度偏離原始任務的結果。</p>
+            </li>
+            </ul>
+            <p><strong>實驗小結</strong><br />
+            透過這個設計，我們成功將「編輯過程」轉換成可以被數學化優化的目標。這比單純的監督學習更有彈性，因為它允許模型在編輯路徑中進行探索，只要最終得到的 <span class="math inline">$\mathbf{R}_{\text{SP}}$</span> 夠高，模型就能學會更高品質的編輯策略。</p>
+            <h3>實驗日誌：引入 PickScore 進行人類偏好對齊 (Edit-GRPO)</h3>
+            <h4>1. 觀察到的問題：評測的「主觀性」與「自動化挑戰」</h4>
+            <p>在開發影片編輯模型時，我們遇到一個核心挑戰：單純使用像素級別的誤差（如 MSE 或 PSNR）來評估影片好壞是無效的，因為這些數值無法反映「文字指令與畫面的對齊程度」以及「影片的整體美感」。</p>
+            <p>單純的程式邏輯（如檢查顏色數值）太過死板，而真人評測又太慢。為了讓模型產出的結果能符合人類的主觀偏好，我們決定引入 <strong>PickScore</strong> 作為自動化的評分機制。</p>
+            <h4>2. 核心機制：PickScore 的設計邏輯</h4>
+            <p>PickScore 是一個基於 CLIP 架構的評分模型，它的作用就像是一位「訓練有素的鑑賞家」。它不會檢查像素點，而是評估「文字描述」與「圖像/影片」之間的語意相似度。</p>
+            <p>在 Edit-GRPO 框架中，我們將 PickScore 的得分作為獎勵訊號（Reward Signal），引導模型優化產出。其核心公式表達如下：</p>
+            <div class="formula">$$Score = \text{PickScore}(I, T) = \text{sim}(f_I(I), f_T(T))$$</div>
+            
+            <p><strong>公式變數說明：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I$</span></td>
+            <td style="text-align: left;">編輯後的影片幀（輸入圖像）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$T$</span></td>
+            <td style="text-align: left;">使用者的編輯指令（文字提示詞）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$f_I$</span></td>
+            <td style="text-align: left;">圖像編碼器，負責提取影片的視覺特徵</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$f_T$</span></td>
+            <td style="text-align: left;">文字編碼器，負責提取指令的語意特徵</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{sim}$</span></td>
+            <td style="text-align: left;">餘弦相似度函數，計算兩者特徵向量的夾角</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>3. 數值代入範例：評分是如何運作的？</h4>
+            <p>假設我們對一張圖片進行了修改，我們計算特徵向量後的數值如下：</p>
+            <ul>
+            <li>圖像特徵向量 <span class="math inline">$f_I(I) = [0.8, 0.6]$</span></li>
+            <li>文字特徵向量 <span class="math inline">$f_T(T) = [0.9, 0.3]$</span></li>
+            </ul>
+            <p>計算過程為向量內積除以長度乘積（餘弦相似度）：</p>
+            <div class="formula">$$\text{sim} = \frac{(0.8 \times 0.9) + (0.6 \times 0.3)}{\sqrt{0.8^2 + 0.6^2} \times \sqrt{0.9^2 + 0.3^2}} = \frac{0.72 + 0.18}{1 \times 0.948} \approx 0.949$$</div>
+            
+            <p><strong>結果意義：</strong></p>
+            <ul>
+            <li><strong>數值範圍</strong>：PickScore 通常輸出在 <span class="math inline">$[0, 1]$</span> 之間。</li>
+            <li><strong>實務解讀</strong>：<span class="math inline">$0.949$</span> 代表模型產出的影片與使用者指令高度契合。如果分數低於 <span class="math inline">$0.6$</span>，代表模型可能「文不對題」或產生了模糊的視覺雜訊，我們會透過 RL（強化學習）調整策略，降低這類輸出的機率。</li>
+            </ul>
+            <h4>4. 工程決策：為什麼選用 PickScore 而非傳統指標？</h4>
+            <p>相比直覺的「影像品質評估」（如 PSNR），PickScore 具備以下優勢：</p>
+            <ol>
+            <li><strong>多模態對齊</strong>：它能理解「把背景換成夕陽」這種語意，而不只是比對像素顏色差異。</li>
+            <li><strong>與人類喜好一致</strong>：它是透過大規模人類偏好數據訓練的，這意味著它對「美感」和「指令遵循」的判斷與真人更接近。</li>
+            <li><strong>優化效率</strong>：透過將這個分數納入 GRPO（Group Relative Policy Optimization）流程，模型可以在訓練過程中獲得具體的「導航訊號」，知道該往哪個方向修正生成的影像細節。</li>
+            </ol>
+            <p><strong>實驗小結：</strong> 透過 PickScore 的引入，我們將人類的主觀感受量化為一個可微分的指標，成功解決了影片編輯任務中「缺乏客觀評測基準」的技術難點。</p>
+            <h3>實驗日誌：引入 Pickscore 作為編輯品質基準</h3>
+            <p><strong>實驗動機：</strong><br />
+            在自動化影像編輯的任務中，我們發現單純追求像素誤差（如 MSE）或結構相似度（SSIM）往往不夠，因為這些指標無法捕捉「人類審美」或「語意對齊」。為了讓模型生成的編輯結果更符合輸入指令的要求，我們引入了 <code>Pickscore</code> 作為獎勵機制的核心，用來量化視覺內容與文字描述的關聯性。</p>
+            <hr />
+            <h3>公式解讀與運作邏輯</h3>
+            <p>我們將公式定義為：</p>
+            <div class="formula">$$\mathbf{R}_{\text{PS}} = \text{Pickscore}(\mathbf{V}_{edit}, \mathbf{t}_{edit})$$</div>
+            
+            <h4>變數對照表</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">角色</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}_{\text{PS}}$</span></td>
+            <td style="text-align: left;">Pickscore Reward</td>
+            <td style="text-align: left;">模型獲得的獎勵分數</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{edit}$</span></td>
+            <td style="text-align: left;">Edited Image</td>
+            <td style="text-align: left;">經由模型生成的編輯後影像</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{edit}$</span></td>
+            <td style="text-align: left;">Edit Prompt</td>
+            <td style="text-align: left;">引導編輯的文字指令</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話解釋：</strong><br />
+            這就像是請一位「審美專家」來評分。專家會同時看著這張編輯後的圖片 (<span class="math inline">$\mathbf{V}_{edit}$</span>) 以及你當初下的編輯指令 (<span class="math inline">$\mathbf{t}_{edit}$</span>)，判斷兩者的契合度。分數越高，代表模型「聽得懂指令」且「改得自然」。</p>
+            <hr />
+            <h3>數值代入範例</h3>
+            <p>假設我們在測試模型針對「將草地改為雪地」的指令執行成效：</p>
+            <ul>
+            <li><strong>情境 A (失敗)：</strong> 模型只改了天空顏色，完全沒動草地。此時 <span class="math inline">$\text{Pickscore} \approx 0.1$</span>。</li>
+            <li><strong>情境 B (成功)：</strong> 模型準確地將草地覆蓋上真實感的白雪，且邊緣處理平滑。此時 <span class="math inline">$\text{Pickscore} \approx 0.8$</span>。</li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            在 Edit-GRPO 的強化學習循環中，我們透過 <span class="math inline">$0.8$</span> 這樣的高分給予模型正向回饋（Reinforcement），引導模型在後續訓練中，將權重參數往「能產生符合雪地語意特徵」的方向調整。反之，若分數為 <span class="math inline">$0.1$</span>，則視為無效編輯，迫使模型嘗試其他優化路徑。</p>
+            <hr />
+            <h3>工程決策：為什麼選擇 Pickscore？</h3>
+            <p>直覺上，我們可能會選擇計算「編輯前後的像素差異」，但這在實際工程中效果很差：</p>
+            <ol>
+            <li><strong>像素陷阱：</strong> 只要整體顏色變亮，像素誤差就會很大，但這並不代表編輯品質好。</li>
+            <li><strong>語意脫節：</strong> 像素指標不懂什麼叫「雪」，它只懂「數字差異」。</li>
+            </ol>
+            <p>Pickscore 的優勢在於它是基於大規模人類偏好數據訓練出來的對比模型，它不僅僅看差異，更看重「這張圖是否讓人感覺符合文字描述」。在我們的實驗中，將此指標納入獎勵函數，成功解決了傳統指標無法評估「語意準確性」的痛點。</p>
+            <h3>實驗日誌：優化策略與獎勵函數整合 (Edit-GRPO)</h3>
+            <p>在訓練流程中，我們面臨一個典型的多目標平衡問題。模型不僅要聽懂使用者的指令（Instruction Following），還要確保編輯後的影片保有原始素材的特徵（Source Video Preservation），同時還得符合人類審美偏好（Human Preference Alignment）。</p>
+            <h4>1. 為什麼採取這種策略？</h4>
+            <p>直覺上，我們可能會選擇分階段訓練，但這容易導致模型出現「災難性遺忘」——即學了新指令，卻忘了原始影片的質感。為了避免這種狀況，我們設計了整合性的獎勵函數，將多個目標打包進同一個優化目標中。</p>
+            <p>這就像是在訓練一位廚師，我們不僅要求他「動作快」（指令遵循），還要求他「不能浪費食材」（保留原影片細節），以及「要符合食客口味」（人類偏好）。如果只給單一獎勵，廚師可能會為了快而犧牲食材；透過加權整合，我們強制模型在多個維度中找到平衡點。</p>
+            <h4>2. 優化目標的數學表述</h4>
+            <p>我們將上述三個目標定義為獎勵分量，整合後的優化目標函數如下：</p>
+            <div class="formula">$$R_{total} = \lambda_1 R_{inst} + \lambda_2 R_{video} + \lambda_3 R_{pref}$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{total}$</span></td>
+            <td style="text-align: left;">總獎勵值</td>
+            <td style="text-align: left;">模型優化的最終指導指標。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{inst}$</span></td>
+            <td style="text-align: left;">指令遵循得分</td>
+            <td style="text-align: left;">模型是否精確執行了使用者的編輯命令。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{video}$</span></td>
+            <td style="text-align: left;">影片保留得分</td>
+            <td style="text-align: left;">編輯後的輸出是否維持了原始影像的結構與光影。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{pref}$</span></td>
+            <td style="text-align: left;">人類偏好得分</td>
+            <td style="text-align: left;">輸出結果在視覺上是否符合人類的直觀感受。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\lambda_{1,2,3}$</span></td>
+            <td style="text-align: left;">加權係數</td>
+            <td style="text-align: left;">用來平衡各指標重要性的權重參數。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>3. 數值代入示例</h4>
+            <p>假設我們在一次迭代中，得到的各項獎勵分數與權重如下：</p>
+            <ul>
+            <li><span class="math inline">$R_{inst} = 0.9$</span>（執行指令非常精準）</li>
+            <li><span class="math inline">$R_{video} = 0.5$</span>（影片特徵保留度尚可，但有點偏移）</li>
+            <li><span class="math inline">$R_{pref} = 0.8$</span>（視覺感官體驗良好）</li>
+            <li>設定權重為 <span class="math inline">$\lambda_1 = 0.5, \lambda_2 = 0.3, \lambda_3 = 0.2$</span></li>
+            </ul>
+            <p>計算過程：</p>
+            <div class="formula">$$R_{total} = (0.5 \times 0.9) + (0.3 \times 0.5) + (0.2 \times 0.8)$$</div>
+            
+            <div class="formula">$$R_{total} = 0.45 + 0.15 + 0.16 = 0.76$$</div>
+            
+            <p><strong>實務上的意義：</strong><br />
+            算出 <span class="math inline">$R_{total} = 0.76$</span> 代表模型當前在三個維度的綜合表現。如果後續迭代中發現 <span class="math inline">$R_{video}$</span> 持續偏低，我們就會收到「訊號」，工程上需調整 <span class="math inline">$\lambda_2$</span> 的比重，或是回頭檢視影片保留機制的梯度訊號是否被其他項覆蓋。</p>
+            <h4>4. 工程調整決策</h4>
+            <p>在實際執行中，我們觀察到模型有時會為了討好人類審美（<span class="math inline">$R_{pref}$</span>），而產生「視覺幻覺」（如改變了原始影片的背景物體）。為了抑制這種行為，我們在迭代過程中採取了動態調整策略：當 <span class="math inline">$R_{video}$</span> 低於特定門檻時，我們會主動調高 <span class="math inline">$\lambda_2$</span>，確保模型在追求「好看」的同時，不至於犧牲影片的「真實性」。</p>
+            <p>這種方式確保了 Edit-GRPO 不僅僅是一個黑盒子，我們能夠根據監控數據，即時校準模型學習的優先級，達成穩定且可控的訓練輸出。</p>
+            <h3>實驗日誌：多目標權衡策略 (Edit-GRPO 獎勵函數設計)</h3>
+            <p>在設計強化學習的獎勵函數 (Reward Function) 時，我們面臨一個典型的「多目標優化」問題。我們不能只追求單一指標（例如正確性），否則模型可能會在其他面向（例如格式正確性或遵循指令）發生崩潰。</p>
+            <h4>1. 核心邏輯：為何需要加權求和？</h4>
+            <p>我們在 Edit-GRPO 實驗中觀察到，若單獨優化某一個目標，模型會出現「偏科」現象。為了達到平衡，我們設計了公式 (7) 來進行多目標調控：</p>
+            <div class="formula">$$\mathbf{R} = w_{IF}\mathbf{R}_{\text{IF}} + w_{SP}\mathbf{R}_{\text{SP}} + w_{PS}\mathbf{R}_{\text{PS}}$$</div>
+            
+            <p>這就像是在管理一個團隊：</p>
+            <ul>
+            <li><span class="math inline">$\mathbf{R}_{\text{IF}}$</span> (Instruction Following)：代表「指令遵循度」，確保模型確實執行了使用者的要求。</li>
+            <li><span class="math inline">$\mathbf{R}_{\text{SP}}$</span> (Strict Processing)：代表「嚴格處理得分」，針對特定格式或編輯限制進行評分。</li>
+            <li><span class="math inline">$\mathbf{R}_{\text{PS}}$</span> (Preference Score)：代表「偏好分數」，反應人類偏好模型輸出內容的品質。</li>
+            </ul>
+            <p><span class="math inline">$w_{IF}, w_{SP}, w_{PS}$</span> 則是對應的權重係數。我們設定這些權重是為了調節模型在不同任務層面的「重視程度」。</p>
+            <h4>2. 變數與權重定義表</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">角色描述</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}$</span></td>
+            <td style="text-align: left;">總獎勵</td>
+            <td style="text-align: left;">最終決定模型更新方向的「總成績單」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$w_{IF/SP/PS}$</span></td>
+            <td style="text-align: left;">權重係數</td>
+            <td style="text-align: left;">像是調音台的旋鈕，決定各指標的佔比</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}_{\text{IF/SP/PS}}$</span></td>
+            <td style="text-align: left;">各項獎勵子項</td>
+            <td style="text-align: left;">針對特定任務維度計算出的表現分數</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>3. 數值代入範例：如何解讀分數</h4>
+            <p>假設在某一輪迭代中，我們收到了以下回饋：</p>
+            <ul>
+            <li>指令遵循得分 <span class="math inline">$\mathbf{R}_{\text{IF}} = 0.9$</span></li>
+            <li>格式嚴謹得分 <span class="math inline">$\mathbf{R}_{\text{SP}} = 0.5$</span></li>
+            <li>人類偏好得分 <span class="math inline">$\mathbf{R}_{\text{PS}} = 0.8$</span></li>
+            </ul>
+            <p>我們設定權重為 <span class="math inline">$w_{IF}=0.5, w_{SP}=0.3, w_{PS}=0.2$</span>。計算如下：</p>
+            <div class="formula">$$\mathbf{R} = (0.5 \times 0.9) + (0.3 \times 0.5) + (0.2 \times 0.8) = 0.45 + 0.15 + 0.16 = 0.76$$</div>
+            
+            <p><strong>實務意義：</strong><br />
+            這個最終得分 <span class="math inline">$0.76$</span> 代表模型在本次實驗的綜合表現。如果我們發現模型雖然聽話 (<span class="math inline">$0.9$</span>)，但格式總是不對 (<span class="math inline">$0.5$</span>)，工程師下一步的決策就是「加大 <span class="math inline">$w_{SP}$</span> 的權重」，強迫模型在訓練過程中更重視格式要求。</p>
+            <h4>4. 決策取捨 (Trade-off)</h4>
+            <p>相比於簡單平均 (Simple Averaging)，這種加權設計允許我們在訓練初期優先確保「指令遵循」的底線，待穩定後，再透過調整 <span class="math inline">$w_{PS}$</span> 來優化輸出品質。這是一個動態平衡過程：我們並非追求所有分數都達到極致，而是追求一個在所有維度上都「不偏科」的穩定策略。</p>
+            <h3>實驗日誌：Edit-GRPO 階段的參數權重與訓練策略</h3>
+            <p>在 Edit-GRPO 的最後階段，我們面臨一個關鍵工程決策：如何平衡多個目標函數，並在有限的計算資源下進行模型微調。以下是我們的實作過程與技術選型說明。</p>
+            <h4>1. 多目標獎勵平衡 (Reward Balancing)</h4>
+            <p>在強化學習過程中，模型需要同時滿足多種指標，我們設計了一個總獎勵函數（Total Reward），透過加權求和來整合不同面向的表現：</p>
+            <div class="formula">$$R_{total} = w_{IF} \cdot R_{IF} + w_{SP} \cdot R_{SP} + w_{PS} \cdot R_{PS}$$</div>
+            
+            <p><strong>變數與公式白話說明：</strong></p>
+            <ul>
+            <li><span class="math inline">$R_{total}$</span>：模型最終獲得的總分數（越高代表模型越聰明）。</li>
+            <li><span class="math inline">$R_{IF}, R_{SP}, R_{PS}$</span>：分別代表不同維度的獎勵值（如指令遵循、風格一致性、像素級細節）。</li>
+            <li><span class="math inline">$w_{IF}, w_{SP}, w_{PS}$</span>：權重係數，用來控制模型對哪個目標「更看重」。</li>
+            </ul>
+            <p><strong>數值示例與實務意義：</strong><br />
+            假設我們設定權重為 <span class="math inline">$w_{IF}=0.5, w_{SP}=0.3, w_{PS}=0.2$</span>：</p>
+            <ul>
+            <li>若模型在指令遵循拿到 1.0 分，風格拿到 0.8 分，細節拿到 0.5 分。</li>
+            <li>計算結果：<span class="math inline">$R_{total} = (0.5 \times 1.0) + (0.3 \times 0.8) + (0.2 \times 0.5) = 0.5 + 0.24 + 0.1 = 0.84$</span>。</li>
+            <li><strong>實務意義</strong>：這就像是在調整廚房的調味料比例。如果我們發現模型雖然聽話但畫風跑偏，我們會調高 <span class="math inline">$w_{SP}$</span>，這能強迫模型在更新參數時，優先優化風格相關的權重，避免模型只顧著指令卻忽略了美感。</li>
+            </ul>
+            <h4>2. 訓練效率優化：LoRA 策略的導入</h4>
+            <p>我們觀察到，如果對整個 DiT (Diffusion Transformer) 主幹進行全參數微調 (Full Fine-tuning)，計算成本過於昂貴且容易導致「災難性遺忘」（即模型學會了新的編輯能力，卻忘了原本的影像生成基礎）。</p>
+            <p><strong>技術決策：</strong><br />
+            我們選擇使用 LoRA (Low-Rank Adaptation) 技術。</p>
+            <ul>
+            <li><strong>為什麼這樣做？</strong> 直覺的做法是訓練所有參數，但這就像要改裝一台飛機，不需要把整個機身拆開，只需替換掉幾個核心控制閥即可。</li>
+            <li><strong>運作機制</strong>：LoRA 凍結了 DiT 原有的龐大參數，只在每一層插入一組極小的矩陣進行訓練。這確保了模型主幹的穩定性，同時讓 Edit-GRPO 階段能高效地學習編輯指令。</li>
+            </ul>
+            <p><strong>實驗結果回顧：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">比較項目</th>
+            <th style="text-align: left;">全參數微調 (Full Fine-tuning)</th>
+            <th style="text-align: left;">LoRA 微調 (採用技術)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">計算資源需求</td>
+            <td style="text-align: left;">極高 (記憶體佔用大)</td>
+            <td style="text-align: left;">低 (輕量化)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">穩定性</td>
+            <td style="text-align: left;">易發生過擬合/遺忘舊知識</td>
+            <td style="text-align: left;">高 (凍結主幹參數)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">訓練效率</td>
+            <td style="text-align: left;">緩慢</td>
+            <td style="text-align: left;">快速、適合迭代</td>
+            </tr>
+            </tbody>
+            </table>
+            <p>透過這種「鎖定核心、微調側翼」的策略，我們不僅確保了 Edit-GRPO 階段能快速收斂，還維持了 DiT 模型原本卓越的影像生成品質。關於 LoRA 矩陣的具體矩陣維度與插入位置，請詳見補充材料中的結構設計圖。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-8">
+        <h2>Section 8 - 3.4. Data Preparation</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：數據集建構挑戰與修正策略</h3>
+            <p><strong>觀察到的問題：</strong><br />
+            我們在回顧現有的影像編輯研究時，發現一個致命的斷層：市面上缺乏大規模、高品質的「影音編輯對照組」。過去的資料集（如 [2, 75]）多半依賴「填補（Inpainting）」或是「單張首幀圖轉移」的技術。</p>
+            <p>這些做法常會出現一個典型的工程缺陷：<strong>過度依賴密集控制訊號（如深度圖 depth、邊緣偵測 edges）</strong>。想像一下，這就像是畫畫時要求一定要精確描邊，一旦邊緣偵測稍微偏移，背景就會出現嚴重的閃爍或不連貫（artifacts），導致 AI 聽不懂指令與畫面內容的邏輯脫節。</p>
+            <p><strong>開發決策與調整：</strong><br />
+            為了突破現有瓶頸，我們的核心任務是建立一個擁有 1.5 百萬組編輯範例的資料集。我們不再僅依賴機械化的邊緣控制，而是嘗試將「多樣化局部編輯類型」與「人類自然語言指令」進行對齊。</p>
+            <p><strong>實驗數據量級說明：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">項目</th>
+            <th style="text-align: left;">數據說明</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">資料集規模</td>
+            <td style="text-align: left;"><span class="math inline">$N = 1,500,000$</span></td>
+            <td style="text-align: left;">確保模型有足夠的樣本空間進行分佈學習，避免過擬合。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">數據配對類型</td>
+            <td style="text-align: left;">(輸入影片, 編輯指令, 輸出影片)</td>
+            <td style="text-align: left;">建立「指令-動作-結果」的因果鏈，強化模型的理解力。</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>公式解析：數據配對的有效性評估</h3>
+            <p>在建構資料集時，我們使用了一個評估指標來衡量指令與編輯結果的對齊程度 <span class="math inline">$A$</span>，公式如下：</p>
+            <div class="formula">$$A = \frac{\sum_{i=1}^{N} \text{sim}(I_i, V_i)}{N}$$</div>
+            
+            <p><strong>變數解釋：</strong></p>
+            <ul>
+            <li><span class="math inline">$A$</span>：平均對齊分數（衡量 150 萬筆資料的平均品質）。</li>
+            <li><span class="math inline">$N$</span>：總數據筆數（本實驗設定為 <span class="math inline">$1.5 \times 10^6$</span>）。</li>
+            <li><span class="math inline">$\text{sim}(I_i, V_i)$</span>：相似度函數，計算第 <span class="math inline">$i$</span> 筆指令 <span class="math inline">$I_i$</span> 與其對應影片編輯結果 <span class="math inline">$V_i$</span> 的語意契合度。</li>
+            </ul>
+            <p><strong>數值計算範例：</strong><br />
+            假設我們進行小規模驗證，取 <span class="math inline">$N = 100$</span> 筆資料。若其中 80 筆被判定為「高度契合（分數 1.0）」，20 筆為「輕微偏移（分數 0.5）」：</p>
+            <div class="formula">$$A = \frac{(80 \times 1.0) + (20 \times 0.5)}{100} = \frac{90}{100} = 0.9$$</div>
+            
+            <p><strong>實務意義：</strong><br />
+            得到的結果 <span class="math inline">$0.9$</span> 代表在目前的數據清洗流程下，我們有 90% 的指令能精確對應到視覺結果。相比過去依賴邊緣偵測導致畫面閃爍、對齊分數可能低於 0.6 的舊方法，我們現在的數據結構能更穩定地支撐模型學習「人類到底想對這段影片做什麼修改」，而非僅僅是「像素點的位移」。</p>
+            <h3>實驗日誌：基礎架構的選型與模型微調</h3>
+            <p>在本次資料生成流程中，我們面臨的首要挑戰是：如何讓模型不僅能「看懂」文本，還能精準地「參照」輸入影片來生成新內容。</p>
+            <h4>1. 核心決策：為什麼選擇「雙分支架構」而非 ControlNet？</h4>
+            <p>在初期實驗中，我們曾考慮直接沿用業界常用的 ControlNet [72] 架構。然而，測試顯示 ControlNet 在處理動態影片輸入時，資訊捕捉的細膩度不足。這就像是要求一位畫家只看草稿的一角來作畫，難以捕捉整體的連貫性。</p>
+            <p>我們最終選擇了在 MMDiT [15] 架構上，額外開發一個「專屬影片輸入分支」。這項設計的邏輯在於：</p>
+            <ul>
+            <li><strong>直覺做法 (ControlNet)：</strong> 試圖透過外部注入控制訊號（如邊緣偵測圖）來影響模型，但這會增加網路層級的負擔，且難以解耦影片特徵與文本特徵。</li>
+            <li><strong>優化做法 (Dedicated Branch)：</strong> 將影片輸入視為與文本同等重要的「原生訊號」。這就像給模型配備了兩隻眼睛，一隻眼專注於閱讀文字提示（Text Prompt），另一隻眼專注於觀察參考影片（Video Reference），兩者在架構底層直接融合，顯著提升了輸出內容與原始影片的時序對齊程度。</li>
+            </ul>
+            <h4>2. 公式原理：雙分支的特徵融合</h4>
+            <p>模型在進行融合時，其底層處理機制可簡化為以下交互式運算：</p>
+            <div class="formula">$$H_{out} = \text{Norm}(H_{text} + \alpha \cdot H_{video})$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$H_{out}$</span></td>
+            <td style="text-align: left;">最終融合後的隱藏層特徵，決定了生成影片的每一幀</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$H_{text}$</span></td>
+            <td style="text-align: left;">文字提示經由編碼器轉換後的特徵張量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$H_{video}$</span></td>
+            <td style="text-align: left;">額外分支提取的影片輸入特徵</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha$</span></td>
+            <td style="text-align: left;">權重係數，控制影片參考的影響強度</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            若我們設定 <span class="math inline">$\alpha = 0.8$</span>，<span class="math inline">$H_{text}$</span> 為 1.0，<span class="math inline">$H_{video}$</span> 為 0.5。<br />
+            計算結果：<span class="math inline">$H_{out} = 1.0 + (0.8 \times 0.5) = 1.4$</span>。</p>
+            <p><strong>實務意義：</strong> <br />
+            這個數值 <span class="math inline">$1.4$</span> 代表模型在產生新畫面時，將「影片結構限制」與「文字語義」進行了特定比例的加權。如果 <span class="math inline">$\alpha$</span> 過小，生成影片會不聽從輸入影片的動作；如果過大，影片會變得過度僵化，喪失文字提示中要求的創意變異。</p>
+            <h4>3. 實驗流程記錄</h4>
+            <p>為了驗證架構有效性，我們的資料準備流程採取了以下步驟：</p>
+            <ul>
+            <li><strong>基礎預訓練：</strong> 使用預訓練好的 text-to-video 基礎模型作為權重起點。</li>
+            <li><strong>架構擴充：</strong> 植入上述的「額外分支」來處理影片輸入。</li>
+            <li><strong>微調 (Fine-tuning)：</strong> 使用一套精心設計的資料集進行微調，目的是讓模型適應新的分支輸入，而非僅僅是「微調」既有權重。</li>
+            <li><strong>合成輸出：</strong> 最後利用此模型生成成對的影片數據（video pairs），這些數據品質優於傳統方法，為後續實驗奠定了高基線。</li>
+            </ul>
+            <p><strong>工程總結：</strong><br />
+            透過將影片輸入分支化，我們成功解決了傳統 ControlNet 在深層特徵融合時的損耗問題。這種結構上的「專注分工」，使得模型在面對複雜動態影像時，具備了更強的魯棒性。詳細的資料集建構細節，請參閱附錄文件。</p>
+            <h3>實驗日誌：物件替換 (Object Replacement) 流程記錄</h3>
+            <p>在進行影音編輯模型的資料準備時，我們面臨一個核心挑戰：<strong>如何讓模型學會「無縫替換畫面中的特定物件」？</strong> 直覺的做法是直接找兩段不同的影片進行比對，但這樣做會引入太多背景雜訊，導致模型分不清是「物件變了」還是「背景變了」。</p>
+            <p>為了精確訓練模型，我們採取了「先遮罩、後填補」的工程策略，步驟如下：</p>
+            <h4>1. 實驗步驟與決策</h4>
+            <ul>
+            <li><strong>目標鎖定 (Identification)</strong>：利用詳細的影片描述文字，抓出目標物件名稱。</li>
+            <li><strong>視覺追蹤 (Tracking)</strong>：<ul>
+            <li>使用 <code>Grounding-DINO</code> 在第一幀定位目標物件。</li>
+            <li>啟動 <code>SAM 2</code> 進行逐幀追蹤，取得精確的 <code>Mask</code>（遮罩）。</li>
+            <li><strong>決策理由</strong>：比起人工標註，使用預訓練的 <code>SAM 2</code> 能確保遮罩邊緣貼合物件，避免後續填補時出現「殘影」。</li>
+            </ul>
+            </li>
+            <li><strong>模型訓練 (Local Inpainting)</strong>：將「原始影格」與「對應遮罩」組成訓練對，教導模型如何將遮罩區域「挖空」。</li>
+            <li><strong>語義重寫 (Semantic Rewriting)</strong>：呼叫 LLM 修改原始描述，將物件名稱變更為目標物件，並利用此新描述進行 <code>Inpainting</code>，產生合成的編輯對。</li>
+            </ul>
+            <h4>2. 技術原理與公式解析</h4>
+            <p>在物件替換的過程中，模型學習的是一個條件生成問題，可以抽象理解為：如何在已知背景 <span class="math inline">$B$</span> 與原始遮罩 <span class="math inline">$M$</span> 的情況下，根據新的語義描述 <span class="math inline">$C&#x27;$</span> 生成新物件 <span class="math inline">$O&#x27;$</span>。</p>
+            <p>核心公式邏輯如下：</p>
+            <div class="formula">$$I_{new} = \text{Inpaint}(I_{orig}, M, C&#x27;)$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{orig}$</span></td>
+            <td style="text-align: left;">原始影片影格</td>
+            <td style="text-align: left;">原本照片的畫布</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M$</span></td>
+            <td style="text-align: left;">遮罩區域 (Mask)</td>
+            <td style="text-align: left;">決定哪裡要動刀的膠帶</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C&#x27;$</span></td>
+            <td style="text-align: left;">修改後的描述</td>
+            <td style="text-align: left;">給繪師的新指令</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{new}$</span></td>
+            <td style="text-align: left;">生成的新影格</td>
+            <td style="text-align: left;">完成修圖後的照片</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            假設我們要把「咖啡杯」替換成「蘋果」。</p>
+            <ul>
+            <li>定義原始影像 <span class="math inline">$I_{orig}$</span> 中咖啡杯區域為 <span class="math inline">$M = 0.8$</span> (即 80% 的透明度或遮罩權重)。</li>
+            <li>輸入指令 <span class="math inline">$C&#x27;$</span> 為「一個紅色的蘋果」。</li>
+            <li><strong>計算結果</strong>：若模型在 <span class="math inline">$M$</span> 的區域內分配了 0.95 的信心值來生成蘋果像素。</li>
+            <li><strong>實務意義</strong>：代表模型成功將原本屬於咖啡杯的 80% 區域進行了「物件層級」的重繪，且與周圍環境的融合度高達 95%。</li>
+            </ul>
+            <h4>3. 為什麼這麼做有效？</h4>
+            <p>相比於「訓練一個模型直接生成整張圖」，這種做法的好處在於<strong>解耦 (Decoupling)</strong>：</p>
+            <ol>
+            <li><strong>穩定背景</strong>：由於我們只對 <span class="math inline">$M$</span> 區域內的像素進行重繪，背景環境保持不變，避免了影片出現晃動或閃爍。</li>
+            <li><strong>語義一致性</strong>：透過 LLM 重寫 <span class="math inline">$C&#x27;$</span>，我們確保了生成物件的描述與影片的時間軸邏輯一致（例如：不會在背景沒變的情況下，讓替換後的蘋果突然長出腳）。</li>
+            </ol>
+            <p><strong>工程師筆記</strong>：這種「合成編輯對 (Synthesizing editing pairs)」的方式，實質上是透過自動化手段，憑空創造出高品質的訓練數據。這讓模型在沒有真實人類對照組的情況下，也能學會什麼叫「物體替換」。</p>
+            <h3>實驗日誌：物件增刪的訓練數據生成策略</h3>
+            <p>在訓練影片修復模型（Video Inpainting）時，我們面臨一個關鍵挑戰：如何讓模型學會「無中生有」或「乾淨移除」特定物件，而不需要昂貴的人工標註。我們設計了一套自動化的數據合成流程。</p>
+            <h4>1. 核心邏輯：遮罩與負面提示（Negative Prompt）的交互作用</h4>
+            <p>我們採取「逆向操作」的思路。如果想訓練模型移除場景中的貓，單純把貓塗黑（Mask）還不夠，模型可能會因為語意連貫性，又把貓畫回去。</p>
+            <p>我們的做法是結合「遮罩處理」與「語意限制」：</p>
+            <ul>
+            <li><strong>遮罩（Masking）：</strong> 隨機選擇畫面中的區域進行遮蓋，這是為了訓練模型練習填補空洞。</li>
+            <li><strong>文字調整（Caption Alteration）：</strong> 我們修改原本的影片描述。例如原描述為「草地上有一隻貓」，若我們將貓遮掉，就將文字改為「草地」。</li>
+            <li><strong>負面提示（Negative Prompt）：</strong> 這是最關鍵的一步，我們將被遮罩的物件名稱放入負面提示中。這就像是在對模型下指令：「你可以填補任何東西，但絕對不准出現『貓』」。</li>
+            </ul>
+            <h4>2. 原理類比：想像「繪圖改錯題」</h4>
+            <p>這就像在考畫家：「如果不准在照片的空缺處畫出貓，你還能用草地與天空的紋理把它填得自然嗎？」這種強制限制能迫使模型學習場景的背景紋理，而不是過度依賴對目標物件的記憶。</p>
+            <h4>3. 技術參數與公式解析</h4>
+            <p>在生成過程中，我們處理的是輸入序列的條件機率分佈。模型在執行修復時，主要受到隱含變數影響：</p>
+            <div class="formula">$$P(\text{Frame}_{\text{out}} \mid \text{Mask}, \text{Prompt}_{\text{pos}}, \text{Prompt}_{\text{neg}})$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話定義</th>
+            <th style="text-align: left;">在此實驗中的角色</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$P$</span></td>
+            <td style="text-align: left;">機率分佈</td>
+            <td style="text-align: left;">模型輸出最終影像的信心程度</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Frame}_{\text{out}}$</span></td>
+            <td style="text-align: left;">輸出畫面</td>
+            <td style="text-align: left;">模型填補完後的最終像素結果</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Mask}$</span></td>
+            <td style="text-align: left;">遮罩區域</td>
+            <td style="text-align: left;">定位需要被重繪的像素位置</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Prompt}_{\text{pos}}$</span></td>
+            <td style="text-align: left;">正面提示</td>
+            <td style="text-align: left;">引導模型補上背景特徵（如：草地）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Prompt}_{\text{neg}}$</span></td>
+            <td style="text-align: left;">負面提示</td>
+            <td style="text-align: left;">強制模型排除特定物件（如：貓）</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值計算範例：</strong><br />
+            假設模型針對某像素點進行修復，透過負面提示權重計算後，得到貓的像素機率 <span class="math inline">$P(\text{cat}) = 0.05$</span>，而背景草地的機率 <span class="math inline">$P(\text{grass}) = 0.95$</span>。</p>
+            <ul>
+            <li><strong>實務意義：</strong> 當 <span class="math inline">$P(\text{cat})$</span> 遠低於閾值（例如 <span class="math inline">$0.1$</span>）時，模型會選擇放棄生成貓，轉而融合背景紋理，這代表我們成功透過負面提示引導模型「忘掉」該物件，達成了平滑的遮蔽移除效果。</li>
+            </ul>
+            <h4>4. 工程決策分析</h4>
+            <p>相比於單純的「遮罩後自動修復」，我們的做法顯著降低了物件邊緣的閃爍感。原因在於：</p>
+            <ol>
+            <li><strong>引導性強：</strong> 透過改寫 Caption，模型知道自己該追求的是「無貓的背景」，而非「被貓佔據的洞」。</li>
+            <li><strong>排他性明確：</strong> 負面提示有效地打破了生成模型對於特定物件的「慣性反應」，特別是在物體出現頻率較高的數據集中，這能有效避免「幽靈殘影」殘留在修復後的區域。</li>
+            </ol>
+            <p>這套流程讓我們能自動產出數千組訓練對，模型隨後在這些數據上進行微調，實測結果顯示其在物件擦除任務上的穩定度顯著提升。</p>
+            <h3>實驗日誌：全域內容編輯（Global Content Editing）策略</h3>
+            <p><strong>實驗目標</strong>：實現對影片場景的「全域式」轉換，例如將「白天」改成「晚上」，同時保持影片中物件的結構與運動軌跡不變。</p>
+            <h4>1. 核心邏輯與觀察</h4>
+            <p>我們發現，若僅僅依靠文字提示（Prompt）來生成新影片，模型經常會出現「畫面飄移」或「結構崩塌」的問題，因為它缺乏對原影片骨架的約束。</p>
+            <p><strong>設計取捨</strong>：</p>
+            <ul>
+            <li><strong>直覺做法（失敗）</strong>：直接修改 Prompt 並重新生成。結果：模型會自由發揮，導致影片中的人物姿勢或背景布局完全走樣。</li>
+            <li><strong>工程做法（採納）</strong>：引入「密集塗鴉（Dense Scribbles）」作為結構引導。這就像是讓模型在畫素描時，先由我們勾勒出精確的輪廓骨架，再讓模型負責填色。透過這些結構導引，模型在處理新 Prompt 時，就會被強迫鎖定在原有的結構框架內。</li>
+            </ul>
+            <h4>2. 技術實現流程</h4>
+            <p>整個編輯過程分為兩個關鍵步驟：</p>
+            <ol>
+            <li><strong>結構提取</strong>：從原始影片中提取高密度的結構線條（Dense Scribbles）。</li>
+            <li><strong>條件生成</strong>：訓練模型在「結構引導」與「修改後的 Prompt」雙重條件下進行合成。</li>
+            </ol>
+            <p>這裡引入的條件控制公式可表示為：</p>
+            <div class="formula">\[ I_{new} = G(S_{source}, C_{modified}) \]</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">功能說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I_{new}$</span></td>
+            <td style="text-align: left;">生成的新影片</td>
+            <td style="text-align: left;">我們期望得到的最終結果。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">生成模型</td>
+            <td style="text-align: left;">負責融合結構與文字描述的核心函數。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S_{source}$</span></td>
+            <td style="text-align: left;">結構引導（Scribbles）</td>
+            <td style="text-align: left;">從原始影片提取的視覺骨架。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C_{modified}$</span></td>
+            <td style="text-align: left;">修改後的提示詞</td>
+            <td style="text-align: left;">由 LLM 生成的指令（如：將「白天」改為「晚上」）。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>3. 數值代入範例與意義</h4>
+            <p>假設我們正在進行一個簡單的場景轉化測試：</p>
+            <ul>
+            <li>設原始影片的結構密度權重 <span class="math inline">$S_{source} = 0.9$</span>（代表保留 90% 的原物件位置資訊）。</li>
+            <li>設 LLM 修改後的指令權重 <span class="math inline">$C_{modified} = 0.8$</span>（代表強調轉換場景氛圍的強度）。</li>
+            <li>假設生成模型 <span class="math inline">$G$</span> 的運作方式為加權平均的特徵合成 <span class="math inline">$G = S \times 0.5 + C \times 0.5$</span>。</li>
+            </ul>
+            <p><strong>計算結果</strong>：</p>
+            <div class="formula">\[ I_{new} = 0.9 \times 0.5 + 0.8 \times 0.5 = 0.45 + 0.4 = 0.85 \]</div>
+            
+            <p><strong>數值意義解讀</strong>：<br />
+            此結果 <span class="math inline">$0.85$</span> 代表模型在結構維持與場景風格變換之間取得了一個高強度平衡。若數值過低（如 <span class="math inline">$&lt; 0.5$</span>），則代表結構被破壞，影片會產生閃爍或物體消失；若數值過高（如 <span class="math inline">$&gt; 0.95$</span>），則模型會因為過度依賴結構線，導致新場景（如「晚上」的氛圍）無法正確渲染出來。</p>
+            <h4>4. 關鍵輔助：LLM 的角色</h4>
+            <p>為什麼要用 LLM 來改寫提示詞？<br />
+            在「白天」轉「晚上」的場景中，僅僅更換關鍵字是不夠的。LLM 會自動補全細節，例如將：</p>
+            <ul>
+            <li>原 Prompt: "A street in daytime."</li>
+            <li>改寫為: "A street at night, with street lamps glowing and shadows cast by moonlight."</li>
+            </ul>
+            <p>這種方式讓模型不僅僅是換了底色，還能根據新語境調整光影細節，使整體影片看起來更自然、更具可信度。</p>
+            <h3>實驗日誌：資料清理的兩階段防禦機制</h3>
+            <p>在資料合成的過程中，我們發現一個工程上的現實難題：自動化生成的資料難免會混入「偽影」（Artifacts）。這就像是用 AI 臨摹字帖，雖然筆觸相似，但難免會有墨水暈開或筆畫錯位。如果直接使用這些原始資料，模型會學到錯誤的雜訊。</p>
+            <p>我們決定放棄那種「只靠單一規則過濾」的輕率做法，改用兩階段的品質管控策略，確保進入訓練環節的每一筆資料都經過嚴格檢核。</p>
+            <h4>為什麼要分兩階段？</h4>
+            <p>直覺的做法通常是一次性檢查，設定一個門檻值（Threshold）直接過濾。但問題在於，如果門檻設太高，會損失太多珍貴的邊緣案例（Edge cases）；設太低，雜訊又會污染模型。我們將流程拆解為：</p>
+            <ol>
+            <li><strong>結構篩選（粗篩）</strong>：快速排除不符合格式要求的異常資料。</li>
+            <li><strong>語意審核（精篩）</strong>：透過模型評估內容品質，過濾掉語意破碎或邏輯矛盾的樣本。</li>
+            </ol>
+            <h4>品質評分公式解析</h4>
+            <p>為了精確篩選，我們定義了一個品質分數 <span class="math inline">$Q(x)$</span>，用來衡量資料 <span class="math inline">$x$</span> 的可靠程度：</p>
+            <div class="formula">$$Q(x) = \alpha \cdot S(x) + (1 - \alpha) \cdot V(x)$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$Q(x)$</span></td>
+            <td style="text-align: left;">資料最終品質分數</td>
+            <td style="text-align: left;">分數越高代表資料品質越好。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S(x)$</span></td>
+            <td style="text-align: left;">結構評分</td>
+            <td style="text-align: left;">檢查欄位完整性、資料格式是否合法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V(x)$</span></td>
+            <td style="text-align: left;">語意有效性評分</td>
+            <td style="text-align: left;">模型判斷該內容邏輯是否通順。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha$</span></td>
+            <td style="text-align: left;">權重參數</td>
+            <td style="text-align: left;">決定結構與語意兩者間的重要性平衡。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值代入範例：</strong><br />
+            假設我們設定權重 <span class="math inline">$\alpha = 0.4$</span>，針對某筆生成的資料，系統評測如下：</p>
+            <ul>
+            <li>結構完整，拿到滿分 <span class="math inline">$S(x) = 1.0$</span></li>
+            <li>但語意稍嫌模糊，評分為 <span class="math inline">$V(x) = 0.5$</span></li>
+            </ul>
+            <p>計算如下：<br />
+            <span class="math inline">$Q(x) = 0.4 \times 1.0 + (1 - 0.4) \times 0.5$</span><br />
+            <span class="math inline">$Q(x) = 0.4 + 0.3 = 0.7$</span></p>
+            <p><strong>實務意義：</strong><br />
+            這代表該筆資料綜合得分為 <span class="math inline">$0.7$</span> 分。如果我們設定的最低准入標準是 <span class="math inline">$0.6$</span>，那麼這筆資料會被保留。若這筆資料得分低於 <span class="math inline">$0.6$</span>，我們會視其為「雜訊」予以拋棄。這種做法就像是請了兩位審查員，一位檢查格式是否工整（格式審查員），一位檢查內容是否有意義（內容分析師），唯有兩者綜合評分達標的資料，才能進入下游的訓練流程，有效降低了模型學到「偽影」的風險。</p>
+            <h3>實驗日誌：高品質資料清洗與過濾機制</h3>
+            <p>在模型訓練的資料準備階段，我們遇到一個核心挑戰：<strong>如何確保「合成影片」的品質足以作為訓練素材？</strong> 如果我們直接拿瑕疵影片訓練，模型就像在看模糊不清的教科書學習寫字，最終產出的畫質肯定會崩塌。</p>
+            <p>為了嚴格控管資料品質，我們導入了兩階段的 VLM（視覺語言模型）驗證流程。</p>
+            <h4>流程調整與決策取捨</h4>
+            <ol>
+            <li>
+            <p><strong>指令改寫（Instruction Refinement）：</strong> <br />
+                我們發現原始產生的指令往往過於簡略，難以引導模型進行精準的影片編輯。因此，我們選定 Gemini 2.5 Pro 來重寫指令，將其細化為描述性更強、更具邏輯的編輯指令。</p>
+            </li>
+            <li>
+            <p><strong>品質把關（Artifact Filtering）：</strong> <br />
+                這是我們設下的「防火牆」。我們要求 VLM 擔任審核員，判斷合成出的影片是否包含「人工痕跡」（artifacts，如閃爍、扭曲、破碎的畫面）。</p>
+            <ul>
+            <li><strong>訓練邏輯：</strong> 我們設定的策略是：優先以「真實影片」作為目標（target），只有當合成影片被標記為「無瑕疵（artifact-free）」時，我們才考慮將其加入候選集。</li>
+            </ul>
+            </li>
+            </ol>
+            <h4>為什麼要這樣設計？</h4>
+            <p>這就像是在訓練一位畫師：</p>
+            <ul>
+            <li><strong>直覺做法：</strong> 將所有合成影片一股腦丟進去訓練。結果：模型學會了各種奇形怪狀的雜訊。</li>
+            <li><strong>我們的做法：</strong> 執行「嚴格審查」。如果這張參考圖（合成影片）品質不合格，我們直接將其屏除在訓練集之外。這樣能確保模型學習的方向始終對準高品質的視覺輸出。</li>
+            </ul>
+            <h4>核心品質控制變數</h4>
+            <p>為了量化評估流程，我們定義了資料採樣的機率模型：</p>
+            <div class="formula">$$ P(\text{train}) = \begin{cases} 1, &amp; \text{if } \text{Label}_{\text{VLM}} = \text{Clean} \\ 0, &amp; \text{if } \text{Label}_{\text{VLM}} = \text{Artifact} \end{cases} $$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數/符號</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$P(\text{train})$</span></td>
+            <td style="text-align: left;">該筆資料被選入訓練集的機率</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Label}_{\text{VLM}}$</span></td>
+            <td style="text-align: left;">VLM 對影片品質的判定結果</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Clean}$</span></td>
+            <td style="text-align: left;">判定為無瑕疵的標籤</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Artifact}$</span></td>
+            <td style="text-align: left;">判定為有瑕疵的標籤</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義：</strong></p>
+            <p>假設我們準備了 100 支合成影片，經過 Gemini 2.5 Pro 審核後，發現 80 支為 <span class="math inline">$\text{Clean}$</span>，20 支為 <span class="math inline">$\text{Artifact}$</span>。</p>
+            <ul>
+            <li><strong>計算：</strong><ul>
+            <li>對於 <span class="math inline">$\text{Clean}$</span> 影片：<span class="math inline">$P(\text{train}) = 1$</span>，代表這 80 支影片全部進入訓練集。</li>
+            <li>對於 <span class="math inline">$\text{Artifact}$</span> 影片：<span class="math inline">$P(\text{train}) = 0$</span>，代表這 20 支影片被剔除，對訓練集的污染率為 0%。</li>
+            </ul>
+            </li>
+            <li><strong>實務意義：</strong> 透過這個篩選機制，我們在「資料多樣性」與「資料純度」之間取得了平衡。雖然我們犧牲了 20% 的數據量，但換取的是模型穩定性，避免了模型在後期出現生成雜訊的災難性結果。</li>
+            </ul>
+            <h4>小結</h4>
+            <p>工程師的視角告訴我們：<strong>壞的輸入絕對產不出好的輸出（Garbage In, Garbage Out）</strong>。透過 Gemini 2.5 Pro 進行兩階段清洗，我們確保了進入模型的每一幀畫面都是高品質的教材。雖然增加了運算開銷，但這對後續模型編輯能力的穩定性是不可或缺的投入。</p>
+            <h3>實驗日誌：擴充資料集的策略調整</h3>
+            <p><strong>觀察到的問題</strong><br />
+            在訓練影片編輯模型初期，我們發現模型雖然能處理基本的動態變化，但對於「非時間序列」的編輯任務（例如：單純改變畫風、更換物體材質）表現相對僵化。單純依賴影片資料雖然能學習到物件的連續性，但因為樣本多為短時間的微小變動，導致模型缺乏「大範圍、多樣化」的編輯經驗。</p>
+            <p><strong>調整策略：引入靜態影像對</strong><br />
+            為了解決此瓶頸，我們從公開資料集 [18, 64] 中導入了 5.4 百萬組「影像編輯對」（Image Editing Pairs）。</p>
+            <ul>
+            <li><strong>作法</strong>：我們將每一組靜態影像對視為一個「單影格影片」（Single-frame video）。在模型架構眼裡，這就像是一支長度僅為 1 的影片，只是畫面發生了瞬間轉換。</li>
+            <li><strong>為什麼這樣做</strong>：這就像是幫學生安排了「速成班」。影片訓練像是長期記憶的培養（學習物體如何隨時間移動），而靜態影像對則是高強度的觀念訓練（學習物體如何被快速替換或重繪），兩者並行能顯著提升模型對編輯指令的理解廣度。</li>
+            </ul>
+            <p><strong>關鍵量化指標與意義</strong></p>
+            <p>為了評估資料擴充帶來的效益，我們對訓練資料的貢獻度進行了初步分析。假設原始影片資料集規模為 <span class="math inline">$V$</span>，新增影像對規模為 <span class="math inline">$I$</span>，總訓練資料總量 <span class="math inline">$T$</span> 可表示為：</p>
+            <div class="formula">$$T = V + I$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$V$</span></td>
+            <td style="text-align: left;">原始影片序列樣本數</td>
+            <td style="text-align: left;">訓練模型對「連續變化」的感知能力</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$I$</span></td>
+            <td style="text-align: left;">靜態影像對樣本數</td>
+            <td style="text-align: left;">擴展模型對「編輯類型」的理解多樣性</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$T$</span></td>
+            <td style="text-align: left;">總訓練樣本數</td>
+            <td style="text-align: left;">模型接觸的總知識庫規模</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例</strong><br />
+            假設我們先前僅有 0.6 百萬段影片片段（<span class="math inline">$V = 0.6 \times 10^6$</span>），現在加入了 5.4 百萬組影像對（<span class="math inline">$I = 5.4 \times 10^6$</span>）：</p>
+            <ol>
+            <li><strong>計算總量</strong>：<span class="math inline">$T = 0.6 + 5.4 = 6.0 \text{ (百萬)}$</span></li>
+            <li><strong>資料佔比分析</strong>：<span class="math inline">$\text{影像對佔比} = \frac{I}{T} = \frac{5.4}{6.0} = 0.9$</span></li>
+            </ol>
+            <p><strong>實務解讀</strong>：<br />
+            透過這個調整，我們將資料庫中的「靜態編輯知識」佔比提升至 90%。這意味著模型在每 10 次權重更新中，有 9 次是在練習處理靜態影像的語意轉換。結果顯示，這種策略成功讓模型克服了「只會做動態位移」的侷限，現在能靈活處理更多樣化的編輯指令，且整體訓練效率與泛化能力顯著提升。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-9">
+        <h2>Section 9 - 4. Experiments</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>4.1 實驗室日誌：模型微調策略與參數調優</h3>
+            <p>在本次實驗中，我們選用 <code>HunyuanVideo-T2V-13B</code> 作為基礎模型架構（DiT backbone），目標是透過特定配對數據集進行微調，以優化模型生成品質。以下是針對訓練過程的關鍵決策記錄：</p>
+            <h4>訓練參數與決策邏輯</h4>
+            <p>為了確保模型在訓練過程中穩定收斂，我們設定了以下參數：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">參數項目</th>
+            <th style="text-align: left;">設定值</th>
+            <th style="text-align: left;">工程觀點與理由</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>總訓練步數</strong></td>
+            <td style="text-align: left;"><span class="math inline">$12,000$</span></td>
+            <td style="text-align: left;">經過初步評估，此步數足夠模型學習新數據特徵，避免過擬合。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>學習率 (LR)</strong></td>
+            <td style="text-align: left;"><span class="math inline">$2 \times 10^{-5}$</span></td>
+            <td style="text-align: left;">採用較小的學習率，以確保在微調時不會破壞預訓練模型的權重結構。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>全域 Batch Size</strong></td>
+            <td style="text-align: left;"><span class="math inline">$128$</span></td>
+            <td style="text-align: left;">較大的 Batch Size 能提供更穩定的梯度估計，減少訓練時的震盪。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>數據混合比例的設計哲學</h4>
+            <p>實驗中一個關鍵的決策點是「圖像數據」與「影片數據」的混合策略。我們觀察到，若單純混合，模型容易在兩者之間產生「權重偏移」。為了解決這個問題，我們設計了機率採樣機制：</p>
+            <ul>
+            <li><strong>影片數據採樣機率 <span class="math inline">$P_{video} = 0.4$</span></strong></li>
+            <li><strong>圖像數據採樣機率 <span class="math inline">$P_{image} = 0.6$</span></strong></li>
+            </ul>
+            <p><strong>為什麼這樣設計？</strong><br />
+            這就好比在訓練一位藝術家：影片數據就像是「動作連貫的動態短片」，訓練難度高且記憶負擔重；圖像數據則像是「關鍵靜態構圖」，能穩定模型的視覺基礎。我們給予圖像較高的機率（0.6），是為了讓模型在學習動態變化前，先擁有紮實的畫面空間感。</p>
+            <h4>參數公式解析：訓練步數的累積與學習節奏</h4>
+            <p>雖然此處涉及的數學邏輯較為直觀，但我們必須確保訓練步數（<span class="math inline">$S$</span>）與學習率（<span class="math inline">$LR$</span>）對模型總體權重更新的影響。其概念可以表達為權重更新量 <span class="math inline">$\Delta W$</span> 的簡單模型：</p>
+            <div class="formula">$$\Delta W \approx \eta \cdot \sum_{i=1}^{S} \nabla L_i$$</div>
+            
+            <p><strong>變數解釋：</strong></p>
+            <ul>
+            <li><span class="math inline">$\Delta W$</span>：模型的權重變化量（模型被改寫了多少）。</li>
+            <li><span class="math inline">$\eta$</span>（Eta）：學習率 (<span class="math inline">$2 \times 10^{-5}$</span>)，代表每一步邁出的步伐大小。</li>
+            <li><span class="math inline">$S$</span>：總訓練步數 (<span class="math inline">$12,000$</span>)。</li>
+            <li><span class="math inline">$\nabla L_i$</span>：第 <span class="math inline">$i$</span> 步的損失梯度（反映模型與目標的誤差方向）。</li>
+            </ul>
+            <p><strong>數值示例與實務意義：</strong><br />
+            假設平均梯度的大小為常數 <span class="math inline">$G = 0.1$</span>，則總權重更新量為：</p>
+            <div class="formula">$$\Delta W = (2 \times 10^{-5}) \cdot (12,000 \cdot 0.1) = 0.024$$</div>
+            
+            <p><strong>解讀：</strong><br />
+            這個數字 <span class="math inline">$0.024$</span> 代表模型參數在這次訓練後的「微調幅度」。在機器學習中，這個數值必須保持在一個精確的範圍：太大會導致模型原有的強大能力「崩潰」（遺忘預訓練知識），太小則模型無法學會我們提供的新數據特徵。我們的實驗結果顯示，<span class="math inline">$2 \times 10^{-5}$</span> 的學習率配合 <span class="math inline">$12,000$</span> 步，能達到「適度吸收新資訊」而不破壞「既有視覺知識」的完美平衡。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-10">
+        <h2>Section 10 - 4.2. Experimental Setup</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：評估指標與基線模型設定</h3>
+            <p><strong>實驗目標：</strong> 為了驗證 VIVA 模型在「指令式影片編輯」任務中的表現，我們需要一套具有鑑別力的標準化測試流程。</p>
+            <h4>1. 測試資料集的選擇：VIE-Bench</h4>
+            <p>工程上，評估影片編輯模型最怕「題目太單一」。若只測試「更換顏色」或「添加物件」，模型很容易出現過擬合（Overfitting）。因此，我們採用 <strong>VIE-Bench</strong> 作為核心考題，理由如下：</p>
+            <ul>
+            <li><strong>多樣性與規模：</strong> 它包含 140 個高品質影片片段，涵蓋了各種具挑戰性的指令編輯場景。</li>
+            <li><strong>分類完整性：</strong> 區分為「無參考（Reference-free）」與「有參考（Reference-based）」兩類。<ul>
+            <li><em>比喻：</em> 這就像考試，無參考編輯就像是「申論題」（只給指令，讓模型自由發揮）；有參考編輯則是「改寫題」（給定原始素材與範例，要求模型保持風格與結構）。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>2. 實驗對照組（Baselines）設定</h4>
+            <p>為了確保我們的模型 VIVA 不是在「自嗨」，我們選擇了五種業界公認的高標模型進行橫向對比。這些模型代表了當前的技術極限：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">模型名稱</th>
+            <th style="text-align: left;">類型</th>
+            <th style="text-align: left;">實驗角色</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>ICVE, Lucy-Edit-Dev, Ditto, InsV2V</strong></td>
+            <td style="text-align: left;">開源模型</td>
+            <td style="text-align: left;">評估當前學術界開源技術的改進潛力</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Runway Gen-4 Aleph</strong></td>
+            <td style="text-align: left;">商業模型</td>
+            <td style="text-align: left;">測試 VIVA 與業界頂尖閉源產品的落差</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>評估機制邏輯說明</h3>
+            <p>雖然此章節主要描述設定，但我們在評估時採用了統一的量化指標公式，核心邏輯如下：</p>
+            <div class="formula">$$Score_{total} = \alpha \cdot S_{alignment} + \beta \cdot S_{temporal}$$</div>
+            
+            <p><strong>變數對照表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">工程解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$Score_{total}$</span></td>
+            <td style="text-align: left;">總體編輯評分</td>
+            <td style="text-align: left;">模型最終的「成績單」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha, \beta$</span></td>
+            <td style="text-align: left;">權重係數</td>
+            <td style="text-align: left;">根據編輯任務偏好調整的配分比例</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S_{alignment}$</span></td>
+            <td style="text-align: left;">語義對齊度</td>
+            <td style="text-align: left;">模型是否聽懂指令（文字與影片的關聯）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S_{temporal}$</span></td>
+            <td style="text-align: left;">時間連貫性</td>
+            <td style="text-align: left;">影片會不會亂閃、物件是否有不自然的跳變</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值代入範例：</strong><br />
+            假設我們設定 <span class="math inline">$\alpha = 0.6$</span>（重視指令聽從），<span class="math inline">$\beta = 0.4$</span>（重視流暢度），若某模型評分結果為 <span class="math inline">$S_{alignment} = 0.9$</span>，<span class="math inline">$S_{temporal} = 0.7$</span>：</p>
+            <div class="formula">$$Score = (0.6 \times 0.9) + (0.4 \times 0.7) = 0.54 + 0.28 = 0.82$$</div>
+            
+            <p><strong>實務意義：</strong><br />
+            這代表該模型在編輯指令對齊上做得很好（0.9），但在維持畫面連貫性（0.7）上還有改進空間。透過這種量化方式，我們能精確定位模型是「聽不懂話（語義問題）」還是「畫面不穩（生成品質問題）」，從而進行針對性的參數調整。</p>
+            <p><strong>決策取捨：</strong><br />
+            我們刻意納入 Runway Gen-4 Aleph 這類商業產品，是因為它們通常擁有強大的預訓練資料。若 VIVA 在這種高壓環境下仍能達到相當水準，則證明我們在模型架構設計上的效率優勢（Efficiency），而不僅僅是依賴海量的資料堆疊。</p>
+            <h3>實驗日誌：評估指標（Metrics）設計與決策</h3>
+            <p>在建構評估系統時，我們面臨一個關鍵挑戰：現有的評估工具（如 CLIP 與 PickScore）主要是為了「單純的生成任務」設計，它們擅長判斷「畫面跟文字對不對得上」，卻無法理解「這段影片是否遵循了指令進行編輯」。</p>
+            <p>為了精確量化模型是否聽懂指令（Instruction Adherence）並保持視覺品質，我們採取了「多維度混合評估策略」。</p>
+            <h4>核心評估機制：VLM 評分系統</h4>
+            <p>由於標準指標在「邏輯理解」上有盲點，我們引入了 Gemini-1.5-pro 作為裁判，採用 <span class="math inline">$0-10$</span> 的評分機制。這就像是聘請一位資深編輯，從四個維度審核影片：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">評估維度</th>
+            <th style="text-align: left;">說明</th>
+            <th style="text-align: left;">關鍵目標</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Instruction Following</strong></td>
+            <td style="text-align: left;">指令遵循</td>
+            <td style="text-align: left;">是否精確完成指定修改（例如：把狗變貓）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Source Preservation</strong></td>
+            <td style="text-align: left;">原片一致性</td>
+            <td style="text-align: left;">畫面背景或非目標物是否無端閃爍或變形</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Editing Quality</strong></td>
+            <td style="text-align: left;">編輯品質</td>
+            <td style="text-align: left;">影片看起來是否自然、有無偽影</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Subject Similarity</strong></td>
+            <td style="text-align: left;">主體相似度</td>
+            <td style="text-align: left;">針對參考圖編輯時，主體特徵是否被保留</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>輔助量化指標：物理與品質檢查</h4>
+            <p>除了主觀評分，我們還引入了 VBench 評估套件，並結合傳統指標進行交叉驗證，確保數據的可信度：</p>
+            <ul>
+            <li><strong>背景穩定性與主體一致性</strong>：利用 CLIP 與 DINO 特徵相似度來計算跨幀（Cross-frame）穩定性。</li>
+            <li><strong>語意與風格對齊</strong>：採用 frame-text CLIP 與 video-text ViCLIP，確保影片不僅是「看起來」像，連語意風格都與原始指令對齊。</li>
+            <li><strong>人類偏好（PickScore）</strong>：引入 frame-wise PickScore，從人類審美的角度評估每一幀的品質。</li>
+            </ul>
+            <hr />
+            <h3>公式解讀與實務應用：以 CLIP 特徵相似度為例</h3>
+            <p>為了判斷影片是否穩定，我們採用相似度計算。公式如下：</p>
+            <div class="formula">$$S = \text{sim}(F_t, F_{t+1}) = \frac{v_t \cdot v_{t+1}}{\|v_t\| \|v_{t+1}\|}$$</div>
+            
+            <h4>變數意義與白話解釋</h4>
+            <ul>
+            <li><span class="math inline">$v_t$</span> 與 <span class="math inline">$v_{t+1}$</span>：代表第 <span class="math inline">$t$</span> 幀與第 <span class="math inline">$t+1$</span> 幀轉換成向量後的特徵數據（機器理解的畫面意義）。</li>
+            <li><span class="math inline">$\cdot$</span>：向量的內積（Inner Product），用來衡量兩個向量的重疊程度。</li>
+            <li><span class="math inline">$\|v\|$</span>：向量的長度（Magnitude），用來歸一化，確保只比較「方向相似度」而非數值大小。</li>
+            <li><span class="math inline">$S$</span>：最終相似度分數，範圍在 <span class="math inline">$[-1, 1]$</span> 之間。</li>
+            </ul>
+            <h4>數值代入範例</h4>
+            <p>假設我們計算出連續兩幀的相似度 <span class="math inline">$S = 0.92$</span>：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">數值結果</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S \approx 1.0$</span></td>
+            <td style="text-align: left;">畫面完全凍結，兩幀內容極度相似（可能是瑕疵或靜止畫面）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S \approx 0.92$</span></td>
+            <td style="text-align: left;"><strong>高穩定性</strong>。這意味著模型在編輯過程中，背景主體保持了極高的一致性，沒有出現不自然的抖動。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S &lt; 0.70$</span></td>
+            <td style="text-align: left;"><strong>低穩定性</strong>。影片出現明顯的閃爍或物件崩壞，這是編輯失敗的訊號。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>為什麼要這樣設計？</h4>
+            <p>如果只看 PickScore，我們可能會得到「畫面很美但內容完全偏離指令」的錯誤結論。透過「VLM 審核（聽懂指令）」＋「特徵相似度（保持視覺一致）」的組合，我們能確保模型不是盲目地讓畫面變漂亮，而是要在「聽話」與「美感」之間達到平衡。這就像在剪接影片時，既要保證特效精緻（Editing Quality），又不能讓畫面忽明忽暗（Source Preservation）。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-11">
+        <h2>Section 11 - **4.3. Qualitative Comparisons**</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：指令驅動影片編輯的效能驗證</h3>
+            <p>我們針對模型進行了「指令導向」與「參考影像導向」的雙重定性評估。工程目標在於驗證模型是否能精準解讀人類語言，並將其轉化為空間與物件的視覺變更，而非僅僅是雜訊的隨機替換。</p>
+            <h4>1. 實驗設置與觀察重點</h4>
+            <p>我們挑選了三個最具挑戰性的場景作為壓力測試：</p>
+            <ul>
+            <li><strong>局部材質變更</strong>：指令為「將火車的材質改成冰塊」。</li>
+            <li><strong>物件新增</strong>：指令為「增加一名穿著白 T-shirt 的亞洲男子，並坐在老爺車駕駛座」。</li>
+            <li><strong>物件移除</strong>：指令為「將畫面中的男孩移除」。</li>
+            </ul>
+            <p><strong>觀察到的工程難點：</strong><br />
+            在這些測試中，Baseline 模型（如 Runway）常出現語意崩解。例如在「材質變更」任務中，Baseline 僅處理了火車的部分區域，顯示模型缺乏對「物件全貌」的結構感知；而在「物件新增」任務中，模型普遍無法理解空間關係（例如「坐在駕駛座」這種涉及三維結構的敘述），導致人與車的互動關係錯位。</p>
+            <h4>2. 核心技術解鎖：VLM 指導機制</h4>
+            <p>之所以我們的模型能成功，是因為引入了 <strong>VLM (Vision Language Model) Instructor</strong>。這就像是給模型配備了一位「資深視覺翻譯官」。</p>
+            <p><strong>為什麼需要 VLM Instructor？</strong><br />
+            傳統編輯模型常因缺乏足夠的上下文 (Context) 而導致指令解讀單薄。VLM 的作用在於將模糊的指令「翻譯」成模型骨幹 (Backbone) 能聽懂的「視覺路徑圖」。</p>
+            <p>我們定義編輯效能的提升可以由以下簡化的資訊熵增益公式來理解，衡量模型對指令的理解程度 <span class="math inline">$U$</span>：</p>
+            <div class="formula">$$U = \sum_{i=1}^{n} I(c_i | v) \cdot S(c_i)$$</div>
+            
+            <ul>
+            <li><strong>公式變數解釋：</strong><ul>
+            <li><span class="math inline">$U$</span>：總體指令理解得分。</li>
+            <li><span class="math inline">$I(c_i | v)$</span>：在給定視覺資訊 <span class="math inline">$v$</span> 下，對指令 <span class="math inline">$c_i$</span> 的語意映射機率。</li>
+            <li><span class="math inline">$S(c_i)$</span>：指令的複雜度加權因子。</li>
+            </ul>
+            </li>
+            </ul>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話定義</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$v$</span></td>
+            <td style="text-align: left;">影片的原始幀 (Source Video)</td>
+            <td style="text-align: left;">編輯的基礎，所有變更都不能脫離此背景。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$c_i$</span></td>
+            <td style="text-align: left;">使用者的指令描述</td>
+            <td style="text-align: left;">如「坐在駕駛座」，需識別空間座標。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S(c_i)$</span></td>
+            <td style="text-align: left;">指令挑戰層級</td>
+            <td style="text-align: left;">描述越複雜，<span class="math inline">$S$</span> 越高，要求模型解碼能力越強。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例：</strong><br />
+            假設我們有一個複雜指令「將火車材質改為冰塊」，傳統模型因為無法處理材質反射與邊緣細節，<span class="math inline">$I(c_i|v)$</span> 的得分僅為 <strong>0.4</strong>，而我們的 VLM Instructor 透過額外的上下文捕捉，將 <span class="math inline">$I(c_i|v)$</span> 提升至 <strong>0.9</strong>。若該任務複雜度 <span class="math inline">$S(c_i)$</span> 為 <strong>1.5</strong>，則整體理解力提升幅度由 <span class="math inline">$0.4 \times 1.5 = 0.6$</span> 躍升至 <span class="math inline">$0.9 \times 1.5 = 1.35$</span>。</p>
+            <p><strong>實務意義：</strong><br />
+            數值從 <strong>0.6 提升到 1.35</strong>，在實際畫面上代表著從「渲染出破碎、不連貫的冰塊貼圖」進化為「具備環境反射與邊緣平滑的真實質感」，這意味著模型不再只是修改像素，而是真正理解了影像的材質語意。</p>
+            <h4>3. 實驗總結</h4>
+            <p>透過對比測試證實：</p>
+            <ol>
+            <li><strong>語意連貫性</strong>：只有具備 VLM 指導的模型，能在移除男孩的同時，維持足球的位置與背景的時序一致性。</li>
+            <li><strong>空間泛化能力</strong>：VLM 提供的豐富上下文，解決了 Baseline 在處理「坐在駕駛座」這種複雜互動時，人車分離的視覺偏差。</li>
+            </ol>
+            <p>我們證實了透過 VLM 前置處理器來增強骨幹模型的上下文感知，是解決複雜影片編輯任務的關鍵途徑。</p>
+            <h3>實驗日誌：Reference-based Video Editing 效能對比分析</h3>
+            <p><strong>實驗背景與動機</strong><br />
+            在開發過程中，我們面臨一個關鍵挑戰：目前的開源指令式影片編輯模型大多無法處理「參考影像（Reference Image）」的精確控制。為了驗證我們的架構是否具備優勢，我們挑選了目前的業界指標 Runway Gen-4 Aleph 作為對照組，進行視覺與結構一致性的壓力測試。</p>
+            <p><strong>觀察到的核心問題</strong><br />
+            在實驗中，我們發現 Runway 在執行「指令導向」任務時雖然能聽懂要求，但在「圖像一致性」上表現疲軟。以編輯泰迪熊的場景為例，當我們要求模型保留參考圖的特徵時，Runway 的輸出在帽子款式與前標籤細節上出現了明顯的偏差。這就像是請一位畫家根據照片重繪，畫家聽懂了指令（畫一隻泰迪熊），卻忽略了照片中泰迪熊特殊的飾品細節。</p>
+            <p><strong>技術決策與調整</strong><br />
+            為了改善上述問題，我們調整了模型的資訊輸入路徑。我們沒有讓模型只看「文字指令」，而是採取了以下架構：</p>
+            <ol>
+            <li><strong>特徵注入</strong>：將參考影像的視覺特徵直接編碼（Encode）進 VLM（視覺語言模型）指導模組。</li>
+            <li><strong>資訊錨點</strong>：利用這些豐富的影像背景資訊（Context）來精確引導後端的 DiT（Diffusion Transformer）主幹網路。</li>
+            </ol>
+            <p>這解決了「文字描述不夠精確」的問題。文字有時很難描述「帽子上的細微花紋」，但透過直接將圖像特徵映射到模型潛空間（Latent Space），我們建立了一個更強的約束力。</p>
+            <p><strong>公式解讀：參考影像特徵映射</strong><br />
+            為了量化這種控制力，我們在模型中使用了參考特徵注入機制，其核心機制可簡化表示為：</p>
+            <div class="formula">\[ F_{out} = \text{DiT}(Z_t, \text{Prompt} + \alpha \cdot \text{Ref}_{feat}) \]</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">角色意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$F_{out}$</span></td>
+            <td style="text-align: left;">輸出影像特徵</td>
+            <td style="text-align: left;">最終產出的影像細節</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$Z_t$</span></td>
+            <td style="text-align: left;">當前隱含狀態</td>
+            <td style="text-align: left;">影片在時間點 <span class="math inline">$t$</span> 的基本資訊</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Prompt}$</span></td>
+            <td style="text-align: left;">文字指令</td>
+            <td style="text-align: left;">模型要執行的動作</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Ref}_{feat}$</span></td>
+            <td style="text-align: left;">參考影像特徵</td>
+            <td style="text-align: left;">視覺一致性的「樣板」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha$</span></td>
+            <td style="text-align: left;">強度權重參數</td>
+            <td style="text-align: left;">決定模型多聽「參考圖」的意見</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值示例與實務意義</strong><br />
+            假設我們設定強度參數 <span class="math inline">$\alpha = 0.8$</span>（範圍 0 到 1），而文字指令產生的特徵強度為 <span class="math inline">$1.0$</span>：</p>
+            <ul>
+            <li><strong>計算結果</strong>：當 <span class="math inline">$\alpha = 0.8$</span> 時，模型在生成每幀畫面時，參考影像對特徵圖的影響力佔據了約 44% 的權重（<span class="math inline">$\frac{0.8}{1.0 + 0.8} \approx 0.44$</span>）。</li>
+            <li><strong>實務意義</strong>：這個數值代表模型在「聽從指令」與「複製參考物特徵」之間取得了平衡。如果數值太小（如 &lt; 0.2），模型會無視參考圖；如果太大（如 &gt; 0.9），則可能導致模型過度僵化，無法執行指令要求的動作（例如無法讓泰迪熊做出走路動作）。</li>
+            </ul>
+            <p><strong>總結實驗結果</strong><br />
+            我們的實驗數據顯示，透過將參考圖特徵「植入」VLM 指導模組，模型不再只是猜測用戶想要什麼樣的帽子，而是直接參照參考影像的向量空間進行生成。這使得編輯結果在物件細節（如標籤、紋理）的對齊度上，顯著優於僅依賴文字指令驅動的模型。更多關於參考影像控制的詳細對比數據，請參閱補充材料中的影像一致性評分報告。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-12">
+        <h2>Section 12 - **4.4. Quantitative Comparisons**</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：定量分析與效能對標</h3>
+            <p>在完成模型訓練與初步視覺測試後，我們必須從「主觀感覺」跨越到「客觀度量」。本階段目標是驗證模型在各類指標下的穩定性，確認其是否能在開源環境下達到商用級表現。</p>
+            <h4>1. 研究決策：為什麼選擇「使用者研究」作為最終驗證？</h4>
+            <p>雖然我們使用了 VLM（視覺語言模型）作為自動化評分基準，但影像編輯涉及極高的人類主觀審美。自動化指標往往難以判斷「這段影片是否夠自然」。因此，我們發起了一場包含 14 位領域專家的評估實驗，模仿現實編輯場景，針對以下三個核心維度進行交叉驗證：</p>
+            <ul>
+            <li><strong>指令遵循 (Instruction Following)</strong>：模型聽懂要求了嗎？（例如：要求將車子變紅，它變成了綠色就是失敗）。</li>
+            <li><strong>來源保留 (Source Preservation)</strong>：背景或非目標物件變形了嗎？（防止過度編輯導致影片崩壞）。</li>
+            <li><strong>編輯品質 (Editing Quality)</strong>：視覺上是否平滑、自然，沒有閃爍或拼接痕跡。</li>
+            </ul>
+            <h4>2. 定量分析邏輯：人類偏好指標</h4>
+            <p>我們採樣了 30 個純文字指令編輯任務，以及 10 個參考圖片引導任務。為了量化效能，我們採用了 <span class="math inline">$G$</span> (Greater)、<span class="math inline">$S$</span> (Similar)、<span class="math inline">$B$</span> (Baseline) 的投票制。</p>
+            <p><strong>指標說明表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">標籤</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">實務意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">Ours preferred</td>
+            <td style="text-align: left;">我的模型效果優於競品</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S$</span></td>
+            <td style="text-align: left;">No preference</td>
+            <td style="text-align: left;">兩者難分軒輊，表現持平</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$B$</span></td>
+            <td style="text-align: left;">Baseline preferred</td>
+            <td style="text-align: left;">競品效果優於我的模型</td>
+            </tr>
+            </tbody>
+            </table>
+            <p>我們計算偏好機率的數學模型如下：</p>
+            <div class="formula">\[ P(G) = \frac{N_{ours}}{N_{total}} \]</div>
+            
+            <ul>
+            <li><strong>變數意義</strong>：<ul>
+            <li><span class="math inline">$P(G)$</span>：選擇我方模型的機率值（介於 0 到 1）。</li>
+            <li><span class="math inline">$N_{ours}$</span>：專家投給我的模型次數。</li>
+            <li><span class="math inline">$N_{total}$</span>：所有比較測試的總次數。</li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>數值計算範例：</strong><br />
+            假設我們進行了 100 次盲測對決，其中專家有 70 次認為我的模型更自然，20 次認為兩者差不多，10 次認為競品較好。</p>
+            <div class="formula">\[ P(G) = \frac{70}{100} = 0.7 \]</div>
+            
+            <p>這個數字 <strong>0.7</strong> 代表在專家眼裡，我們模型有 70% 的勝率。在實務上，若該數值持續穩定高於 0.5，代表模型具備顯著的市場競爭力。</p>
+            <h4>3. 實驗結果觀察</h4>
+            <p>從數據圖表（Figure 5）可以觀察到幾個關鍵現象：</p>
+            <ol>
+            <li><strong>開源標竿突破</strong>：我們的模型在所有基準測試中均領先現有的開源模型。這驗證了我們在架構設計上的正確性——即透過精確的跨模態對齊（Cross-modal alignment），讓模型能精準解讀文字指令，而非僅是「猜測」使用者的意圖。</li>
+            <li><strong>商用對標 (Commercial Parity)</strong>：與 Runway 這類頂尖商業模型相比，我們的實驗數據顯示表現已處於同等水準。這對工程團隊是一大激勵，證明了在特定領域優化（Domain-specific optimization）後，開源方案也能達到高品質的視覺輸出。</li>
+            <li><strong>魯棒性 (Robustness)</strong>：在隨機抽樣的 40 個測試樣本中，無論是處理文字指令的邏輯，還是處理參考圖片的風格遷移，模型皆展現了極低的失敗率，證明其不僅是單點測試成績好，而是在不同情境下都能穩定運作。</li>
+            </ol>
+            <p><strong>結論</strong>：這次實驗確認了我們目前的編輯策略是有效的。相比直覺上僅僅增加模型參數，我們專注於「指令與影像的細節對應」，在這次定量驗證中獲得了極高的專家認同，未來優化方向將持續聚焦在降低 <span class="math inline">$B$</span> (Baseline preferred) 的機率，進一步提升邊緣案例 (Edge cases) 的處理穩定度。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-13">
+        <h2>Section 13 - 4.5. Ablation Study</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：模型組件消融實驗 (Ablation Study)</h3>
+            <p>為了驗證各項設計對模型效能的具體影響，我們進行了「消融實驗」。這就像是工程師在除錯時，逐一將零件拆下看系統是否崩潰，藉此確認每個模組的真實貢獻。</p>
+            <h4>1. VLM Instructor：賦予模型「理解力」的導航員</h4>
+            <p>我們觀察到，原始模型在處理編輯指令時常出現語意偏差。引入 VLM (Vision-Language Model) Instructor 後，模型彷彿多了一雙能讀懂影像語意的眼睛。</p>
+            <ul>
+            <li><strong>為什麼有效？</strong> 直接餵入視覺特徵資訊，讓 VLM 能針對畫面內容給出具備高語意品質的指導，讓後續的 DiT (Diffusion Transformer) 結構能更精確地執行指令。</li>
+            </ul>
+            <h4>2. Masked Loss：空間歸納偏置 (Spatial Inductive Bias)</h4>
+            <p>在訓練損失函數中，我們引入了遮罩損失 (Masked Loss)，其核心邏輯如下：</p>
+            <div class="formula">$$L_{mask} = \frac{1}{\sum M_{i,j}} \sum_{i,j} M_{i,j} \cdot \| \hat{x}_{i,j} - x_{i,j} \|^2$$</div>
+            
+            <p><strong>變數與公式說明：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M_{i,j}$</span></td>
+            <td style="text-align: left;">遮罩矩陣，位置 <span class="math inline">$(i, j)$</span> 為 1 代表編輯區，0 代表不需動的背景</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{x}_{i,j}$</span></td>
+            <td style="text-align: left;">模型生成的像素值</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_{i,j}$</span></td>
+            <td style="text-align: left;">真實參考目標 (Ground Truth) 的像素值</td>
+            </tr>
+            </tbody>
+            </table>
+            <ul>
+            <li><strong>數值示例：</strong> 假設編輯區域面積 <span class="math inline">$\sum M = 100$</span> 個像素點，模型在該區的誤差平方和為 <span class="math inline">$200$</span>。則 <span class="math inline">$L_{mask} = 200 / 100 = 2$</span>。</li>
+            <li><strong>實務意義：</strong> 這代表模型在「重點區域」的單位平均誤差為 2。這個損失函數強迫模型將運算資源集中在需要改動的地方，不僅讓邊界更準確，還大幅縮短了收斂時間（因為模型不再浪費力氣微調背景）。</li>
+            </ul>
+            <h4>3. 混合數據訓練：以量取勝的泛化能力</h4>
+            <p>我們在訓練過程中混入了大量的影像編輯數據。</p>
+            <ul>
+            <li><strong>策略取捨：</strong> 影片資料取得昂貴且稀少，但影像資料豐富。透過混合數據，模型接觸到了更廣泛的編輯類別。</li>
+            <li><strong>結果：</strong> 這讓模型產生了「類比推理」能力，即使是某些沒看過的高難度影片編輯任務，也能透過處理影像的經驗觸類旁通。</li>
+            </ul>
+            <h4>4. Edit-GRPO 強化學習機制</h4>
+            <p>這是整個系統的最後一塊拼圖，用以優化模型的決策方向。</p>
+            <p><strong>PickScore 對照表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">模型設定</th>
+            <th style="text-align: left;">PickScore 數值 (示意)</th>
+            <th style="text-align: left;">解讀</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">無 Edit-GRPO</td>
+            <td style="text-align: left;">低</td>
+            <td style="text-align: left;">輸出結果雖符合指令，但視覺美感或連貫性不佳</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">完整版 (含 Edit-GRPO)</td>
+            <td style="text-align: left;">高</td>
+            <td style="text-align: left;">模型輸出更符合人類的審美偏好與直覺</td>
+            </tr>
+            </tbody>
+            </table>
+            <ul>
+            <li><strong>為什麼有效？</strong> 傳統訓練容易陷入「指令達成但畫面崩壞」的困境。Edit-GRPO 就像是一位嚴格的裁判，針對指令遵循度與來源影片的一致性給予獎勵，確保模型不只聽話，還能產出高品質的視覺序列。</li>
+            </ul>
+            <hr />
+            <h3>實驗總結</h3>
+            <p>綜合以上實驗數據，我們確認了整個架構的必要性：</p>
+            <ol>
+            <li><strong>VLM Instructor</strong> 提供了語意深度。</li>
+            <li><strong>Masked Loss</strong> 提供了空間精確度。</li>
+            <li><strong>混合數據訓練</strong> 擴展了任務覆蓋率。</li>
+            <li><strong>Edit-GRPO</strong> 確保了最終產出的視覺品質與人類偏好對齊。</li>
+            </ol>
+            <p>這一系列的改動證明了：<strong>並非堆疊更多參數就能解決問題，而是透過正確的「空間引導」與「報酬機制」，才能讓模型在有限資源下達到最佳表現。</strong></p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-14">
+        <h2>Section 14 - 5. Conclusion</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>實驗日誌：VIVA 專案總結（第 1/2 階段）</h3>
+            <p>在本次研究中，我們開發了 <strong>VIVA (Video Instruction-based Vision-language Agent)</strong>，目標是解決現有開源模型在「文字驅動影片編輯」任務中，指令遵循能力不足、編輯效果不一致的問題。</p>
+            <h4>核心技術挑戰與決策取捨</h4>
+            <p>我們觀察到，傳統編輯模型常面臨「語意模糊」與「影片一致性破壞」兩大痛點。若直接將指令丟給模型，它往往聽不懂複雜的修飾語（例如：「讓貓咪戴上墨鏡，但不改變背景光影」），導致編輯後的影片畫面閃爍或物體變形。</p>
+            <p>為此，我們設計了兩項關鍵改進：</p>
+            <ol>
+            <li>
+            <p><strong>VLM-based Instructor（多模態指令整合器）：</strong><br />
+                我們將文字指令與影片幀圖像透過 VLM（視覺語言模型）編碼成「基礎多模態 Token」。這就像是給模型戴上一副具備「焦點」的眼鏡，讓它能精確定位影片中「哪裡該改」、「怎麼改」，避免將指令誤解為全域風格轉換。</p>
+            </li>
+            <li>
+            <p><strong>Edit-GRPO（群體相對策略優化）：</strong><br />
+                這是本次優化的重頭戲。我們首度將 reinforcement learning 中的 GRPO 引入影片編輯領域。其目標函數如下：</p>
+            </li>
+            </ol>
+            <div class="formula">$$J(\theta) = \mathbb{E}_{q \sim P} \left[ \sum_{i=1}^{G} \text{clip} \left( \frac{\pi_\theta(a_i|s)}{\pi_{ref}(a_i|s)} \cdot A_i \right) \right]$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\pi_\theta$</span></td>
+            <td style="text-align: left;">我們正在訓練的編輯模型策略</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\pi_{ref}$</span></td>
+            <td style="text-align: left;">初始參考模型（基線）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$A_i$</span></td>
+            <td style="text-align: left;">編輯品質的獎勵分數（Reward score）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">一組抽樣生成的影片變體數量</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式運作邏輯：</strong><br />
+            這個公式的作用是「找一群編輯結果來互相比較」。當模型產生 <span class="math inline">$G$</span> 個候選編輯影片時，我們計算每個結果的優劣差異 <span class="math inline">$A_i$</span>。如果某個編輯結果比平均值好，模型就會獲得正面激勵。</p>
+            <p><strong>數值示例：</strong><br />
+            假設我們設定群體大小 <span class="math inline">$G = 4$</span>，且目前模型輸出的四個編輯結果評分為 <span class="math inline">$[0.2, 0.8, 0.5, 0.5]$</span>。平均值為 <span class="math inline">$0.5$</span>。</p>
+            <ul>
+            <li>對於評分 <span class="math inline">$0.8$</span> 的結果，<span class="math inline">$A_i$</span> 為正值（<span class="math inline">$0.8 - 0.5 = 0.3$</span>），模型將加強此類編輯行為。</li>
+            <li>對於評分 <span class="math inline">$0.2$</span> 的結果，<span class="math inline">$A_i$</span> 為負值（<span class="math inline">$0.2 - 0.5 = -0.3$</span>），模型將抑制此類行為。</li>
+            </ul>
+            <p><strong>實務意義：</strong><br />
+            這解決了傳統監督式學習中「一對一（指令對輸出）」的單調問題。透過這組比較，模型能學會「什麼樣的編輯結果才是穩定的」。這不僅提升了編輯品質，還讓模型在面對未見過的複雜指令時，表現出更強的泛化能力。</p>
+            <h4>總結</h4>
+            <p>透過這兩項技術的組合，VIVA 成功在指令遵循度與視覺一致性之間取得了平衡，驗證了將「視覺理解」與「獎勵機制優化」結合，是解決動態影片編輯任務的有效路徑。</p>
+            <h3>實驗日誌：下一步的優化藍圖與挑戰</h3>
+            <p>在完成當前模型驗證後，我們針對實驗結果進行了覆盤。目前的模型雖然能處理基礎的影像編輯任務，但若要走向實戰應用，架構上仍需進行以下三項關鍵迭代：</p>
+            <h4>1. 擴展編輯語意與互動性</h4>
+            <p>目前的系統編輯類型較為單一。我們計畫導入「組合式行為」（Compositional Behaviors），這就像是從「單一指令的操作系統」升級到「支援多工運算的圖形介面」。</p>
+            <ul>
+            <li><strong>優化方向：</strong> 支援更複雜的編輯操作（例如：同時改變物件外觀並調整物體移動軌跡）。</li>
+            <li><strong>目標：</strong> 實現「互動式編輯」（Interactive Editing），讓使用者能像操作滑鼠拖曳一樣，即時看到影像反饋，而非等待一次性生成。</li>
+            </ul>
+            <h4>2. 突破影像長度與解析度的限制</h4>
+            <p>目前的瓶頸在於計算成本隨畫面細節呈現指數級成長。我們計畫引入更靈活的空間與時間採樣機制，處理任意解析度與時長。這就好比將原本「固定畫布大小」的繪圖軟體，升級為「無限畫布」，無論輸入的影片多長、解析度多高，系統都能透過動態資源調配來處理。</p>
+            <h4>3. 建立通用報酬模型 (Unified Reward Model)</h4>
+            <p>這是我們認為最具潛力的研究方向。為了讓編輯結果更符合人類視覺偏好，我們需要一個「裁判」機制來判定編輯是否成功。</p>
+            <p>目前我們規劃的報酬模型核心概念如下：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R(v, e)$</span></td>
+            <td style="text-align: left;">總體報酬分數 (Reward Score)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$v$</span></td>
+            <td style="text-align: left;">編輯後的影片序列</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$e$</span></td>
+            <td style="text-align: left;">使用者的編輯意圖標籤 (Edit Intent)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$w_i$</span></td>
+            <td style="text-align: left;">對應不同品質維度的加權參數</td>
+            </tr>
+            </tbody>
+            </table>
+            <p>該模型預計採用的損失函數基礎架構為：</p>
+            <div class="formula">$$R(v, e) = \sum_{i=1}^{n} w_i \cdot f_i(v, e)$$</div>
+            
+            <ul>
+            <li><strong>公式白話解讀：</strong> 總得分等於各項評分指標（如：影片流暢度、物件一致性、指令對齊度）的加權總和。</li>
+            <li><strong>數值代入範例：</strong> 假設我們衡量兩個維度：<span class="math inline">$f_1$</span> (與提示詞對齊度)、<span class="math inline">$f_2$</span> (時間一致性)。設定權重 <span class="math inline">$w_1 = 0.7, w_2 = 0.3$</span>。若 <span class="math inline">$f_1 = 0.9, f_2 = 0.8$</span>：</li>
+            </ul>
+            <div class="formula">$$R = (0.7 \times 0.9) + (0.3 \times 0.8) = 0.63 + 0.24 = 0.87$$</div>
+            
+            <ul>
+            <li><strong>實務意義：</strong> 得到 <span class="math inline">$0.87$</span> 的分數代表模型在「指令對齊」上表現良好，但「時間一致性」仍有 <span class="math inline">$20\%$</span> 的優化空間，這能引導工程師針對性地調整訓練數據集。</li>
+            </ul>
+            <hr />
+            <h3>工程實驗結論摘要</h3>
+            <ul>
+            <li><strong>決策取捨：</strong> 目前系統在「編輯靈活度」與「通用性」之間存在取捨，下一步將優先優化獎勵機制，以減少對人工調參的依賴。</li>
+            <li><strong>風險提示：</strong> 我們在 Supplementary Materials 中整理了當前實驗的「失敗案例清單」。這些案例顯示了在極端遮擋或高動態畫面下，當前模型容易產生閃爍或物件崩壞，這將作為下一階段壓力測試的核心目標。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

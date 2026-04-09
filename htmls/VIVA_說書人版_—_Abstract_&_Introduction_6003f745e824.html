@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIVA 說書人版 — Abstract &amp; Introduction</title>
+    <style>
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.9;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 26px;
+        }
+        .meta { color: #64748b; font-size: 13px; margin-bottom: 24px; }
+        .story-block {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .story-block h2 { color: #1a1a2e; font-size: 20px; margin-top: 0; }
+        .story-block p { margin: 12px 0; }
+        .analogy {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 12px 16px;
+            margin: 16px 0;
+            border-radius: 0 8px 8px 0;
+            font-size: 15px;
+        }
+        .analogy::before { content: "💡 "; }
+        .highlight { background: #fef9c3; padding: 2px 6px; border-radius: 4px; }
+        .formula {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin: 16px 0;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+
+<h1>VIVA: VLM 引導的指令式影片編輯 with Reward 優化</h1>
+<p class="meta">說書人版 · Abstract &amp; Introduction 改寫</p>
+
+<!-- section_id: abstract -->
+<div class="story-block" id="abstract">
+    <h2>這篇論文在做什麼？（Abstract）</h2>
+
+    <p>想像你有個很會畫畫的助理，但你每次交代任務時只能寫「把那張圖改一下」，他肯定一頭霧水——現有的 <span class="highlight">影片編輯 AI</span> 就有這個困擾。它們只會做「把紅氣球換成藍氣球」這種簡單操作，碰到「把背景變成賽博龐克風格，但主角的動作要完整保留下來」這種複雜指令，模型就完全失效。</p>
+
+    <p>這篇論文提出 <span class="highlight">VIVA</span>（VLM-guided Instruction-based Video Adaptation），核心想法是：找一個「翻譯官」把模糊的指令先翻成精準的視覺座標，再讓生成模型照著這個座標去改影片。具體來說，團隊設計了一個叫 <span class="highlight">VLM Instructor</span> 的模組——它同時吃「文字指令 + 影片第一幀 + 參考圖」，然後輸出「要在哪個位置做什麼」的精細信號，而不是只給一句話讓模型自己猜。</p>
+
+    <div class="analogy">
+        <strong>生活類比：</strong>就像室內設計師接案子時，你不會只說「客廳好看一點」，而是會拿一張現況照片、在圖上標註「這面牆打掉、這個位置放綠植」。VLM Instructor 就是那個幫你「標註重點」的角色，讓後續的生成模型知道要精準動哪裡，而不是整張圖全部重畫。
+    </div>
+
+    <p>有了精準的指令信號還不夠，模型還需要知道「怎樣才算改得好」。所以 VIVA 加入了 <span class="highlight">Edit-GRPO</span>（Group Relative Policy Optimization）——這是一套用「相對比較」來訓練的強化學習方法。模型對同一個指令會一次生成好幾個版本，然後系統會比較這些版本的好壞，讓模型逐漸學會「什麼樣的編輯結果才真正符合指令」。</p>
+
+    <p>實驗結果顯示，VIVA 在開源模型中指令遵循能力最強，效果甚至可以媲美需要付費的商業模型 <span class="highlight">Runway</span>。</p>
+</div>
+
+<!-- section_id: introduction -->
+<div class="story-block" id="introduction">
+    <h2>研究背景與動機（Introduction）</h2>
+
+    <h3>段落一：現有方法的瓶頸——為什麼舊方法「聽不懂複雜指令」？</h3>
+
+    <p>目前的影片編輯 AI 大多採用一種叫「監督式翻譯」的訓練方式：提供「修改前」和「修改後」的成對影片讓模型學習。這就像教學生寫作文時，只給他看「把第一段的第一句話從『今天很好』改成『今天很糟』」這種逐字修改的範例。</p>
+
+    <p>問題在於：現實世界的編輯需求往往是「把這段影片的風格變成賽博龐克，但主角臉部表情不能變」。這不是簡單的「逐字替換」，而是需要模型真正「理解」指令背後的意圖與影片的空間結構。</p>
+
+    <div class="analogy">
+        <strong>生活類比：</strong>這就像你叫了一個機器人幫你搬家，只教它「把這個箱子從客廳搬到臥室」，它或許能做到；但如果你說「把家裡所有東西重新整理，收納到最小空間，但藝術品要擺在視覺焦點」，機器人就完全當機了——因為它從沒學過處理這種「需要理解整體上下文」的任務。
+    </div>
+
+    <h3>段落二：核心挑戰——如何橋接「文字指令」與「視覺操作」？</h3>
+
+    <p>指令式影片編輯的核心困難在於：文字是抽象的，影片是像素級的。模型必須學會把「把天空變成黃昏」這種模糊描述，對應到「哪些像素要調整、調整成什麼數值」。</p>
+
+    <p>現有方法的盲點在於：它們通常只用純文字嵌入（text embedding）來控制編輯過程。問題是，同一句「把那隻貓變成老虎」，畫面裡有兩隻貓的話，模型根本不知道要改哪一隻。</p>
+
+    <div class="analogy">
+        <strong>生活類比：</strong>就像你告訴設計師「把那個圓形的東西變大」，但家裡有三個圓——模型也會迷失在「到底要改哪一個」的模糊地帶。我們需要的不只是文字描述，還需要一張「標注圖」來告訴模型目標在哪裡。
+    </div>
+
+    <h3>段落三：VIVA 的解法——VLM Instructor 的設計理由</h3>
+
+    <p>VIVA 的第一個核心創新是 <span class="highlight">VLM Instructor</span>。設計理念很直覺：既然文字 alone 會丟失空間資訊，那就讓一個視覺語言模型（VLM）先「看過」影片的第一幀畫面和參考圖，再結合文字指令，輸出一組同時包含「語義意圖」和「空間座標」的多模態信號。</p>
+
+    <p>這樣做的根本原因是要解決「消歧義」的問題。當 VLM 看過畫面後，它能自動分辨「你要改的是左邊那隻貓，不是右邊那隻」，並把這個空間資訊編碼進輸出信號，提供給後續的影片生成模型使用。</p>
+
+    <div class="analogy">
+        <strong>生活類比：</strong>想像你要叫工人幫你裝潢，你不會只發語音說「把書房整理一下」，而是會傳一張現況照片、在上面用筆圈出「這面牆打掉、這個書架移到那個角落」。VLM Instructor 就是那個幫你「畫標注」的角色——它把抽象指令轉化為具體的視覺座標。
+    </div>
+
+    <h3>段落四：為什麼還需要 Edit-GRPO？</h3>
+
+    <p>有了精準的 VLM Instructor 信號，模型「聽懂」指令了，但還需要確保它「執行正確」。VIVA 的第二個核心創新是 <span class="highlight">Edit-GRPO</span>——這是一種把強化學習引入影片編輯的方法。</p>
+
+    <p>傳統做法像是「做完再批改」：模型生成一個版本，老師打分數，不合格就重來。Edit-GRPO 不這麼做——它讓模型一次生成一組（group）結果，然後內部互相比較，透過「誰比誰好」來引導學習。這種相對獎勵的機制，能讓模型即使在沒有完美標準答案的情況下，也能持續進步。</p>
+
+    <div class="analogy">
+        <strong>生活類比：</strong>就像你想教會一個人「什麼是好笑話」，與其給他一本「笑話標準答案」，不如讓他一次寫五個笑話，然後跟他說「這個比那個好笑，原因是⋯⋯」。透過不斷的相對比較，他會慢慢抓到好笑話的精髓——Edit-GRPO 就是用這種「相對評估」來訓練模型的。
+    </div>
+
+    <h3>段落五：論文的主要貢獻</h3>
+
+    <p>總結來說，VIVA 的貢獻有三大塊：第一，提出 VLM Instructor，同時吃「指令文字＋影片第一幀＋參考圖」，解決了複雜指令的消歧義問題；第二，設計 Edit-GRPO，讓模型從「相對比較」中學會執行高品質的編輯動作；第三，構建自動化的資料生成管線，大幅降低取得高品質訓練數據的成本。</p>
+
+    <p>最終，這套系統在開源模型中達到了最強的指令遵循能力，效果可以媲美需要付費使用的商業系統 Runway。</p>
+</div>
+
+</body>
+</html>

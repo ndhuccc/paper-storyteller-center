@@ -19,7 +19,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 
 
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+PROJECT_DIR = Path(__file__).resolve().parent
+STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 DEFAULT_REWRITE_MODEL = "models/gemini-3.1-flash-lite-preview"
 DEFAULT_REWRITE_FALLBACK_CHAIN: List[Dict[str, str]] = [
     {"model": "gemma4:e2b",     "provider": "ollama",     "ollama_base_url": "http://localhost:11434"},
@@ -664,7 +665,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     if phase_reporter:
         phase_reporter("輸出 HTML…")
     title = _resolve_title(payload=payload, pdf_path=pdf_path, sections=rendered_sections)
-    output_path = _build_output_path(pdf_path=pdf_path, payload=payload)
+    output_path = _build_output_path(pdf_path=pdf_path, payload=payload, title=title, job=job)
     output_html = _build_story_html_document(
         title=title,
         pdf_path=pdf_path,
@@ -2124,15 +2125,73 @@ def _resolve_title(payload: Dict[str, Any], pdf_path: Path, sections: List[Dict[
     return pdf_path.stem
 
 
-def _build_output_path(pdf_path: Path, payload: Dict[str, Any]) -> Path:
+def _safe_html_filename_segment(value: str, max_len: int = 120) -> str:
+    """允許中英與常見字元；移除檔名不允許的字元。"""
+    s = (value or "").strip()
+    if not s:
+        return ""
+    forbidden = '\\/:*?"<>|\n\r\t'
+    out: List[str] = []
+    for ch in s:
+        out.append("_" if ch in forbidden else ch)
+    s = "".join(out)
+    s = re.sub(r"[\s_]+", "_", s).strip("._-")
+    if not s:
+        return ""
+    if len(s) > max_len:
+        s = s[:max_len].rstrip("._-")
+    return s or ""
+
+
+def _truncate_utf8_bytes(s: str, max_bytes: int) -> str:
+    if not s or max_bytes <= 0:
+        return ""
+    data = s.encode("utf-8")
+    if len(data) <= max_bytes:
+        return s
+    n = max_bytes
+    while n > 0:
+        try:
+            return data[:n].decode("utf-8").rstrip("._-")
+        except UnicodeDecodeError:
+            n -= 1
+    return ""
+
+
+def _build_output_path(
+    pdf_path: Path,
+    payload: Dict[str, Any],
+    *,
+    title: str,
+    job: Dict[str, Any],
+) -> Path:
+    """預設檔名：論文標題_任務識別號.html（可經 payload 覆寫）。"""
     custom_name = payload.get("output_filename") or payload.get("output_name")
     if isinstance(custom_name, str) and custom_name.strip():
         filename = custom_name.strip()
         if not filename.lower().endswith(".html"):
             filename = f"{filename}.html"
-    else:
-        filename = f"{_slugify(pdf_path.stem)}_storyteller.html"
-    return STORYTELLERS_DIR / filename
+        return STORYTELLERS_DIR / filename
+
+    jid = str(job.get("job_id") or "").strip()
+    jid_part = _safe_html_filename_segment(jid, max_len=80) or "unknown"
+    title_part = _safe_html_filename_segment(title, max_len=120)
+    if not title_part:
+        title_part = _slugify(pdf_path.stem) or "paper"
+
+    stem = f"{title_part}_{jid_part}"
+    suffix = ".html"
+    max_total_bytes = 240
+    full = f"{stem}{suffix}"
+    if len(full.encode("utf-8")) > max_total_bytes:
+        overhead = len(f"_{jid_part}{suffix}".encode("utf-8"))
+        budget = max_total_bytes - overhead
+        title_part = _truncate_utf8_bytes(title_part, max(24, budget))
+        if not title_part:
+            title_part = "paper"
+        stem = f"{title_part}_{jid_part}"
+        full = f"{stem}{suffix}"
+    return STORYTELLERS_DIR / full
 
 
 def _slugify(value: str) -> str:

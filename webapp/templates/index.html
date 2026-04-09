@@ -74,16 +74,29 @@
 
       <!-- paper list -->
       <div class="sidebar-section sidebar-papers">
-        <div class="section-label">📚 所有論文</div>
+        <div class="section-label">📚 論文（依風格）</div>
         <div x-show="allPapers.length === 0" class="muted">
           目前沒有論文，可在「🛠️ 說書改寫」先提交 PDF。
         </div>
-        <template x-for="p in allPapers" :key="p.paper_id || p.id">
-          <button class="paper-btn" @click="openPaper(p)">
-            <span class="paper-status-badge" :class="'badge-' + p.paper_status" x-text="statusBadge(p)"></span>
-            <span class="paper-btn-title" x-text="(p.title || '?').slice(0,24)"></span>
-          </button>
-        </template>
+        <div class="paper-tree" x-show="allPapers.length > 0">
+          <template x-for="grp in paperGroups" :key="grp.style">
+            <details class="paper-tree-group" open>
+              <summary class="paper-tree-summary">
+                <span class="paper-tree-group-label" x-text="grp.label"></span>
+                <span class="paper-tree-count" x-text="'(' + grp.papers.length + ')'"></span>
+              </summary>
+              <div class="paper-tree-children">
+                <template x-for="p in grp.papers" :key="p.paper_id || p.id">
+                  <button type="button" class="paper-btn paper-btn-nested" @click="openPaper(p)" :title="(p.title || '') + (formatPaperTime(p) ? (' · ' + formatPaperTime(p)) : '')">
+                    <span class="paper-status-badge" :class="'badge-' + p.paper_status" x-text="statusBadge(p)"></span>
+                    <span class="paper-btn-title" x-text="(p.title || '?').slice(0,22)"></span>
+                    <span class="paper-btn-time" x-show="formatPaperTime(p)" x-text="formatPaperTime(p)"></span>
+                  </button>
+                </template>
+              </div>
+            </details>
+          </template>
+        </div>
       </div>
 
       <!-- manage / delete -->
@@ -357,6 +370,12 @@
             </button>
           </div>
 
+          <div class="form-group">
+            <label class="form-label">論文標題（用於輸出檔名）<span class="form-required-mark">*</span></label>
+            <input class="form-input" type="text" placeholder="請填寫；上傳 PDF 時會以檔名自動帶入，可再修改"
+                   x-model="manualPaperTitle">
+          </div>
+
           <!-- PDF upload -->
           <div class="form-group" x-show="inputMode==='pdf'">
             <label class="form-label">上傳 PDF（建議直接上傳，上限 50MB）</label>
@@ -392,12 +411,6 @@
 
           <!-- Manual units input -->
           <div x-show="inputMode==='manual'" x-cloak>
-            <div class="form-group">
-              <label class="form-label">論文標題（用於輸出檔名）</label>
-              <input class="form-input" type="text" placeholder="例：Dynamic Knowledge Distillation"
-                     x-model="manualPaperTitle">
-            </div>
-
             <!-- Units list -->
             <div class="manual-units-head">
               <span class="form-label" style="margin-bottom:0">
@@ -681,7 +694,7 @@
 
         <!-- Job list -->
         <div class="section-header">
-          <span>最近任務（最多 8 筆）</span>
+          <span>全部任務（每頁 6 筆）</span>
           <button class="btn btn-sm btn-ghost" @click="loadJobs()">↻ 刷新</button>
         </div>
 
@@ -695,25 +708,23 @@
         <div x-show="jobs.length > 0" class="job-status-summary" x-text="jobStatusSummary()"></div>
 
         <div class="jobs-list">
-          <template x-for="job in jobs" :key="job.job_id">
-            <details class="job-card" :class="'job-' + job.status">
+          <template x-for="job in jobsPageItems" :key="job.job_id">
+            <details class="job-card" :class="'job-' + job.status"
+                     x-data="{ jobDetail: null, loadingDetail: false }"
+                     @toggle="if ($event.target.open) { jobDetail = null; loadingDetail = true; loadJobDetail(job.job_id).then(d => { jobDetail = d; }).finally(() => { loadingDetail = false; }); }">
               <summary class="job-summary-row">
                 <span class="job-id" x-text="job.job_id.slice(0,8)"></span>
-                <span class="job-status-chip" :class="'status-' + job.status" x-text="job.status"></span>
+                <span class="job-status-chip" :class="jobStatusChipClass(job)" x-text="job.status"></span>
                 <template x-if="job.status === 'running' && job.phase">
                   <span class="job-phase" x-text="job.phase"></span>
                 </template>
-                <span class="job-meta" x-text="`風格: ${job.style_label || job.style || '-'} | 改寫模型: ${job.rewrite_model_primary || job.rewrite_model || '-'} | sections: ${job.sections_generated??'-'} | warn: ${job.warnings_count} | err: ${job.errors_count}`"></span>
-                <span class="job-time muted" x-text="job.updated_at?.slice(0,16)||'-'"></span>
+                <span class="job-paper-title" :title="jobListPaperTitle(job)" x-text="jobListPaperTitle(job)"></span>
+                <span class="job-time muted" x-text="formatLocalDateTime(job.updated_at)"></span>
               </summary>
 
-              <div class="job-detail" x-show="true" x-data="{jobDetail: null, loadingDetail: false}"
-                    @toggle="if ($el.open) { loadJobDetail(job.job_id).then(d => jobDetail = d) }">
-
-                <template x-if="!jobDetail">
-                  <button class="btn btn-sm btn-ghost" @click="loadJobDetail(job.job_id).then(d => jobDetail = d)">
-                    載入詳情
-                  </button>
+              <div class="job-detail" x-show="true">
+                <template x-if="loadingDetail">
+                  <div class="loading-row muted"><span class="spinner-sm"></span> 載入詳情中…</div>
                 </template>
 
                 <template x-if="jobDetail">
@@ -732,7 +743,7 @@
                     <div class="detail-row"><label>rewrite_model_primary</label><span x-text="jobDetail.rewrite_model_primary||'-'"></span></div>
                     <div class="detail-row"><label>rewrite_engine_order</label><span x-text="(jobDetail.rewrite_engine_labels || []).join(' → ') || '-'"></span></div>
                     <div class="detail-row"><label>auto_index</label><span x-text="jobDetail.auto_index_state_name||'-'"></span></div>
-                    <div class="detail-row"><label>updated_at</label><span x-text="jobDetail.updated_at||'-'"></span></div>
+                    <div class="detail-row"><label>updated_at（本地時區）</label><span x-text="formatLocalDateTime(jobDetail.updated_at)"></span></div>
 
                     <template x-if="formatStyleParams(jobDetail.style, jobDetail.style_params).length > 0">
                       <div class="detail-params">
@@ -813,6 +824,15 @@
               </div>
             </details>
           </template>
+        </div>
+
+        <div class="jobs-pagination" x-show="jobs.length > 0 && !jobsLoading">
+          <button type="button" class="btn btn-sm btn-secondary"
+                  @click="jobsPrevPage()" :disabled="jobsPage <= 1">上一頁</button>
+          <span class="jobs-page-info muted"
+                x-text="'第 ' + jobsPage + ' / ' + jobsTotalPages + ' 頁（共 ' + jobs.length + ' 筆）'"></span>
+          <button type="button" class="btn btn-sm btn-secondary"
+                  @click="jobsNextPage()" :disabled="jobsPage >= jobsTotalPages">下一頁</button>
         </div>
       </div>
 

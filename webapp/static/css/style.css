@@ -82,8 +82,58 @@ a { color: var(--primary); text-decoration: none; }
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
 }
-.sidebar-papers { flex: 1; overflow-y: auto; max-height: 260px; }
+.sidebar-papers { flex: 1; min-height: 0; overflow-y: auto; max-height: min(46vh, 380px); }
 .section-label { font-size: 11px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+
+/* ── Sidebar paper tree (by rewrite style) ── */
+.paper-tree { display: flex; flex-direction: column; gap: 4px; }
+.paper-tree-group {
+  border-radius: var(--radius);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.paper-tree-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  user-select: none;
+}
+.paper-tree-summary::-webkit-details-marker { display: none; }
+.paper-tree-summary::before {
+  content: '▸';
+  font-size: 10px;
+  color: var(--text-dim);
+  transition: transform 0.15s;
+}
+.paper-tree-group[open] .paper-tree-summary::before { transform: rotate(90deg); }
+.paper-tree-group-label { flex: 1; text-align: left; color: var(--text); }
+.paper-tree-count { color: var(--text-dim); font-weight: 600; }
+.paper-tree-children {
+  padding: 0 4px 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.paper-btn-nested { padding-left: 4px; }
+.paper-btn-time {
+  flex-shrink: 0;
+  font-size: 9px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .stat-row { display: flex; justify-content: space-between; align-items: center; }
 .stat-label { color: var(--text-muted); font-size: 13px; }
@@ -173,6 +223,7 @@ a { color: var(--primary); text-decoration: none; }
 /* ── Forms ── */
 .form-group { margin-bottom: 14px; }
 .form-label { display: block; color: var(--text-muted); font-size: 12px; font-weight: 600; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+.form-required-mark { color: var(--danger); font-weight: 700; margin-left: 2px; }
 .form-input {
   width: 100%;
   background: var(--surface);
@@ -484,6 +535,17 @@ a { color: var(--primary); text-decoration: none; }
 .section-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 13px; font-weight: 600; margin: 16px 0 8px; }
 .job-status-summary { color: var(--text-dim); font-size: 12px; margin-bottom: 8px; }
 
+.jobs-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 6px 0 4px;
+}
+.jobs-page-info { font-size: 12px; text-align: center; min-width: 12em; }
+
 .job-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -504,10 +566,30 @@ a { color: var(--primary); text-decoration: none; }
 .job-summary-row:hover { background: var(--surface-hover); }
 .job-id { font-family: var(--font-mono); color: var(--text-muted); font-size: 12px; }
 .job-meta { flex: 1; color: var(--text-dim); font-size: 12px; }
+.job-paper-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .job-time { font-size: 11px; white-space: nowrap; }
 
 .job-phase { font-size: 11px; color: var(--primary); font-style: italic; white-space: nowrap; }
 .status-succeeded { background: var(--success); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
+/* succeeded 標章：依改寫風格區分顏色（對應 app.js jobStatusChipClass s-style-*） */
+.status-succeeded.s-style-storyteller { background: #059669; }
+.status-succeeded.s-style-blog { background: #2563eb; }
+.status-succeeded.s-style-professor { background: #7c3aed; }
+.status-succeeded.s-style-fairy { background: #db2777; }
+.status-succeeded.s-style-lazy { background: #d97706; }
+.status-succeeded.s-style-question { background: #0d9488; }
+.status-succeeded.s-style-log { background: #475569; }
+.status-succeeded.s-style-unknown { background: #64748b; }
+
 .status-running { background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
 .status-pending { background: var(--text-dim); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
 .status-failed { background: var(--danger); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; }

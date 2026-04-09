@@ -296,7 +296,7 @@ def submit_generation_job(payload: Optional[Dict] = None) -> Dict:
     return generation_submit_job(payload=payload)
 
 
-def list_generation_jobs(limit: int = 20, status: Optional[str] = None) -> List[Dict]:
+def list_generation_jobs(limit: Optional[int] = 20, status: Optional[str] = None) -> List[Dict]:
     """List storyteller generation jobs (skeleton)."""
     return generation_list_jobs(limit=limit, status=status)
 

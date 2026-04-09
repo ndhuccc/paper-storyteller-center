@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: linear-gradient(135deg, #f5e6d3 0%, #e8d5c4 50%, #f0e0cc 100%);
+    font-family: 'Georgia', 'Noto Serif TC', serif;
+    color: #3b2a1a;
+    line-height: 1.9;
+    padding: 2rem;
+  }
+  .fairy-tale-container { max-width: 780px; margin: 0 auto; }
+  .fairy-section {
+    background: rgba(255,252,245,0.95);
+    border: 2px solid #c9a96e;
+    border-radius: 20px;
+    padding: 2rem 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 8px 32px rgba(120,80,20,0.12);
+    position: relative;
+    overflow: hidden;
+  }
+  .fairy-section::before { content: "✨"; position: absolute; top: 12px; right: 18px; font-size: 1.4rem; }
+  .fairy-section h2 { font-size: 1.4rem; color: #8b5e3c; border-bottom: 2px dashed #d4a96a; padding-bottom: 0.5rem; margin-bottom: 1.2rem; letter-spacing: 0.05em; }
+  .fairy-section p { font-size: 1.08rem; text-align: justify; margin-bottom: 0.9rem; color: #4a3425; }
+  .fairy-section p:last-child { margin-bottom: 0; }
+  .hero-name { color: #c07a2e; font-weight: bold; }
+  .villain-name { color: #8b3a3a; }
+  .magic-term { color: #5a7a5a; font-style: italic; }
+  .highlight { background: linear-gradient(transparent 60%, #f9e4a6 60%); padding: 0 3px; }
+  .talisman { display: inline-block; background: #fdf3dc; border: 1px solid #d4a96a; border-radius: 8px; padding: 0.3rem 0.7rem; font-size: 0.9rem; color: #7a5c30; margin: 0.2rem; }
+  .dialogue { font-style: italic; color: #6b4c30; border-left: 3px solid #c9a96e; padding-left: 1rem; margin: 0.8rem 0; }
+</style>
+</head>
+<body>
+<div class="fairy-tale-container">
+
+<div class="fairy-section" id="cover" style="text-align:center; border-color:#b8860b;">
+  <h2 style="border-bottom:none; font-size:1.7rem; color:#8b5e3c;">📖 童話論文館</h2>
+  <p style="text-align:center; font-size:1.3rem; color:#c07a2e; margin-top:0.5rem;">《VIVA 王國的奇幻冒險》<br><span style="font-size:0.95rem; color:#8b7a5a;">—— 當影片編輯遇見智慧魔法</span></p>
+</div>
+
+<div class="fairy-section" id="abstract">
+  <h2>🌟 故事的開端：國王的難題</h2>
+  <p>從前，在一個充滿像素與畫面的王國裡有一位<strong>導演國王</strong>。他想要下達各種神奇的指令，例如：「把天空變成夕陽」——然而，他的僕人們卻總是聽不懂複雜的命令。</p>
+  <p>這些僕人是古老的<strong>影片編輯法師</strong>，他們只會簡單的法術。當國王說出複雜的願望時，他們便一臉茫然。</p>
+  <p>就在王國陷入困境之際，三位勇敢的魔法師站了出來——<span class="hero-name">智慧導師（VLM Instructor）</span>、<span class="hero-name">變形工匠（DiT）</span>，以及<span class="hero-name">獎賞裁判（Edit-GRPO）</span>。他們決心打造一個全新的系統，名為 <strong>VIVA</strong>。</p>
+</div>
+
+<div class="fairy-section" id="chapter1">
+  <h2>第一章：舊法師的無力</h2>
+  <p>在很久以前，影片編輯的世界由一群<span class="villain-name">古老法師</span>統治。他們需要<strong>成對的法術典籍</strong>才能學習。</p>
+  <p>問題在於，世上最精彩的魔法——例如「把白天的街道變成雨夜的霓虹」——根本找不到配對範例！</p>
+  <p class="dialogue">「我想要一隻會說話的貓咪，背景是銀河系！」國王激動地說。然而法師們只能面面相覷。</p>
+  <p>王國裡流傳著一個古老的預言：<em>「當文字與畫面能夠真正對話，魔法將不再受限。」</em></p>
+</div>
+
+<div class="fairy-section" id="chapter2">
+  <h2>第二章：智慧導師的降臨</h2>
+  <p>預言吸引來了<span class="hero-name">智慧導師（VLM Instructor）</span>。這位導師精通<span class="magic-term">文字領域</span>與<span class="magic-term">視覺領域</span>兩種魔法的高人。</p>
+  <p>智慧導師使用<span class="talisman">Hunyuan-T2V-13B</span>，將<span class="magic-term">來源影像</span>輕輕放在法寶前，再請國王說出指令。奇妙的事情發生了：文字的意義與影像的畫面竟開始溝通！</p>
+  <p>如果國王附上了一張<span class="magic-term">參考圖片</span>，智慧導師便能更精確地理解目標。這便是<span class="highlight">情境感知</span>的力量。</p>
+  <div class="dialogue">智慧導師說：「我的任務，是將陛下的話語翻譯成影像能理解的語言——我稱之為『多模態符文』。」</div>
+</div>
+
+<div class="fairy-section" id="chapter3">
+  <h2>第三章：變形工匠與Token精煉師</h2>
+  <p>下一步便需要一位能工巧匠將指令付諸實現。這便是<span class="hero-name">變形工匠（DiT）</span>。</p>
+  <p>變形工匠的工作方式十分獨特：他先在影像上灑下<span class="magic-term">隨機噪點</span>，然後一步一步地將這些噪點退去，同時參考智慧導師的指令，慢慢浮現出正確的畫面——猶如雕刻家從粗糙的石頭中喚出雕像。</p>
+  <p>然而，令牌有時太過冗長。這時就需要一位低調的幫手——<span class="hero-name">Token 精煉師 R</span>。他輕巧敏捷，能在不動搖導師的情況下微調令牌。</p>
+  <p>工匠在雕琢的過程中，還會將<span class="magic-term">來源影片潛空間</span>與新的噪點混合，確保影片的時間感不會走樣。</p>
+</div>
+
+<div class="fairy-section" id="chapter4">
+  <h2>第四章：獎賞裁判與三道試煉</h2>
+  <p>變形工匠一次會施展多個版本的法術候選。這時，便需要一位公正的裁判來評定優劣——<span class="hero-name">Edit-GRPO</span>。</p>
+  <p>Edit-GRPO 制定了<span class="highlight">三道試煉</span>：</p>
+  <p><span class="talisman">第一試煉｜指令忠誠度</span>：編輯後的影片與原始指令的契合程度——越契合，分數越高。</p>
+  <p><span class="talisman">第二試煉｜來源保留度</span>：修改後的影片與原始影片，確保主體沒有被錯誤地替換。</p>
+  <p><span class="talisman">第三試煉｜人類喜好</span>：裁判使出終極法寶——<span class="magic-term">PickScore</span>，能反映人類觀眾真實的審美偏好。</p>
+  <p>三道試煉的分數結合為「相對獎賞」，系統會比較所有候選版本的分數，選出最佳的版本。為了效率，Edit-GRPO 請來了<span class="magic-term">LoRA</span>精靈幫忙——這位精靈能在不改變法師根本的情況下，快速調整法術的方向。</p>
+</div>
+
+<div class="fairy-section" id="chapter5">
+  <h2>第五章：數據礦工與萬卷典籍</h2>
+  <p>VIVA 王國的數據礦工們四處搜集材料：用<span class="magic-term">Grounding-DINO</span>和<span class="magic-term">SAM 2</span>兩把神奇的探測器，從影像中挖掘出物件的邊界與含義。</p>
+  <p>經過艱辛的開採，他們鑄造了：📚 <strong>150萬卷</strong>成對的影片編輯範例，以及🖼️ <strong>540萬幅</strong>成對的影像編輯範例。</p>
+  <p>有了這些龐大的典籍，智慧導師與變形工匠持續修煉了 <span class="talisman">12,000個日夜</span>，最終將本領練至爐火純青。</p>
+</div>
+
+<div class="fairy-section" id="chapter6">
+  <h2>第六章：試煉場上的較量</h2>
+  <p>修煉完成後，VIVA 王國在<span class="highlight">VIE-Bench 試煉場</span>公開較量。試煉場設有 <strong>140 道難關</strong>。</p>
+  <p>挑戰者雲集：除了 VIVA 之外，還有 <span class="villain-name">ICVE</span>、<span class="villain-name">Lucy-Edit-Dev</span>、<span class="villain-name">Ditto</span>、<span class="villain-name">InsV2V</span>。而傳說中的<span class="villain-name">Runway Gen-4 Aleph</span>——商業法師的傳奇——也被請來坐鎮。</p>
+</div>
+
+<div class="fairy-section" id="chapter7">
+  <h2>第七章：奇蹟時刻</h2>
+  <p>較量開始。第一道難關是：「將場景中的白貓變成金色，並讓背景充滿星空。」</p>
+  <p>只見 <span class="villain-name">Runway 法師</span> 施展了他的法術——遺憾的是，他的法術只把貓咪變成了灰色。</p>
+  <p>然而，<span class="hero-name">VIVA</span> 輕輕抬手：<strong>智慧導師</strong>精準理解了指令，<strong>變形工匠</strong>在噪點中一刀一刀雕刻出金色的毛皮與閃耀的星河，<strong>獎賞裁判</strong>則在後方默默評分。</p>
+  <p class="dialogue">評審們驚呼：「不可思議！指令的每個細節都被忠實呈現了！」</p>
+  <p>最終結算揭曉：<strong>VIVA 的指令遵循能力在開源法師中名列第一</strong>，其效果竟與傳說中的商業法師 <span class="villain-name">Runway</span> 旗鼓相當！</p>
+</div>
+
+<div class="fairy-section" id="conclusion">
+  <h2>🌈 尾聲：新的時代</h2>
+  <p>從此，影像城堡的居民再也不必為複雜的指令苦惱。VIVA 系統站在三位魔法師的肩膀上：<span class="hero-name">智慧導師</span>翻譯願望，<span class="hero-name">變形工匠</span>實現願望，<span class="hero-name">獎賞裁判</span>校準願望。</p>
+  <p>🧙‍♂️ <em>當語言與影像能真正理解彼此，再複雜的魔法也不再是夢。</em></p>
+  <p>📢 <em>VIVA 是迄今開源王國中指令遵循能力最強的法師，效果已可媲美商業傳奇 Runway。</em></p>
+  <p style="text-align:center; color:#c9a96e; font-size:1.2rem; margin-top:1rem;">～ 全劇終 ～</p>
+</div>
+
+</div>
+</body>
+</html>

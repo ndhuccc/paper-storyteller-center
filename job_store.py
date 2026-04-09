@@ -5,8 +5,9 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-
-DEFAULT_JOBS_DIR = Path.home() / "Documents" / "Storytellers" / ".jobs"
+PROJECT_DIR = Path(__file__).resolve().parent
+# 任務 JSON 位於專案根目錄 ./jobs/
+DEFAULT_JOBS_DIR = PROJECT_DIR / "jobs"
 
 
 class JobStore:
@@ -38,7 +39,7 @@ class JobStore:
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
 
-    def list_jobs(self, limit: int = 20, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_jobs(self, limit: Optional[int] = 20, status: Optional[str] = None) -> List[Dict[str, Any]]:
         jobs: List[Dict[str, Any]] = []
         for path in self.jobs_dir.glob("*.json"):
             if path.name.endswith(".tmp.json"):
@@ -53,6 +54,8 @@ class JobStore:
             jobs.append(job)
 
         jobs.sort(key=lambda item: str(item.get("created_at", "")), reverse=True)
+        if limit is None:
+            return jobs
         if limit <= 0:
             return []
         return jobs[:limit]

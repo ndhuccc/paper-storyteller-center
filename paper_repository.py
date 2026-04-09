@@ -8,18 +8,26 @@
 """
 
 import re
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from retrieval_service import LANCEDB_PATH
 from retrieval_service import delete_paper as retrieval_delete_paper
 from retrieval_service import get_display_title_overrides as retrieval_get_display_title_overrides
 from retrieval_service import rename_paper as retrieval_rename_paper
 from retrieval_service import update_paper_display_title as retrieval_update_paper_display_title
+from storyteller_pipeline import PROJECT_DIR as _PIPELINE_PROJECT_DIR
+from storyteller_pipeline import STYLE_DISPLAY_NAMES
 
 
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
-LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
+STORYTELLERS_DIR = _PIPELINE_PROJECT_DIR / "htmls"
+
+# 說書人 HTML 內 `<strong>童話故事版本</strong>` 等標籤 → 風格 key
+_STYLE_LABEL_TO_KEY: Dict[str, str] = {
+    str(label).strip(): key for key, label in STYLE_DISPLAY_NAMES.items()
+}
 
 MANIFEST_SOURCE_INDEX_AND_HTML = "index_and_html"
 MANIFEST_SOURCE_HTML_ONLY = "html_only"
@@ -247,6 +255,67 @@ def clear_lance_db_cache() -> None:
     _get_lance_db.cache_clear()
 
 
+def _mtime_iso_utc(filepath: Path) -> str:
+    try:
+        return datetime.fromtimestamp(filepath.stat().st_mtime, tz=timezone.utc).isoformat()
+    except OSError:
+        return ""
+
+
+def _parse_rewrite_meta_from_html(html_content: str) -> Dict[str, str]:
+    """Parse rewrite style + generation time from storyteller HTML (see storyteller_pipeline meta block)."""
+    rewrite_style_label = ""
+    rewrite_style = "unknown"
+    generated_at = ""
+
+    m = re.search(
+        r'<div[^>]*class="meta"[^>]*>\s*<strong>([^<]+)</strong>',
+        html_content,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if m:
+        rewrite_style_label = str(m.group(1) or "").strip()
+        rewrite_style = _STYLE_LABEL_TO_KEY.get(rewrite_style_label, "unknown")
+
+    m2 = re.search(
+        r"Generated at \(UTC\):\s*([^\s<]+)",
+        html_content,
+        re.IGNORECASE,
+    )
+    if m2:
+        generated_at = str(m2.group(1) or "").strip()
+
+    return {
+        "rewrite_style": rewrite_style,
+        "rewrite_style_label": rewrite_style_label,
+        "generated_at": generated_at,
+    }
+
+
+def _enrich_from_html_file_if_needed(item: Dict[str, Any]) -> Dict[str, Any]:
+    """For index-only manifest rows: fill style / generated_at by reading HTML if present."""
+    out = dict(item)
+    fp = Path(str(out.get("filepath") or ""))
+    if not fp.is_file() or fp.suffix.lower() != ".html":
+        return out
+    try:
+        content = fp.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return out
+    meta = _parse_rewrite_meta_from_html(content)
+    if not str(out.get("generated_at") or "").strip():
+        ga = meta.get("generated_at") or ""
+        out["generated_at"] = ga if ga else _mtime_iso_utc(fp)
+    if str(out.get("rewrite_style") or "") in ("", "unknown"):
+        rs = meta.get("rewrite_style") or "unknown"
+        if rs != "unknown":
+            out["rewrite_style"] = rs
+            out["rewrite_style_label"] = meta.get("rewrite_style_label") or ""
+    elif not str(out.get("rewrite_style_label") or "").strip() and meta.get("rewrite_style_label"):
+        out["rewrite_style_label"] = str(meta.get("rewrite_style_label") or "")
+    return out
+
+
 def _extract_text_from_html(html_content: str) -> str:
     """Extract plain text from HTML content."""
     text = re.sub(r"<script[^>]*>.*?</script>", "", html_content, flags=re.DOTALL | re.IGNORECASE)
@@ -278,6 +347,11 @@ def parse_paper_metadata(html_path: Union[str, Path]) -> Optional[Dict]:
     date_match = re.search(r"(\d{4}[-/]\d{1,2}[-/]\d{1,2})", plain_text)
     date = date_match.group(1) if date_match else "未知"
 
+    meta_rw = _parse_rewrite_meta_from_html(html_content)
+    generated_at = str(meta_rw.get("generated_at") or "").strip()
+    if not generated_at:
+        generated_at = _mtime_iso_utc(filepath)
+
     return normalize_manifest_paper(
         {
             "paper_id": filepath.stem,
@@ -288,6 +362,9 @@ def parse_paper_metadata(html_path: Union[str, Path]) -> Optional[Dict]:
             "authors": authors,
             "date": date,
             "content": plain_text,
+            "rewrite_style": meta_rw.get("rewrite_style") or "unknown",
+            "rewrite_style_label": str(meta_rw.get("rewrite_style_label") or "").strip(),
+            "generated_at": generated_at,
             "has_html": True,
             "is_indexed": False,
             "manifest_source": MANIFEST_SOURCE_HTML_ONLY,
@@ -415,6 +492,9 @@ def merge_paper_sources(html_papers: List[Dict], indexed_papers: List[Dict]) -> 
                     "authors": _prefer(indexed.get("authors"), html.get("authors")) or "未知",
                     "date": _prefer(indexed.get("date"), html.get("date")) or "未知",
                     "content": _prefer(indexed.get("content"), html.get("content")) or "",
+                    "rewrite_style": html.get("rewrite_style") or "unknown",
+                    "rewrite_style_label": str(html.get("rewrite_style_label") or "").strip(),
+                    "generated_at": str(html.get("generated_at") or "").strip(),
                     "has_html": True,
                     "is_indexed": True,
                     "manifest_source": MANIFEST_SOURCE_INDEX_AND_HTML,
@@ -426,6 +506,14 @@ def merge_paper_sources(html_papers: List[Dict], indexed_papers: List[Dict]) -> 
             item["is_indexed"] = True
             item["manifest_source"] = MANIFEST_SOURCE_INDEX_ONLY
             item["has_html"] = bool(item.get("has_html"))
+            item.setdefault("rewrite_style", "unknown")
+            item.setdefault("rewrite_style_label", "")
+            item.setdefault("generated_at", "")
+            item = _enrich_from_html_file_if_needed(item)
+            if not str(item.get("generated_at") or "").strip():
+                fp2 = Path(str(item.get("filepath") or ""))
+                if fp2.is_file():
+                    item["generated_at"] = _mtime_iso_utc(fp2)
             merged.append(item)
 
     for pid in sorted(html_by_id.keys()):

@@ -15,7 +15,8 @@ from dotenv import load_dotenv
 
 QAResult = Tuple[str, List[Dict]]
 QADetailResult = Dict[str, Any]
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+PROJECT_DIR = Path(__file__).resolve().parent
+STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 
 
 def build_cli_prompt(question: str, context: str) -> str:

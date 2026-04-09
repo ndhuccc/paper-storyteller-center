@@ -28,7 +28,8 @@ DEFAULT_MODEL = "models/gemini-3.1-flash-lite-preview"
 DEFAULT_TIMEOUT = 90
 DEFAULT_RETRIES = 2
 MAX_RETRY_SLEEP_SECONDS = 30
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+PROJECT_DIR = Path(__file__).resolve().parent
+STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 
 
 def _is_key_working(api_key: str) -> bool:

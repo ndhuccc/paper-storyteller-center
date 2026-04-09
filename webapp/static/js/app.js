@@ -65,6 +65,8 @@ function App() {
     submitting: false,
     jobs: [],
     jobsLoading: false,
+    jobsPage: 1,
+    jobsPerPage: 6,
 
     /* ── manual units input ── */
     inputMode: 'pdf',        // 'pdf' | 'manual'
@@ -97,6 +99,114 @@ function App() {
       const s = paper?.paper_status || 'unavailable';
       const map = { ready: '✅', generated_not_indexed: '🟡', index_only: '🟠', unavailable: '⚪' };
       return map[s] || '⚪';
+    },
+
+    /** 側欄風格分組標題（對應 /api/styles） */
+    groupStyleLabel(styleKey) {
+      const k = String(styleKey || '').trim() || 'unknown';
+      const found = (this.styles || []).find((item) => item.key === k);
+      if (found) return found.label;
+      if (k === 'unknown') return '其他 / 未標示風格';
+      return k;
+    },
+
+    /** 依 rewrite_style 分組；各組內依 generated_at 降冪（新→舊） */
+    get paperGroups() {
+      const order = ['storyteller', 'blog', 'professor', 'fairy', 'lazy', 'question', 'log', 'unknown'];
+      const map = {};
+      for (const p of this.allPapers || []) {
+        const k = String(p.rewrite_style || '').trim() || 'unknown';
+        if (!map[k]) map[k] = [];
+        map[k].push(p);
+      }
+      for (const key of Object.keys(map)) {
+        map[key].sort((a, b) => {
+          const ta = String(a.generated_at || '');
+          const tb = String(b.generated_at || '');
+          return tb.localeCompare(ta);
+        });
+      }
+      const seen = new Set();
+      const out = [];
+      for (const k of order) {
+        if (map[k] && map[k].length) {
+          out.push({ style: k, label: this.groupStyleLabel(k), papers: map[k] });
+          seen.add(k);
+        }
+      }
+      for (const k of Object.keys(map).sort()) {
+        if (seen.has(k) || !map[k].length) continue;
+        out.push({ style: k, label: this.groupStyleLabel(k), papers: map[k] });
+      }
+      return out;
+    },
+
+    formatPaperTime(p) {
+      const raw = String(p?.generated_at || '').trim();
+      if (!raw) return '';
+      const d = Date.parse(raw);
+      if (Number.isNaN(d)) return raw.slice(0, 16);
+      return new Date(d).toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' });
+    },
+
+    /** 任務列表分頁（每頁 jobsPerPage 筆） */
+    get jobsPageItems() {
+      const all = this.jobs || [];
+      const start = (this.jobsPage - 1) * this.jobsPerPage;
+      return all.slice(start, start + this.jobsPerPage);
+    },
+
+    get jobsTotalPages() {
+      const n = (this.jobs || []).length;
+      return Math.max(1, Math.ceil(n / this.jobsPerPage));
+    },
+
+    clampJobsPage() {
+      const tp = this.jobsTotalPages;
+      if (this.jobsPage > tp) this.jobsPage = tp;
+      if (this.jobsPage < 1) this.jobsPage = 1;
+    },
+
+    jobsPrevPage() {
+      if (this.jobsPage > 1) this.jobsPage -= 1;
+    },
+
+    jobsNextPage() {
+      if (this.jobsPage < this.jobsTotalPages) this.jobsPage += 1;
+    },
+
+    /** ISO 時間以「系統／瀏覽器所在時區」顯示（不指定 timeZone 即為本地） */
+    formatLocalDateTime(iso) {
+      if (iso == null || String(iso).trim() === '') return '-';
+      const d = Date.parse(String(iso));
+      if (Number.isNaN(d)) return String(iso);
+      return new Date(d).toLocaleString('zh-TW', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+    },
+
+    /** 任務列狀態標章：succeeded 依改寫風格（style）套用不同底色 */
+    jobStatusChipClass(job) {
+      const st = job?.status || '';
+      if (st !== 'succeeded') {
+        return 'status-' + st;
+      }
+      let k = String(job?.style ?? '').trim();
+      if (!k || k === '-') k = 'unknown';
+      k = k.replace(/[^a-zA-Z0-9_-]/g, '') || 'unknown';
+      return 'status-succeeded s-style-' + k;
+    },
+
+    /** 任務列表中欄：論文標題 */
+    jobListPaperTitle(job) {
+      const t = String(job?.paper_title ?? '').trim();
+      return t || '（無標題）';
     },
 
     /* ════════ INDEX ════════ */
@@ -643,7 +753,10 @@ function App() {
 
     onFileSelect(event) {
       const file = event.target.files[0];
-      if (file) this.selectedFile = file;
+      if (!file) return;
+      this.selectedFile = file;
+      const stem = file.name.replace(/\.pdf$/i, '');
+      this.manualPaperTitle = stem.replace(/[_\-]+/g, ' ').trim() || stem;
     },
 
     onDrop(event) {
@@ -651,6 +764,8 @@ function App() {
       const file = event.dataTransfer.files[0];
       if (file && file.name.toLowerCase().endsWith('.pdf')) {
         this.selectedFile = file;
+        const stem = file.name.replace(/\.pdf$/i, '');
+        this.manualPaperTitle = stem.replace(/[_\-]+/g, ' ').trim() || stem;
       } else {
         this.toast('warning', '請選擇 PDF 檔案');
       }
@@ -658,6 +773,7 @@ function App() {
 
     clearFile() {
       this.selectedFile = null;
+      this.manualPaperTitle = '';
       const input = document.getElementById('pdf-file-input');
       if (input) input.value = '';
     },
@@ -800,6 +916,12 @@ function App() {
     },
 
     async submitGenJob() {
+      const paperTitle = (this.manualPaperTitle || '').trim();
+      if (!paperTitle) {
+        this.toast('warning', '請填寫論文標題（用於輸出檔名）');
+        return;
+      }
+
       if (this.inputMode === 'manual') {
         // ── Manual units mode ────────────────────────────────────────────────
         const validUnits = this.manualUnits.filter(u => u.body && u.body.trim());
@@ -814,7 +936,7 @@ function App() {
               title: (u.title || '').trim() || '未命名單元',
               body: u.body.trim(),
             })),
-            paper_title: this.manualPaperTitle.trim() || '手動輸入論文',
+            paper_title: paperTitle,
             style: this.genStyle,
             auto_index: this.genAutoIndex,
             concise_level: this.genConciseLevel,
@@ -847,6 +969,7 @@ function App() {
       try {
         const form = new FormData();
         form.append('pdf', this.selectedFile);
+        form.append('paper_title', paperTitle);
         form.append('style', this.genStyle);
         form.append('auto_index', this.genAutoIndex ? 'true' : 'false');
         form.append('concise_level', String(this.genConciseLevel));
@@ -880,8 +1003,9 @@ function App() {
         for (const j of this.jobs) {
           if (j && j.job_id) previousStatuses[j.job_id] = j.status;
         }
-        const data = await api.get('/api/jobs?limit=8');
+        const data = await api.get('/api/jobs?limit=0');
         this.jobs = data.data || [];
+        this.clampJobsPage();
 
         // Notify once when a tracked in-flight job turns into succeeded.
         for (const j of this.jobs) {

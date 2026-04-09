@@ -19,7 +19,7 @@ from paper_repository import (
 bp = Blueprint("api", __name__, url_prefix="/api")
 
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent  # repo root
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 UPLOADS_DIR = PROJECT_DIR / "uploads"
 MAX_UPLOAD_SIZE_MB = 50
 UPLOAD_RETENTION_DAYS = 14
@@ -316,11 +316,22 @@ def _build_job_summary(job: Dict) -> Dict:
     output_path = result.get("output_path") or output.get("output_path")
     output_filename = _extract_generation_output_filename(result=result, output=output)
     output_paper_id = _extract_generation_output_paper_id(payload=payload, result=result, output=output)
+    job_id = str(job.get("job_id", "")).strip()
+    paper_title = str(payload.get("paper_title") or payload.get("title") or "").strip()
+    if not paper_title:
+        fn = (output_filename or "").strip()
+        if not fn and output_path:
+            fn = Path(str(output_path)).name
+        if fn and job_id and fn.lower().endswith(".html"):
+            suf = f"_{job_id}.html"
+            if fn.endswith(suf):
+                paper_title = fn[: -len(suf)].strip()
     return {
-        "job_id": str(job.get("job_id", "")).strip(),
+        "job_id": job_id,
         "status": str(job.get("status", "-")),
         "phase": job.get("phase") or "",
         "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
+        "paper_title": paper_title,
         "style": style,
         "style_label": STYLE_LABELS.get(style, style),
         "style_params": style_params,
@@ -494,9 +505,20 @@ def rebuild_index():
 
 @bp.route("/jobs", methods=["GET"])
 def list_jobs():
-    limit = int(request.args.get("limit", 8))
+    # limit=0 或 all：回傳全部任務（供前端分頁）；未帶參數預設 20 筆
+    raw = request.args.get("limit", "20")
+    lim: Any
+    if str(raw).lower() in ("all", "none"):
+        lim = None
+    else:
+        try:
+            lim = int(raw)
+        except (TypeError, ValueError):
+            lim = 20
+    if lim == 0:
+        lim = None
     try:
-        jobs = center_service.list_generation_jobs(limit=limit)
+        jobs = center_service.list_generation_jobs(limit=lim)
         summaries = [_build_job_summary(j) for j in jobs]
         return _ok(summaries)
     except Exception as e:
@@ -599,8 +621,10 @@ def submit_job():
     style_params: dict = {}
     manual_sections_raw = None
     paper_title_manual = ""
+    paper_title_form = ""
     engine_order: List[str] = []
     if request.content_type and "multipart" in request.content_type:
+        paper_title_form = str(request.form.get("paper_title", "")).strip()
         raw_sp = request.form.get("style_params", "")
         if raw_sp:
             try:
@@ -628,6 +652,16 @@ def submit_job():
     if not resolved_pdf_path and not manual_sections_raw:
         return _err("請提供 PDF 檔案或路徑，或使用手動輸入改寫單元")
 
+    if manual_sections_raw is not None:
+        if not paper_title_manual:
+            return _err("請填寫論文標題")
+    elif resolved_pdf_path:
+        if request.content_type and "multipart" in request.content_type:
+            if not paper_title_form:
+                return _err("請填寫論文標題")
+        elif not paper_title_manual:
+            return _err("請填寫論文標題")
+
     try:
         resolved_engines = center_service.resolve_generation_engine_chain(engine_order)
         payload = {
@@ -647,8 +681,13 @@ def submit_job():
         }
         if manual_sections_raw is not None:
             payload["manual_sections"] = manual_sections_raw
-        if paper_title_manual:
+        if manual_sections_raw is not None:
             payload["paper_title"] = paper_title_manual
+        elif resolved_pdf_path:
+            if request.content_type and "multipart" in request.content_type:
+                payload["paper_title"] = paper_title_form
+            else:
+                payload["paper_title"] = paper_title_manual
         job = center_service.submit_generation_job(payload=payload)
         job_id = str(job.get("job_id", "")).strip()
         if not job_id:

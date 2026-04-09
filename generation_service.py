@@ -681,7 +681,7 @@ class GenerationService:
     def get_job(self, job_id: str) -> Optional[Dict[str, Any]]:
         return self.store.get_job(job_id)
 
-    def list_jobs(self, limit: int = 20, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    def list_jobs(self, limit: Optional[int] = 20, status: Optional[str] = None) -> List[Dict[str, Any]]:
         return self.store.list_jobs(limit=limit, status=status)
 
     def run_job(self, job_id: str) -> Optional[Dict[str, Any]]:
@@ -872,8 +872,8 @@ def get_job(job_id: str) -> Optional[Dict[str, Any]]:
     return _service.get_job(job_id)
 
 
-def list_jobs(limit: int = 20, status: Optional[str] = None) -> List[Dict[str, Any]]:
-    """List generation jobs."""
+def list_jobs(limit: Optional[int] = 20, status: Optional[str] = None) -> List[Dict[str, Any]]:
+    """List generation jobs. ``limit is None`` returns all jobs (sorted by created_at desc)."""
     return _service.list_jobs(limit=limit, status=status)
 
 

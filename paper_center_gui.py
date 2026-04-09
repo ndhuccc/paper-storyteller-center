@@ -47,7 +47,8 @@ STYLE_LABELS: Dict[str, str] = {
     "log": "實驗日誌（研究過程記錄、工程師視角）",
 }
 
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
+PROJECT_DIR = Path(__file__).resolve().parent
+STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 UPLOADS_DIR = STORYTELLERS_DIR / "uploads"
 MAX_UPLOAD_SIZE_MB = 50
 UPLOAD_RETENTION_DAYS = 14

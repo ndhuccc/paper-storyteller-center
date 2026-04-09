@@ -1,0 +1,1882 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-Driven Diffusion Model for Sign Language Production - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 Text-Driven Diffusion Model for Sign Language Production</h1>
+    <div class="meta">
+        <strong>說書人版本（v1.5 - 術語表 + 公式詳解）</strong><br>
+        Source PDF: /home/ccchiang/Documents/Storytellers/uploads/ddc1eef468f5_2503.15914v1.pdf<br>
+        Model: models/gemini-3.1-flash-lite-preview<br>
+        Generated at (UTC): 2026-04-04T17:21:19.877251+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - Text-Driven Diffusion Model for Sign Language Production</a></li>
+<li><a href="#section-2">Section 2 - Abstract</a></li>
+<li><a href="#section-3">Section 3 - 1. Introduction</a></li>
+<li><a href="#section-4">Section 4 - 2.1. Sign Language Production</a></li>
+<li><a href="#section-5">Section 5 - 2.2. Diffusion Models</a></li>
+<li><a href="#section-6">Section 6 - 3.1. Forward Process</a></li>
+<li><a href="#section-7">Section 7 - 3.2. Reverse Process</a></li>
+<li><a href="#section-8">Section 8 - 3.5. Dataset</a></li>
+<li><a href="#section-9">Section 9 - 3.6. Implementation Details</a></li>
+<li><a href="#section-10">Section 10 - 4. Conclusions</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - Text-Driven Diffusion Model for Sign Language Production</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>論文說書：如何讓 AI 把文字變成生動的手語？</h3>
+            <p>在傳統的手語生成技術中，機器往往很難精準控制動作的「節奏」與「細膩度」。這就像是讓一個從沒看過芭蕾舞的機器人去跳舞，動作雖然正確，但看起來卻像沒靈魂的木偶。</p>
+            <p>這篇論文提出的 <strong>Text-Driven Diffusion Model（文字驅動擴散模型）</strong>，核心目的就是為手語生成注入「靈魂」。它透過擴散模型（Diffusion Model）這種技術，讓生成過程像是在畫布上一層層精修草稿，最終產出動作流暢且精準的手語影片。</p>
+            <hr />
+            <h3>為什麼要這樣設計？（痛點與動機）</h3>
+            <p>想像你要指揮一個手語翻譯員：<br />
+            1. <strong>傳統做法</strong>：像是一次性交給他完整的劇本，他若背得不夠熟，動作就會僵硬。<br />
+            2. <strong>擴散模型的作法</strong>：像是一位大師在畫油畫。一開始他只畫模糊的輪廓，然後一層層疊加上細節（手型、表情、肌肉張力），直到畫面變得清晰逼真。</p>
+            <p><strong>核心優勢</strong>：它解決了長序列動作容易「崩壞」的問題。透過隨機雜訊的逐步消除，模型能保證每一幀畫面都在合理的軌跡上，不會出現動作「瞬移」或「抖動」的情況。</p>
+            <hr />
+            <h3>關鍵公式拆解</h3>
+            <p>為了達成精準控制，模型採用了擴散過程，核心公式如下：</p>
+            <div class="formula">$$q(x_t | x_{t-1}) = \mathcal{N}(x_t; \sqrt{1 - \beta_t} x_{t-1}, \beta_t \mathbf{I})$$</div>
+            
+            <h4>1. 變數白話解釋</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">生活化類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_t$</span></td>
+            <td style="text-align: left;">第 <span class="math inline">$t$</span> 步的動作數據</td>
+            <td style="text-align: left;">當前雕刻出的手勢模型</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_{t-1}$</span></td>
+            <td style="text-align: left;">上一步的動作數據</td>
+            <td style="text-align: left;">原始的草稿（上一層的進度）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\beta_t$</span></td>
+            <td style="text-align: left;">雜訊排程（Noise Schedule）</td>
+            <td style="text-align: left;">這次修飾時，允許加入的微小修正量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\sqrt{1 - \beta_t}$</span></td>
+            <td style="text-align: left;">訊號保留比率</td>
+            <td style="text-align: left;">保留前一步驟優良成果的程度</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>2. 公式白話版</h4>
+            <p>這條公式的意思是：「如果要生成第 <span class="math inline">$t$</span> 步的手勢，我們是在『上一步的基礎 (<span class="math inline">$x_{t-1}$</span>)'』乘以一個衰減係數，再加上一點點『隨機修正量 (<span class="math inline">$\beta_t$</span>)』，這樣就能從模糊逐漸走向清晰。」</p>
+            <hr />
+            <h3>數值代入範例</h3>
+            <p>假設我們正在生成一個「吃飯」的手勢，且模型設定 <span class="math inline">$\beta_t = 0.1$</span>：</p>
+            <ul>
+            <li><strong>情境</strong>：上一幀的動作值 <span class="math inline">$x_{t-1} = 0.8$</span>（代表手部移動到某個位置）。</li>
+            <li><strong>計算</strong>：</li>
+            <li>訊號保留比率 <span class="math inline">$\sqrt{1 - 0.1} \approx 0.948$</span></li>
+            <li>生成結果 <span class="math inline">$x_t \approx 0.948 \times 0.8 = 0.758$</span></li>
+            <li><strong>結果解讀</strong>：</li>
+            <li>這個數值 <span class="math inline">$0.758$</span> 意味著，系統在上一幀的動量中，保留了約 95% 的關鍵資訊，並導入了 10% 的隨機干擾（雜訊）進行微調。</li>
+            <li><strong>實務意義</strong>：這個過程能確保手部運動不會完全失去控制，又能透過「隨機性」創造出人類手勢中那種自然的、非機械式的細微晃動。</li>
+            </ul>
+            <hr />
+            <h3>總結與應用</h3>
+            <p>這項技術的價值在於它將「翻譯文字」變成了「生成藝術」。</p>
+            <ul>
+            <li><strong>為什麼有效？</strong> 它不強迫機器一次到位，而是允許模型在「隨機雜訊」中進行多次迭代與修正，這與人類學習手勢的過程（從粗略比劃到精準到位）高度相似。</li>
+            <li><strong>適用情境</strong>：<ul>
+            <li><strong>即時直播轉譯</strong>：處理複雜的語句結構。</li>
+            <li><strong>虛擬導覽員</strong>：在博物館或公車站提供更人性化的手語溝通。</li>
+            </ul>
+            </li>
+            <li><strong>限制與挑戰</strong>：由於擴散模型需要多次反覆計算（迭代），運算成本較高，若要做到「零延遲」的即時對話，還需要更強大的運算設備支援。</li>
+            </ul>
+            <p>透過這套框架，手語不再只是單純的「位置位移」，而是帶有情感與節奏的語言表達。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - Abstract</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>為什麼要這樣設計？（核心痛點與動機）</h3>
+            <p>手語翻譯最大的難點在於：手語不只是「比動作」，還包含空間中的位置與骨架轉動。如果只靠傳統 AI 模型生成，動作往往會顯得「軟趴趴」或「位置飄移」。</p>
+            <p>我們設計了 <strong>Text-driven Diffusion Model (TDM)</strong>，就像是請一位「嚴格的動作指導教練」。在訓練時，教練不僅要看文字提示，還要透過兩套「糾錯機制」隨時校正生成的姿勢，確保手部骨架在空間中的位置（Joint）與旋轉角度（Bone）精準無誤。這比起讓模型自己瞎猜，能大幅提升手語的真實感與辨識度。</p>
+            <hr />
+            <h3>關鍵公式拆解：如何讓動作精準到位？</h3>
+            <p>為了確保生成動作與真實手語（Ground Truth）一致，我們定義了兩個核心損失函數（Loss Functions），概念就像是在校正動作數據的誤差：</p>
+            <h4>1. 關節位置損失 <span class="math inline">$\mathcal{L}_{joint}$</span></h4>
+            <p>這項公式負責檢查生成的身體關節（如手腕、指尖）座標與正確答案距離多遠。</p>
+            <ul>
+            <li><strong>白話文：</strong> 「算出生成手部與真實手部的座標差值，差距越小分數越低，模型就會越準。」</li>
+            <li><strong>變數說明：</strong> 設生成的關節位置向量為 <span class="math inline">$P_{gen}$</span>，真實的關節位置為 <span class="math inline">$P_{gt}$</span>。</li>
+            </ul>
+            <div class="formula">$$\mathcal{L}_{joint} = \|P_{gen} - P_{gt}\|^2$$</div>
+            
+            <ul>
+            <li><strong>數值例子：</strong> 若某個關鍵關節生成位置為 <span class="math inline">$(10, 5)$</span>，真實位置為 <span class="math inline">$(8, 4)$</span>。<ul>
+            <li>計算：<span class="math inline">$(10-8)^2 + (5-4)^2 = 2^2 + 1^2 = 5$</span>。</li>
+            <li>意義：損失值為 5，代表誤差存在，模型下一步必須減少這個距離。</li>
+            </ul>
+            </li>
+            </ul>
+            <h4>2. 骨骼角度損失 <span class="math inline">$\mathcal{L}_{bone}$</span></h4>
+            <p>僅靠座標點不夠，如果骨頭長度或旋轉角度怪異，看起來會很像「脫臼」。這項公式確保兩節骨頭之間的連線角度正確。</p>
+            <ul>
+            <li><strong>白話文：</strong> 「比起位置，這更在意『動作是否符合人體工學』，確保兩點之間的骨架夾角正確。」</li>
+            <li><strong>變數說明：</strong> 設生成的骨骼角度向量為 <span class="math inline">$B_{gen}$</span>，真實骨骼角度為 <span class="math inline">$B_{gt}$</span>。</li>
+            </ul>
+            <div class="formula">$$\mathcal{L}_{bone} = \|B_{gen} - B_{gt}\|^2$$</div>
+            
+            <ul>
+            <li><strong>數值例子：</strong> 假設手指關節夾角生成為 <span class="math inline">$45^\circ$</span>，真實應為 <span class="math inline">$40^\circ$</span>。<ul>
+            <li>計算：<span class="math inline">$(45-40)^2 = 25$</span>。</li>
+            <li>意義：透過這個損失值，模型會強制調整關節旋轉，直到角度誤差縮小。</li>
+            </ul>
+            </li>
+            </ul>
+            <hr />
+            <h3>推論階段：從「亂碼」到「精確動作」</h3>
+            <p>在實際生成手語時，TDM 採取的是「去噪」（Denoising）策略。這就像是用橡皮擦清理混亂草稿的過程：</p>
+            <ol>
+            <li><strong>起始狀態：</strong> 從一串完全隨機、毫無意義的雜訊序列（Noise）開始。</li>
+            <li><strong>條件引導：</strong> 模型隨時看著文字輸入（Text Input），並不斷比對前述的 <span class="math inline">$\mathcal{L}_{joint}$</span> 和 <span class="math inline">$\mathcal{L}_{bone}$</span> 約束。</li>
+            <li><strong>逐步精煉：</strong> 每一次迭代，模型就擦除一點雜訊，並向「語意正確」的手勢靠攏，最終產出一連串流暢且精準的手語動作。</li>
+            </ol>
+            <hr />
+            <h3>成效與限制</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">指標</th>
+            <th style="text-align: left;">數值</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>BLEU-1 分數</strong></td>
+            <td style="text-align: left;">20.17</td>
+            <td style="text-align: left;">模型生成動作與真實手語的重合度指標</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>賽事排名</strong></td>
+            <td style="text-align: left;">第 2 名</td>
+            <td style="text-align: left;">在 SLRTP 挑戰賽中證明了此架構的領先地位</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>為什麼這對實務有效？</strong><br />
+            市面上許多生成模型容易產生「語意漂移」（文字說要做動作 A，結果比成動作 B）。我們的架構結合了嚴格的骨架與位置損失，確保模型在擴散（Diffusion）過程中，不會偏離正確的物理約束。</p>
+            <p><strong>適用情境：</strong><br />
+            此技術特別適合需要「高精準度」的場景，例如手語教學系統、或是為聽障人士開發的自動化新聞手語生成，能夠有效避免生成動作模糊不清的問題。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - 1. Introduction</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>手語科技：打破資訊傳遞的「隱形高牆」</h3>
+            <h4>為什麼這個研究很重要？</h4>
+            <p>想像一下，你生活在一個所有的路標、說明書、甚至是網路內容，都寫著你「看不懂的外語」的世界。這就是聽障社群在數位時代經常面臨的困境。手語不僅僅是手部的動作，它是聽障者的「母語」，是他們與世界溝通的橋樑。</p>
+            <p>在這個資訊爆炸的時代，如果不解決資訊落差，即便技術再進步，也只是為特定群體打造的孤島。本研究的核心動機在於：<strong>科技不應該只是為了「多數人」設計，更要具備「資訊平權」的溫度。</strong> 手語技術的革新，就是要剷除這道長期存在的「溝通高牆」，讓數位資源能像水一樣，自然地流向每一個角落。</p>
+            <h4>這項技術解決了什麼痛點？</h4>
+            <p>在過往的技術框架中，資訊獲取往往偏向「文字」與「語音」。對於以手語為主要溝通工具的人來說，這些方式不僅效率低，甚至會因為語法結構的差異（手語文法不同於口語文字）而造成理解上的障礙。</p>
+            <p>我們將資訊的傳遞過程視為一個「導航系統」：<br />
+            * <strong>傳統做法</strong>：強迫聽障者閱讀口語文字，就像是強迫一位開車的人，去閱讀一張他完全看不懂的外文地圖，不僅容易迷路，挫折感也極大。<br />
+            * <strong>本研究策略</strong>：直接建立「手語轉換引擎」，如同為聽障者配備了一套「母語語音導航」，讓他們不需要翻譯過程，就能直接接收最精確的資訊。</p>
+            <h4>核心價值：從技術到社會正義</h4>
+            <p>這項研究不僅是一場學術探索，更是一場「數位社會正義」的實踐。當我們討論資訊平權時，我們其實在談論三件事：<br />
+            1. <strong>公平性</strong>：確保知識財富的存取權力（Access）。<br />
+            2. <strong>效率</strong>：縮短資訊處理的時間成本，讓聽障者能與社會同步。<br />
+            3. <strong>包容力</strong>：透過科技設計，將原本被忽略的群體重新納入現代數位生活的核心。</p>
+            <h4>總結來說</h4>
+            <p>這項研究站在科技革新的尖端，目的在於將「手語」這一語言工具，轉化為數位資訊傳遞的標準介面。這不僅是技術的優化，更是為了確保在全球資訊共享的時代，每一個人，不論聽力狀況如何，都能平等地站在知識的起跑線上。這就是我們追求的——<strong>讓知識真正變得觸手可及。</strong></p>
+            <h3>為什麼手語技術這麼難？從「翻譯」到「生產」的跨越</h3>
+            <p>在手語技術的研究中，我們就像是在經營一家多語翻譯社。目前學術界主要攻克三個關卡：<strong>手語翻譯 (SLT)</strong>、<strong>手語辨識 (SLR)</strong> 以及最棘手的 <strong>手語生產 (SLP)</strong>。</p>
+            <p>為什麼 SLP 這麼困難？這得回到「語言結構」的本質。你可以把口語想像成一條「單向的流水線」，單字一個接一個排列（時間序列）；但手語更像是一幅「多維度的立體畫作」。手語不僅僅是用手比出單字，它利用了「空間位置」與「手勢方向」來構建語法。若你只把口語單字一一對應成手勢，就像是把平面的文字強行貼到立體空間中，結果往往會讓溝通對象看得一頭霧水。</p>
+            <hr />
+            <h3>手語的空間邏輯公式：為何空間等於語法？</h3>
+            <p>為了說明手語如何運用空間，我們可以將一個句子的意義表達拆解為一個簡單的空間權重模型。假設一個手語動作的意義 <span class="math inline">$M$</span> 取決於手勢本身 <span class="math inline">$G$</span> 與其空間參數 <span class="math inline">$S$</span> 的交互作用：</p>
+            <div class="formula">$$M = f(G, S) = G \cdot (1 + \alpha \cdot \vec{d})$$</div>
+            
+            <h4>變數與邏輯拆解</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M$</span></td>
+            <td style="text-align: left;">意義 (Meaning)</td>
+            <td style="text-align: left;">手語最終傳達的完整語意。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">手勢 (Gesture)</td>
+            <td style="text-align: left;">單純的手部形狀（就像詞彙的「詞根」）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S$</span></td>
+            <td style="text-align: left;">空間向量 (Spatial parameter)</td>
+            <td style="text-align: left;">手在空間中的位置，決定了角色與動作的關聯。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha$</span></td>
+            <td style="text-align: left;">語法權重 (Grammar weight)</td>
+            <td style="text-align: left;">空間對於語法影響的敏感度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\vec{d}$</span></td>
+            <td style="text-align: left;">方向向量 (Directionality)</td>
+            <td style="text-align: left;">手勢移動的方向（如：從我走向你，或從你走向我）。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式白話版：</strong> 你的「語意」等於「手勢本身」乘以「空間帶來的加成」。如果沒有空間方向的加成，手語就只是死板的動作；有了方向與空間，才能精準表達「誰對誰做了什麼」。</p>
+            <h4>具體數值示例</h4>
+            <p>假設我們在表達「我給予你」這個動作：<br />
+            *   設手勢 <span class="math inline">$G = 10$</span>（基礎單字意義）。<br />
+            *   語法權重 <span class="math inline">$\alpha = 0.5$</span>。<br />
+            *   方向向量 <span class="math inline">$\vec{d} = 2$</span>（代表動作指向對方）。</p>
+            <p>代入公式：</p>
+            <div class="formula">$$M = 10 \cdot (1 + 0.5 \cdot 2) = 10 \cdot (1 + 1) = 20$$</div>
+            
+            <p><strong>結果解讀：</strong> <br />
+            若沒有空間方向（即 <span class="math inline">$\vec{d} = 0$</span>），<span class="math inline">$M$</span> 僅為 10；加入了方向資訊後，<span class="math inline">$M$</span> 變為 20。這代表空間維度直接讓表達的資訊量翻倍。在實務上，這解釋了為什麼僅靠「視覺識別」（SLR）是不夠的，因為機器若看不懂手勢在空間中移動的「深度與方向」，它就無法還原出該句子的完整語法結構。</p>
+            <hr />
+            <h3>為什麼 SLP（手語生產）挑戰最大？</h3>
+            <p>手語生產 (SLP) 的痛點在於：機器必須像「建築師」一樣，在空中構建出正確的空間結構。</p>
+            <ol>
+            <li><strong>缺乏對應性：</strong> 口語可以寫成文字，但手語的「空間語法」難以直接轉譯。</li>
+            <li><strong>空間位置的關鍵性：</strong> 就像導航系統若只有路名而沒有地圖方位，車子永遠開不到目的地。手語中，手的位置代表了主詞與受詞，方向則代表了動作的流向。</li>
+            <li><strong>技術瓶頸：</strong> 目前的 SLT 和 SLR 多半處理的是「標籤對標籤」的映射，但 SLP 需要的是「語意到空間動態」的生成。我們不只是要讓電腦「認出」手勢，還得讓電腦學會「打出」具備正確語法空間感的手語。</li>
+            </ol>
+            <p>總結來說，手語不僅僅是視覺版的口語，它是一種「具備空間維度」的語言體系。SLP 的目標，正是要解決如何讓機器精準控制這種空間語言，讓科技能真正成為聽障人士跨越溝通鴻溝的橋樑。</p>
+            <h3>為什麼要拋棄「兩階段翻譯法」？</h3>
+            <p>在手語生成（Sign Language Production, SLP）的領域，過去的方法就像是「翻譯接力賽」。為了讓電腦「看懂」並「比出」手語，主流作法會強迫電腦先將文字轉譯成「手語註解（Gloss）」，再從註解轉譯成肢體動作。</p>
+            <p>這就像是你出國旅遊，卻沒有直接學當地語言，而是帶了一本「萬用翻譯辭典」。你想講中文，先查辭典變成英文，再透過另一個轉換器變成當地語言。這種做法的痛點在於：<br />
+            1. <strong>多重轉譯導致失真</strong>：中間多了一層「註解」的轉譯過程，這不僅費工，還容易在轉換中丟失原本句子的語氣與精確度。<br />
+            2. <strong>計算負擔沉重</strong>：這需要同時理解兩種語言的文法與邏輯，對於需要「即時對話」的場景來說，這種慢吞吞的處理效率根本無法應付。</p>
+            <p>因此，我們的目標是達成「文字直接生成手語」，就像母語者一樣，看到文字直接反射動作，省去中間的冗餘轉譯，讓聾人社群能更高效、即時地進行溝通。</p>
+            <hr />
+            <h3>公式拆解：效率背後的代價</h3>
+            <p>為了量化這種「複雜度」對效率的影響，我們可以定義一個簡化的模型。假設生成一個手語動作的總成本 <span class="math inline">$C$</span> 為：</p>
+            <div class="formula">$$C = (T \cdot \alpha) + (G \cdot \beta)$$</div>
+            
+            <h4>公式白話解釋：</h4>
+            <ul>
+            <li><span class="math inline">$C$</span>：總生成成本（代表系統負擔，數值越低越好）。</li>
+            <li><span class="math inline">$T$</span>：文字轉註解的複雜度。</li>
+            <li><span class="math inline">$\alpha$</span>：文字處理的單位負擔係數。</li>
+            <li><span class="math inline">$G$</span>：註解轉肢體動作的複雜度。</li>
+            <li><span class="math inline">$\beta$</span>：動作生成引擎的單位負擔係數。</li>
+            </ul>
+            <p>這個公式告訴我們：當你採用「兩階段法」，系統必須兩者相加；而若採用「直接生成法」，則只需處理動作生成的部分，成本將大幅下降。</p>
+            <h4>數值範例：</h4>
+            <p>假設我們以「時間消耗（毫秒）」作為衡量成本的單位：<br />
+            *   若採用「兩階段法」：文字轉註解（<span class="math inline">$T=50$</span>）× 負擔係數（<span class="math inline">$\alpha=2$</span>）+ 註解轉動作（<span class="math inline">$G=100$</span>）× 負擔係數（<span class="math inline">$\beta=3$</span>）<br />
+                *   計算：<span class="math inline">$(50 \times 2) + (100 \times 3) = 100 + 300 = 400$</span> 毫秒。<br />
+            *   若採用「直接生成法」：直接從文字跳到動作，假設其複雜度為 <span class="math inline">$D=120$</span>，負擔係數保持 <span class="math inline">$\beta=3$</span><br />
+                *   計算：<span class="math inline">$120 \times 3 = 360$</span> 毫秒。</p>
+            <h4>實務意義：</h4>
+            <p>雖然 400ms 與 360ms 看似差距不大，但在高頻率的即時對話中，每一層轉譯都會疊加延遲。這就好比排隊點餐，「直接生成」是透過自動點餐機（直接獲取需求），而「兩階段法」則是先填紙本單據再交給櫃檯人工輸入。<strong>減少轉譯層級，代表著系統能更快將正確的訊息傳遞給用戶，這對於聾人社群的即時通訊至關重要。</strong></p>
+            <hr />
+            <h3>我們的核心戰略</h3>
+            <p>我們主張跳過「文字 → 註解 → 動作」這種繁瑣的模式，開發直接從文字生成手語的方法。這種轉變不僅是技術上的優化，更是為了打破溝通的障礙：<br />
+            *   <strong>降低複雜度</strong>：無需同時維護語言學文法與動作轉換演算法。<br />
+            *   <strong>提升效能</strong>：減少硬體算力的消耗，確保即時通訊的流暢度。<br />
+            *   <strong>增進普及</strong>：當系統運作更輕快、更人性化，手語生成的應用場景就能從實驗室走向大眾的生活。</p>
+            <h3>手語生成的魔法：Text-Driven Diffusion Model (TDM)</h3>
+            <h4>為什麼需要 TDM？（痛點與動機）</h4>
+            <p>手語生成的難點在於「文字到動作」的轉譯極度模糊。傳統模型常面臨生成動作「模糊不清」或「肢體扭曲」的問題。我們可以把這想像成請一位從沒跳過舞的人看劇本跳舞：如果只給文字描述，他會跳得很生硬。TDM 的設計核心是利用<strong>擴散模型（Diffusion Model）</strong>，想像它就像是一位美術大師，從一堆亂碼般的雜訊中，透過文字指令的引導，像雕刻家一樣慢慢將動作「修整」出來。</p>
+            <h4>TDM 是如何運作的？（架構設計）</h4>
+            <p>這個架構由兩大引擎組成：<br />
+            1. <strong>文字編碼器（Encoder）</strong>：負責讀懂輸入的文字，並將其轉換成模型聽得懂的「場景指令」。<br />
+            2. <strong>擴散模型（Diffusion Model）</strong>：將指令視為條件輸入（Conditioning），從雜訊序列中逐步修正，最終產出流暢的手語骨架動作。</p>
+            <p>但光有指令還不夠，為了確保手部動作不會像橡皮筋一樣亂扭，我們引入了 <strong>骨骼方位損失（Bone Orientation Loss）</strong>：</p>
+            <div class="formula">$$ \mathcal{L}_{bone} = \sum_{i=1}^{N} \| \text{vec}(b_i) - \text{vec}(\hat{b}_i) \|^2 $$</div>
+            
+            <h4>公式拆解：讓動作更精準的「骨骼校正」</h4>
+            <p>這個公式就像是導航系統中的「偏差修正」，確保生成的手臂長度與角度符合人體工學。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{bone}$</span></td>
+            <td style="text-align: left;">骨骼方位損失，數值越小，動作越符合人體結構</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$b_i$</span></td>
+            <td style="text-align: left;">真實手語動作中第 <span class="math inline">$i$</span> 根骨骼的向量方向</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{b}_i$</span></td>
+            <td style="text-align: left;">模型生成出的第 <span class="math inline">$i$</span> 根骨骼向量方向</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\|\cdot\|^2$</span></td>
+            <td style="text-align: left;">計算兩者的差異平方（歐式距離），差異越大，懲罰越重</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話版公式意義：</strong><br />
+            這就是在算「預測的手骨方向」與「真實人類手骨方向」差了多少。如果生成的動作讓手肘角度歪掉，這個數值就會很大，迫使模型在下次生成時自動修正回來。</p>
+            <h4>數值模擬範例</h4>
+            <p>假設我們正在模擬「手肘關節」的角度誤差：<br />
+            *   <strong>真實向量 <span class="math inline">$b_i$</span></strong>：<span class="math inline">$(1, 0)$</span>（水平伸展）<br />
+            *   <strong>生成向量 <span class="math inline">$\hat{b}_i$</span></strong>：<span class="math inline">$(0.8, 0.6)$</span>（因為誤差導致手稍微彎曲）</p>
+            <p>計算過程：<br />
+            1. 誤差向量 = <span class="math inline">$(1-0.8, 0-0.6) = (0.2, -0.6)$</span><br />
+            2. 平方誤差 = <span class="math inline">$0.2^2 + (-0.6)^2 = 0.04 + 0.36 = 0.4$</span></p>
+            <p><strong>實務解讀：</strong><br />
+            當計算結果為 <span class="math inline">$0.4$</span> 時，代表模型目前產生的骨骼方向與真實動作偏離了 <span class="math inline">$0.4$</span> 個單位。訓練過程中，模型會不斷調整參數，直到這個數值趨近於 <span class="math inline">$0$</span>，這代表生成的手語動作已經變得極度擬真且精確，不會再出現關節扭曲的恐怖谷現象。</p>
+            <h4>總結：為何 TDM 更強？</h4>
+            <p>相比傳統直接生成動作的方法，TDM 的「擴散 + 骨骼約束」策略，就像是給繪圖過程加裝了「透視網格」與「力學輔助」。這不僅保證了內容符合文字意圖，更確保了骨骼連接的物理真實性，讓手語生成不再只是「形似」，而是真正的「神似」。</p>
+            <h3>為什麼要引入擴散模型（Diffusion Model）？</h3>
+            <p>在「文字生成手語」（Text-to-Pose, T2P）任務中，過去的傳統模型就像一個「臨摹畫家」，如果文字描述不夠精準，畫出來的手勢動作就會變得很僵硬，甚至細節模糊。</p>
+            <p><strong>我們引入擴散模型（Diffusion Model）的核心動機，就是為了解決「動作平滑度」與「細節豐富度」的痛點。</strong> 想像你在看模糊的監視器畫面，擴散模型就像是一個具備「預判能力」的專家，它透過不斷去除雜訊，將原本混亂的動作輪廓細化，最終生成出符合語意且自然流暢的手勢動作。</p>
+            <p>為了確保生成動作不會因為過度優化而「亂跑」，我們加入了「骨架約束損失」（Skeleton Constraint Loss），就像在畫畫時用了定位點，強迫動作必須維持人體骨骼的合理結構。</p>
+            <hr />
+            <h3>公式拆解：骨架約束損失 (Skeleton Constraint Loss)</h3>
+            <p>為了讓生成的動作「像真人」，我們定義了骨架約束損失，用於懲罰模型生成出不符合人體工學的姿勢。公式如下：</p>
+            <div class="formula">$$L_{skel} = \frac{1}{N} \sum_{i=1}^{N} \| P_{pred}^i - P_{gt}^i \|_2^2$$</div>
+            
+            <h4>1. 變數拆解與白話說明</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">白話轉譯</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$L_{skel}$</span></td>
+            <td style="text-align: left;">骨架約束損失值</td>
+            <td style="text-align: left;">動作「扭曲」的程度，分數越高代表動作越不自然</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$N$</span></td>
+            <td style="text-align: left;">骨架關鍵點總數</td>
+            <td style="text-align: left;">模型的畫布上有多少個關節要檢查</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$P_{pred}^i$</span></td>
+            <td style="text-align: left;">模型預測的第 <span class="math inline">$i$</span> 個關鍵點位置</td>
+            <td style="text-align: left;">機器目前畫出來的位置</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$P_{gt}^i$</span></td>
+            <td style="text-align: left;">真實手語的第 <span class="math inline">$i$</span> 個關鍵點位置</td>
+            <td style="text-align: left;">專家標準示範的位置</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\| \cdot \|_2^2$</span></td>
+            <td style="text-align: left;">歐幾里得距離平方</td>
+            <td style="text-align: left;">兩個點之間誤差的「嚴重程度」</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式意義：</strong> 這是在計算「機器畫的骨架」與「真人標準骨架」之間，所有關節點的空間距離總和。距離越小，代表生成動作越精準。</p>
+            <h4>2. 數值範例</h4>
+            <p>假設我們手腕關節（第 <span class="math inline">$i$</span> 個點）的預測位置與真實位置差了 0.2 公尺，共有 10 個關鍵點參與計算：</p>
+            <ul>
+            <li>假設所有關鍵點的平均平方誤差為 <span class="math inline">$0.04$</span>。</li>
+            <li><span class="math inline">$L_{skel} = \frac{1}{10} \times (10 \times 0.04) = 0.04$</span>。</li>
+            </ul>
+            <p><strong>結果解讀：</strong> 數值 <span class="math inline">$0.04$</span> 代表目前的動作與真實動作的偏差在允許範圍內。如果這個數值飆高（例如大於 0.5），代表模型生成的姿勢可能已經讓手肘或手指「脫臼」了，我們必須透過訓練強迫模型修正。</p>
+            <hr />
+            <h3>實戰表現與競賽成果</h3>
+            <p>在 SLRTP 手語生成挑戰賽中，我們的模型透過這種結合「擴散生成」與「骨架約束」的方法，取得了極佳的驗證指標。</p>
+            <ul>
+            <li><strong>關鍵指標：</strong> 我們在 BLEU-1 評分中獲得了 <strong>22.17</strong> 的成績。</li>
+            <li><strong>市場地位：</strong> 奪下該次競賽的第二名。</li>
+            </ul>
+            <p><strong>這代表什麼？</strong><br />
+            BLEU-1 是衡量生成序列與真實序列相似度的指標（範圍通常 0 到 100）。22.17 的成績顯示，我們的模型生成的單字/動作序列，在語意和順序上與人類專家的標準動作高度重疊。</p>
+            <p><strong>總結適用情境：</strong><br />
+            這項技術特別適合需要「高精確度」的互動場景，例如：<br />
+            1. <strong>教學輔助系統：</strong> 必須確保手語手勢絕對正確，不能造成聾啞人士誤解。<br />
+            2. <strong>人機互動介面：</strong> 需要快速將文字指令轉譯為自然肢體動作的機器人。</p>
+            <p>透過引入擴散模型，我們不僅解決了動作呆板的問題，更透過骨架約束確保了生成的「語意正確性」，這是傳統模型難以企及的優勢。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - 2.1. Sign Language Production</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>2.1 手語生成 (Sign Language Production, SLP) 的技術演進</h3>
+            <p>手語生成（SLP）的核心目標，是讓電腦能根據文字自動產生對應的手語動作。這就像是翻譯官，只是它翻譯的不是語言，而是將「文字指令」轉換為「身體部位的空間座標」。</p>
+            <h4>為什麼要從 Avatar 進化到 Diffusion Model？</h4>
+            <p>早期的手語生成採用「虛擬化身 (Avatar)」技術。想像一下，這就像是用木偶劇來演戲，因為關節銜接技術不足，動作總是卡卡的（jerky movements）。後來的 GAN 與 VAE 模型雖然改善了動作的流暢度，但在處理「長句」或「複雜語意」時，就像是在翻譯成語時只翻字面意思，導致手語表達既生硬又不精準。</p>
+            <p>現在的「擴散模型 (Diffusion Model)」是目前的技術頂點。它不再像過去那樣試圖一步到位「硬湊」出動作，而是採取「由髒到淨」的策略。</p>
+            <hr />
+            <h4>核心技術：擴散模型 (Diffusion Model) 的運作邏輯</h4>
+            <p>擴散模型的基本觀念是：<strong>先隨機產生一堆毫無意義的雜訊，再透過不斷修正，將雜訊修整成正確的手勢座標。</strong></p>
+            <div class="formula">$$x_T \to x_{T-1} \to \dots \to x_0$$</div>
+            
+            <ul>
+            <li>
+            <p><strong>公式拆解</strong>：</p>
+            <ul>
+            <li><span class="math inline">$x_T$</span>：代表起始階段的一團完全隨機的「雜訊」。</li>
+            <li><span class="math inline">$x_0$</span>：代表最終生成的「乾淨手勢座標」。</li>
+            <li><span class="math inline">$x_{t-1} = \text{Denoise}(x_t, \text{text\_embedding})$</span>：這是核心步驟，模型根據文字內容，將目前的雜訊 <span class="math inline">$x_t$</span> 稍微去噪，變成 <span class="math inline">$x_{t-1}$</span>。</li>
+            </ul>
+            </li>
+            <li>
+            <p><strong>白話文版</strong>：這就像是一位雕刻師，給他一塊原本雜亂無章的石頭（<span class="math inline">$x_T$</span>），告訴他你想雕出的造型（text_embedding），雕刻師一刀一刀地削掉多餘的石屑（去噪過程），最後呈現出精細的雕像（<span class="math inline">$x_0$</span>）。</p>
+            </li>
+            </ul>
+            <hr />
+            <h4>數值演示：以座標生成為例</h4>
+            <p>假設我們定義一個手部座標點 <span class="math inline">$P$</span>，其範圍在 <span class="math inline">$0$</span> 到 <span class="math inline">$10$</span> 之間（<span class="math inline">$0$</span> 是原點，<span class="math inline">$10$</span> 是最遠點）。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">步驟</th>
+            <th style="text-align: left;">狀態</th>
+            <th style="text-align: left;">數值內容 (假設)</th>
+            <th style="text-align: left;">意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">開始 (<span class="math inline">$T$</span>)</td>
+            <td style="text-align: left;"><span class="math inline">$x_T$</span></td>
+            <td style="text-align: left;"><span class="math inline">$8.5$</span></td>
+            <td style="text-align: left;">完全無意義的隨機雜訊</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">過程 (<span class="math inline">$t$</span>)</td>
+            <td style="text-align: left;"><span class="math inline">$x_{t-1}$</span></td>
+            <td style="text-align: left;"><span class="math inline">$5.2$</span></td>
+            <td style="text-align: left;">根據文字指令，修正後的數值</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">完成 (<span class="math inline">$0$</span>)</td>
+            <td style="text-align: left;"><span class="math inline">$x_0$</span></td>
+            <td style="text-align: left;"><span class="math inline">$2.1$</span></td>
+            <td style="text-align: left;">最終準確的手勢位置座標</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>解讀意義</strong>：<br />
+            在這個例子中，模型將初始的隨機雜訊 <span class="math inline">$8.5$</span> 經過多次修正，逐步逼近到目標手勢位置 <span class="math inline">$2.1$</span>。如果模型只是一步到位，很容易產生誤差；但透過這種「逐步修正」的機制，模型能更精確地捕捉手語中手部移動的軌跡與空間細節，解決過去方法在複雜語句上表現不佳的痛點。</p>
+            <hr />
+            <h4>為什麼這對手語生成至關重要？</h4>
+            <ol>
+            <li><strong>處理複雜語法</strong>：手語不只是單詞堆疊，還包含豐富的表情與空間位置變化。Transformer 架構利用「注意力機制 (Attention Mechanism)」從多個維度捕捉語意，而擴散模型則保證了這些語意能被轉化為平滑、自然的連續動作。</li>
+            <li><strong>突破座標限制</strong>：過去的方法往往無法準確控制手部的「起點」與「終點」，而 Diffusion Model 透過 Gaussian Noise 的疊加與去噪，能精準控制每一幀 (Frame) 的位置，實現真正的「自然流暢」。</li>
+            </ol>
+            <p><strong>小結</strong>：目前主流的 G2P-DDM 與 Sign-IDD 模型，證明了結合 Transformer 的語意理解與擴散模型的細節處理，是讓機器人「學會手語」的關鍵技術路徑。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-5">
+        <h2>Section 5 - 2.2. Diffusion Models</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>2.2 擴散模型 (Diffusion Models)：從「毀滅」中「創造」的藝術</h3>
+            <h4>為什麼要這樣設計？（核心痛點）</h4>
+            <p>在生成式 AI 領域，傳統模型（如 GAN）常面臨訓練不穩定、容易產生重複內容的瓶頸。擴散模型之所以強大，是因為它採取了一種「先破壞，再重建」的策略。這就像是用「沙子蓋城堡」：你先故意把城堡攪亂成沙堆，再學習如何從沙堆中一點一滴還原出城堡的模樣。這種機制讓模型能從隨機雜訊中，精準地提取出高解析度的細節。</p>
+            <h4>運作原理：逆向去噪的過程</h4>
+            <p>擴散模型的核心邏輯分為兩個階段：<br />
+            1. <strong>前向擴散（Forward Diffusion）</strong>：將原始影像一點點加入雜訊，直到它徹底變成一團雜亂的雪花點（就像把清晰的照片揉成廢紙）。<br />
+            2. <strong>逆向去噪（Reverse Denoising）</strong>：這是模型的精華，它學習如何在每一步中「猜測」被加入的雜訊並將其移除，最終從雜訊中還原出清晰影像。</p>
+            <p>這在影像修復（Inpainting）中極為好用：當照片缺了一角，模型會觀察周圍的紋理，像拼圖高手一樣把缺損處補齊；在影片生成中，它不僅生成單幀畫面，還能保證幀與幀之間的連貫性。</p>
+            <hr />
+            <h4>核心公式拆解：理解去噪過程</h4>
+            <p>在去噪過程中，我們通常關注模型如何預測並移除雜訊。一個簡化的去噪核心表達如下：</p>
+            <div class="formula">$$x_{t-1} = \frac{1}{\sqrt{\alpha_t}} (x_t - \frac{1-\alpha_t}{\sqrt{1-\bar{\alpha}_t}} \epsilon_\theta(x_t, t)) + \sigma_t z$$</div>
+            
+            <p><strong>公式白話文翻譯：</strong><br />
+            這條公式是在回答：「我現在手上有這張充滿雜訊的圖片 <span class="math inline">$x_t$</span>，我要如何推導出前一刻比較清晰的狀態 <span class="math inline">$x_{t-1}$</span>？」</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話定義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_t$</span></td>
+            <td style="text-align: left;">當前混入雜訊後的圖像（狀態 <span class="math inline">$t$</span>）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_{t-1}$</span></td>
+            <td style="text-align: left;">我們希望重建出的、雜訊較少的圖像（狀態 <span class="math inline">$t-1$</span>）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\epsilon_\theta(x_t, t)$</span></td>
+            <td style="text-align: left;">神經網路預測出的「雜訊」長什麼樣子</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\alpha_t, \bar{\alpha}_t$</span></td>
+            <td style="text-align: left;">控制雜訊濃度的參數，確保還原過程平滑</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\sigma_t z$</span></td>
+            <td style="text-align: left;">加入少許隨機變數，增加生成的「多樣性」</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值計算範例：</strong><br />
+            假設我們處在重建的某一步，參數設定如下：<br />
+            * 當前雜訊圖像 <span class="math inline">$x_t = 0.8$</span><br />
+            * 模型預測的雜訊 <span class="math inline">$\epsilon_\theta = 0.5$</span><br />
+            * 簡化係數設為 <span class="math inline">$\frac{1}{\sqrt{\alpha_t}} \approx 1$</span> 以及 <span class="math inline">$\frac{1-\alpha_t}{\sqrt{1-\bar{\alpha}_t}} \approx 0.4$</span><br />
+            * 暫忽略隨機變數項 <span class="math inline">$\sigma_t z$</span></p>
+            <p>帶入公式：<br />
+            <span class="math inline">$x_{t-1} = 1 \times (0.8 - 0.4 \times 0.5) = 0.8 - 0.2 = 0.6$</span></p>
+            <p><strong>結果解讀：</strong><br />
+            原本的雜訊指標是 <span class="math inline">$0.8$</span>（接近純雜訊），經過模型的一步去噪處理，數值下降到 <span class="math inline">$0.6$</span>。這代表圖像中的雜訊已被模型「吸走」了一部分，內容變得更乾淨了。透過重複這種計算數百次，最終能將 <span class="math inline">$0$</span> 左右的純雜訊，還原成清晰的原始影像。</p>
+            <hr />
+            <h4>效益、限制與未來方向</h4>
+            <ul>
+            <li><strong>效益</strong>：它能生成極致細膩、多樣性高的影像，解決了傳統模型在處理複雜細節時的模糊問題。</li>
+            <li><strong>限制</strong>：儘管在影像與影片生成大放異彩，但在「手語識別與生成 (SLP)」領域的研究卻相對稀缺。</li>
+            <li><strong>研究動機</strong>：手語不僅是靜態動作，還包含動態軌跡與語義，這是擴散模型的強項。本研究的目的，正是為了跨越這道鴻溝，將擴散模型的強大生成能力應用於手語領域，讓電腦能更精準地「看懂」並「詮釋」人類的手語。</li>
+            </ul>
+            <h2>2.2 Diffusion Models：如何用「去噪」重現 3D 人體動作</h2>
+            <h3>為什麼需要 Diffusion 模型？</h3>
+            <p>想像你在畫一張精細的人體動作草圖，如果直接從空白紙張畫出完美動作，難度太高。Diffusion 模型採取的策略則是「反向思考」：先想像畫面充滿了雜訊（像是一台故障的舊電視機畫面），然後透過不斷練習，學習如何一點一點地把雜訊擦掉，最後留下清晰的動作軌跡。</p>
+            <p>對於 3D 動作序列來說，這種方法能解決「動作不連貫」或「細節失真」的痛點。與其一次到位，不如透過<strong>逐步除噪</strong>，讓模型在每一次修正中學習人類肢體運動的物理規律。</p>
+            <hr />
+            <h3>TDM 模型的三大核心組件</h3>
+            <p>為了實現這個過程，TDM（Temporal Diffusion Model）設計了三個關鍵步驟：</p>
+            <ol>
+            <li><strong>前向過程（Forward Process）：</strong> 像是在動作序列上「潑灑墨水」。我們依序加入高斯雜訊，直到原本流暢的 3D 動作變得完全混亂。</li>
+            <li><strong>反向過程（Reverse Process）：</strong> 這是模型的「還原工程」，從一片混亂中逐步提取出原始的骨架軌跡。</li>
+            <li><strong>去噪器（Denoiser <span class="math inline">$D$</span>）：</strong> 這是大腦，負責判斷：「目前的雜訊是哪裡來的？原始結構應該長怎樣？」</li>
+            </ol>
+            <hr />
+            <h3>核心運作邏輯與數學拆解</h3>
+            <p>在去噪過程中，我們主要關注去噪器 <span class="math inline">$D$</span> 的功能，其核心數學描述如下：</p>
+            <div class="formula">$$x_{t-1} = D(x_t, t)$$</div>
+            
+            <h4>變數與公式白話拆解</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">生活化類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_t$</span></td>
+            <td style="text-align: left;">當前帶有雜訊的動作序列</td>
+            <td style="text-align: left;">已經被塗上部分雜訊的草圖</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t$</span></td>
+            <td style="text-align: left;">目前的時間步（雜訊程度）</td>
+            <td style="text-align: left;">距離「完全乾淨」還有幾步的距離</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$D$</span></td>
+            <td style="text-align: left;">去噪器（神經網路）</td>
+            <td style="text-align: left;">具備藝術修復能力的專家</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_{t-1}$</span></td>
+            <td style="text-align: left;">移除部分雜訊後的動作序列</td>
+            <td style="text-align: left;">修復後，離原始畫作更近一步的成果</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話公式意思：</strong><br />
+            這條公式告訴我們，當給定一個帶有 <span class="math inline">$t$</span> 等級雜訊的動作序列 <span class="math inline">$x_t$</span> 時，去噪器 <span class="math inline">$D$</span> 能夠預測出「去除一點點雜訊後」的動作樣貌 <span class="math inline">$x_{t-1}$</span>。</p>
+            <h4>數值示例</h4>
+            <p>假設我們現在進行到第 50 步（總共 100 步，100 為全亂，0 為乾淨），我們將參數代入：<br />
+            * 設 <span class="math inline">$x_{50} = 0.8$</span>（代表當前動作序列中有 80% 的雜訊）<br />
+            * <span class="math inline">$t = 50$</span><br />
+            * 假設去噪器函數運算為 <span class="math inline">$D(x_t, t) = x_t - (0.01 \times t / 10)$</span></p>
+            <p>計算結果：<br />
+            <span class="math inline">$x_{49} = 0.8 - (0.01 \times 50 / 10) = 0.8 - 0.05 = 0.75$</span></p>
+            <p><strong>意義解讀：</strong><br />
+            經過一次去噪運算，動作序列的雜訊佔比從 0.8 下降到 0.75。這代表模型成功在這一輪迭代中，精準地從雜訊中「擦除」了 0.05 的干擾。重複這個過程數十次後，雜訊就會趨近於 0，最終得到乾淨且符合物理邏輯的 3D 動作數據。</p>
+            <hr />
+            <h3>適用情境與限制</h3>
+            <ul>
+            <li><strong>優勢：</strong> 這種設計對於處理複雜的 3D 空間關係非常有效，它能確保動作在時間維度上的連貫性，不會產生「瞬移」或「折斷」般的肢體錯誤。</li>
+            <li><strong>限制：</strong> 最大的代價是「計算時間」。因為它不是一次生成，而是需要多次迴圈去噪，這對於即時互動系統（如 AR/VR）來說，需要更強大的運算資源來縮短除噪步驟的耗時。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-6">
+        <h2>Section 6 - 3.1. Forward Process</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>3.1. 前向擴散過程：從清晰到混沌的藝術</h3>
+            <h4>為什麼要設計這個過程？</h4>
+            <p>想像你正在繪製一幅精細的素描（原始姿勢序列 <span class="math inline">$p_0$</span>），如果你想讓電腦學會「如何畫出這幅畫」，最直接的方法不是強迫它一次畫出來，而是教它「如何從一張白紙塗上雜訊，再一步步擦掉雜訊」。</p>
+            <p>這個「前向過程」（Forward Process）就像是在畫作上蓋上一層又一層的透明薄紗。每蓋一層，畫作就模糊一點，直到最後變成完全看不出內容的亂碼。這樣做的目的，是為了創造出一組「已知」的變化規律，讓後續的學習過程能夠反過來進行——即學習如何把亂碼變回精細的素描。</p>
+            <h4>核心公式拆解</h4>
+            <p>這個過程透過數學公式，精確控制了每一次「加噪」的程度：</p>
+            <div class="formula">$$q(p_t | p_{t-1}) = \mathcal{N}(p_t; \sqrt{1-\beta_t} p_{t-1}, \beta_t \mathbf{I})$$</div>
+            
+            <p><strong>公式白話文：</strong><br />
+            「下一個時刻的姿勢 <span class="math inline">$p_t$</span>，是基於上一個時刻的姿勢 <span class="math inline">$p_{t-1}$</span>，乘上一個縮小係數（保留多少原本的資訊），再加上一點點隨機的雜訊（變數 <span class="math inline">$\beta_t$</span>）。」</p>
+            <p><strong>變數對照表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_t$</span></td>
+            <td style="text-align: left;">第 <span class="math inline">$t$</span> 步後產生的姿勢序列（較模糊）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_{t-1}$</span></td>
+            <td style="text-align: left;">上一步的姿勢序列（較清晰）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\beta_t$</span></td>
+            <td style="text-align: left;">噪聲比例（決定這一步要加多少亂七八糟的雜訊）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{N}$</span></td>
+            <td style="text-align: left;">常態分佈（代表這些雜訊是隨機且符合統計規律的）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}$</span></td>
+            <td style="text-align: left;">單位矩陣（確保雜訊均勻分佈在每個維度上）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>具體數值實戰</h4>
+            <p>假設我們現在要進行一步加噪，設定參數如下：<br />
+            * 當前的姿勢值 <span class="math inline">$p_{t-1} = 10.0$</span><br />
+            * 噪音程度 <span class="math inline">$\beta_t = 0.1$</span><br />
+            * 我們假設加入的隨機雜訊為 <span class="math inline">$0.5$</span>（來自 <span class="math inline">$\mathcal{N}(0, \beta_t)$</span> 的抽樣）</p>
+            <p><strong>計算過程：</strong><br />
+            1. 先計算保留比例：<span class="math inline">$\sqrt{1 - 0.1} \approx 0.948$</span><br />
+            2. 進行縮放與加噪：<span class="math inline">$p_t = 0.948 \times 10.0 + 0.5 = 9.48 + 0.5 = 9.98$</span></p>
+            <p><strong>數值意義解讀：</strong><br />
+            原本的姿勢數值從 <span class="math inline">$10.0$</span> 變成了 <span class="math inline">$9.98$</span>。這告訴我們，模型在每一步的轉換中，會故意「弄丟」一點點原始資訊，並引入微量的擾動。當你連續執行 <span class="math inline">$T$</span> 次這樣的動作，原本精確的 <span class="math inline">$10.0$</span> 就會徹底淹沒在隨機雜訊中，最終變成一個純粹的亂數。</p>
+            <h4>總結與應用場景</h4>
+            <p>這種做法的精髓在於<strong>可控性</strong>。相比直接把圖片變成雜訊，這種「分段、漸進」的方法，讓電腦能夠清楚理解「從清晰到模糊」的路徑。這適用於所有需要生成式建模（Generative Modeling）的領域，例如動作合成、影像生成。當我們掌握了這條「變亂」的路徑，後續只需要學會它的逆運算，就能從亂碼中重構出高質量的姿勢序列。</p>
+            <h3>3.1 擴散過程：如何讓訊號平滑過渡到雜訊</h3>
+            <h4>為什麼要這樣設計？</h4>
+            <p>在擴散模型中，我們的目標是讓一個原本清楚的影像或姿勢（<span class="math inline">$p_0$</span>）慢慢變模糊，直到它變成一團純粹的隨機雜訊。為什麼要這麼做？因為「從混亂中還原秩序」比「直接從虛無中創造」容易得多。</p>
+            <p>如果我們一次把訊號毀掉，AI 就學不到中間的演化過程。因此，我們設計了一個漸進式的「加噪」機制。這個設計的核心痛點在於：<strong>如何在保留原始影像特徵的同時，精確控制雜訊的滲入程度？</strong> 透過公式 (1)，我們找到了一個平衡點，讓模型能像剝洋蔥一樣，一步步把雜訊去除，還原出原始資訊。</p>
+            <hr />
+            <h4>公式拆解與變數意義</h4>
+            <p>公式如下：</p>
+            <div class="formula">$$p_t = \gamma_t p_0 + \sigma_t \epsilon$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話定義</th>
+            <th style="text-align: left;">角色比喻</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_t$</span></td>
+            <td style="text-align: left;">第 <span class="math inline">$t$</span> 步的輸出結果</td>
+            <td style="text-align: left;">混入雜訊後的最終產物</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_0$</span></td>
+            <td style="text-align: left;">原始輸入（姿勢/影像）</td>
+            <td style="text-align: left;">剛開始乾淨的畫布</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\gamma_t$</span></td>
+            <td style="text-align: left;">原始資訊的保留比例</td>
+            <td style="text-align: left;">畫布上留下的「底色」濃度</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\sigma_t$</span></td>
+            <td style="text-align: left;">雜訊的添加強度</td>
+            <td style="text-align: left;">潑灑在畫布上的「墨水」量</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\epsilon$</span></td>
+            <td style="text-align: left;">從高斯分佈抽樣的隨機雜訊</td>
+            <td style="text-align: left;">隨機潑灑的墨水形狀</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話公式意思：</strong><br />
+            這其實就是一種「加權平均」。最終結果 <span class="math inline">$p_t$</span> 就像是調酒，其中 <span class="math inline">$\gamma_t$</span> 是酒的比例，<span class="math inline">$\sigma_t$</span> 是蘇打水的比例。我們透過調整這兩個參數，來決定這杯酒喝起來是「原味重」還是「氣泡重」。</p>
+            <hr />
+            <h4>關鍵限制：能量守恆原則</h4>
+            <p>公式滿足 <span class="math inline">$\gamma_t^2 + \sigma_t^2 = 1$</span>。這是一個物理上的「守恆定律」。它確保了隨著時間推移，訊號與雜訊的總變異數保持一致（通常維持在 1）。如果不遵守這個條件，影像會隨著加噪過程變得越來越亮（能量發散）或越來越暗（能量消失），導致模型訓練崩潰。</p>
+            <hr />
+            <h4>數值範例：一步步看變化的過程</h4>
+            <p>假設我們在第 <span class="math inline">$t$</span> 步，設定參數為 <span class="math inline">$\gamma_t = 0.8$</span> 以及 <span class="math inline">$\sigma_t = 0.6$</span>（註：<span class="math inline">$0.8^2 + 0.6^2 = 0.64 + 0.36 = 1$</span> 符合條件）。</p>
+            <p>假設原始姿勢數值 <span class="math inline">$p_0 = 100$</span>，隨機抽樣到的雜訊 <span class="math inline">$\epsilon = 5$</span>：<br />
+            1. <strong>帶入計算</strong>：<span class="math inline">$p_t = (0.8 \times 100) + (0.6 \times 5)$</span><br />
+            2. <strong>得出結果</strong>：<span class="math inline">$p_t = 80 + 3 = 83$</span></p>
+            <p><strong>數值意義解讀：</strong><br />
+            * <strong>80 (原始貢獻)</strong>：代表在這一階段，原始姿勢的特徵仍保留了 80%。<br />
+            * <strong>3 (雜訊貢獻)</strong>：代表雜訊的介入雖然存在，但對總體數值的影響程度相對較小。<br />
+            * <strong>實務意義</strong>：當我們訓練模型時，若 <span class="math inline">$\gamma_t$</span> 很大，模型會覺得「這很簡單，還看得出原樣」；若隨著 <span class="math inline">$t$</span> 增加，<span class="math inline">$\gamma_t$</span> 越來越小（例如變成 0.2），模型就會面臨極大的挑戰，必須學會如何在充滿雜訊的環境中找出那僅存的原始結構線索。這正是模型能學會「去噪」的關鍵訓練過程。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-7">
+        <h2>Section 7 - 3.2. Reverse Process</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>為什麼需要這個「反向過程」設計？</h3>
+            <p>在一般的擴散模型（Diffusion Model）中，我們的目標通常是「把雜訊修好，還原成清晰圖像」。但在動作生成或姿態預測的場景下，如果我們只是單純去除雜訊，模型往往會漫無目的地亂跑，無法產出符合特定需求的動作序列。</p>
+            <p>這裡設計的 Denoiser <span class="math inline">$D$</span> 就像是一位<strong>「專業編舞家」</strong>。一般的去噪模型只是在掃地（去掉雜訊），而這裡的 <span class="math inline">$D$</span> 則是被賦予了明確任務：根據導演給出的腳本（條件 <span class="math inline">$g$</span>），直接把混亂的動作軌跡「導正」為目標動作。這樣做的好處是，模型不再是盲目地消除雜訊，而是有目的地朝著「正確的姿態序列」收斂，大幅提升了生成動作的精準度與邏輯性。</p>
+            <hr />
+            <h3>核心公式拆解</h3>
+            <p>去噪操作的數學表達式如下：</p>
+            <div class="formula">$$x_{t-1} = D(x_t, t, g)$$</div>
+            
+            <h4>1. 變數拆解與白話翻譯</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">符號</th>
+            <th style="text-align: left;">定義</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_{t-1}$</span></td>
+            <td style="text-align: left;">下一個時刻的姿態序列</td>
+            <td style="text-align: left;">即將生成的動作樣本（更接近成品）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$D$</span></td>
+            <td style="text-align: left;">Denoiser (去噪網路)</td>
+            <td style="text-align: left;">核心大腦，負責從現狀判斷如何改進。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$x_t$</span></td>
+            <td style="text-align: left;">當前時刻的姿態序列</td>
+            <td style="text-align: left;">目前還帶有雜訊的動作狀態。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$t$</span></td>
+            <td style="text-align: left;">時間步 (Time step)</td>
+            <td style="text-align: left;">提醒網路現在進行到哪個階段（階段越靠後，細節越重要）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$g$</span></td>
+            <td style="text-align: left;">條件 (Condition)</td>
+            <td style="text-align: left;">指導方針（例如：特定音樂節奏或指定的人物軌跡）。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式白話文：</strong><br />
+            「下一刻的動作 <span class="math inline">$x_{t-1}$</span>，是由『當前混亂動作 <span class="math inline">$x_t$</span>』、『目前進度 <span class="math inline">$t$</span>』以及『指導方針 <span class="math inline">$g$</span>』這三者，經過編舞家 <span class="math inline">$D$</span> 運算後的結果。」</p>
+            <hr />
+            <h3>數值模擬範例</h3>
+            <p>為了讓你更有感，我們假設一個簡單的動作生成場景：假設 <span class="math inline">$t$</span> 是進度條（範圍 0 到 10），<span class="math inline">$g$</span> 是動作目標參數，我們簡化函數為一個線性修正邏輯：</p>
+            <p>假設公式為：<span class="math inline">$x_{t-1} = x_t - (0.5 \cdot x_t - 0.2 \cdot g)$</span></p>
+            <ul>
+            <li><strong>初始狀態：</strong> <span class="math inline">$x_t = 10$</span>（當前姿態偏移量很高），<span class="math inline">$g = 5$</span>（目標是縮小偏移）。</li>
+            <li><strong>帶入運算：</strong> <span class="math inline">$x_{t-1} = 10 - (0.5 \cdot 10 - 0.2 \cdot 5) = 10 - (5 - 1) = 6$</span>。</li>
+            </ul>
+            <p><strong>結果解讀：</strong><br />
+            經過這一輪去噪，姿態偏移量從 10 降到了 6。這代表模型成功在條件 <span class="math inline">$g$</span> 的引導下，將混亂的動作往正確的目標方向「修正」了一步。在實務上，這個過程會重複多次，直到動作序列達到預期的流暢與精確度。</p>
+            <hr />
+            <h3>適用情境與限制</h3>
+            <ul>
+            <li><strong>為什麼有效？</strong> 因為它將「去噪」轉化為「條件生成」。相比於直接預測雜訊，直接預測目標序列能讓網路更專注於學習動作的空間連續性與物理限制。</li>
+            <li><strong>適用場景：</strong> 特別適用於需要精確時間序列控制的領域，例如人體動作生成（Motion Synthesis）、機器人軌跡規劃。</li>
+            <li><strong>注意限制：</strong> 這個設計極度依賴條件 <span class="math inline">$g$</span> 的質量。如果 <span class="math inline">$g$</span> 給出的引導資訊模糊，即便 Denoiser 再強，生成的動作序列也會缺乏邏輯，出現「動作漂移」或不自然的情況。</li>
+            </ul>
+            <h3>3.2. Reverse Process：如何把「雜訊」還原成「成品」？</h3>
+            <h4>為什麼要設計這個步驟？</h4>
+            <p>想像你在聽一場訊號極差的廣播，充滿了沙沙的背景雜訊。單憑直覺，你很難聽清楚播音員在說什麼。這個 Reverse Process（反向過程）的核心痛點在於：<strong>如何從「充滿雜訊的廢料」中，準確提取出「我們要的內容」？</strong></p>
+            <p>如果只是隨意亂猜，內容會模糊不清；因此，我們需要一個「去噪器（Denoiser）」，它不僅要看到雜訊，還要根據「條件指引（Condition）」來判斷這段聲音原本應該長什麼樣子。這就像是你拿著一份對照表，對照著目前的雜訊與關鍵字，一步步把雜訊「濾」掉，直到還原出清晰的原始影像或聲音。</p>
+            <hr />
+            <h4>核心公式拆解</h4>
+            <p>我們使用的核心公式如下：</p>
+            <div class="formula">$$p&#x27;_0 = D(p_t, g)$$</div>
+            
+            <p><strong>變數白話對照表：</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">生活類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_t$</span></td>
+            <td style="text-align: left;">受到雜訊污染的資料</td>
+            <td style="text-align: left;">剛從舊照片掃描出來、充滿顆粒感的模糊影像</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$g$</span></td>
+            <td style="text-align: left;">條件指引（Condition）</td>
+            <td style="text-align: left;">給修圖師的指令，例如「這是一張人像照」或「這是森林風景」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$D$</span></td>
+            <td style="text-align: left;">去噪器（Denoiser）</td>
+            <td style="text-align: left;">受過專業訓練的修圖師，懂得如何根據提示修復畫面</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p&#x27;_0$</span></td>
+            <td style="text-align: left;">去噪後的乾淨資料</td>
+            <td style="text-align: left;">修復完成、畫質銳利的新照片</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式白話版：</strong><br />
+            「去噪後的乾淨成品 = 修圖師 <span class="math inline">$D$</span> ( 拿著模糊照片 <span class="math inline">$p_t$</span> ，看著修正指令 <span class="math inline">$g$</span> )。」<br />
+            這個公式說明了：最終的結果不只是靠運氣，而是由「原始廢料」與「目標指引」共同決定。</p>
+            <hr />
+            <h4>數值模擬範例</h4>
+            <p>為了讓你更有感，我們假設一個簡單的任務：修復一個像素亮度值。假設原始像素亮度為 100，雜訊讓它變成了 60，而指令 <span class="math inline">$g$</span> 告訴模型「這是一塊亮部區域」。</p>
+            <p>假設去噪器函數設計為：<span class="math inline">$p&#x27;_0 = p_t + (100 - p_t) \times 0.8 \times g$</span> <br />
+            （其中 <span class="math inline">$g=1$</span> 代表確認為亮部，<span class="math inline">$g=0$</span> 代表無資訊）</p>
+            <ul>
+            <li><strong>當 <span class="math inline">$p_t = 60$</span> (輸入的雜訊資料)，<span class="math inline">$g = 1$</span> (確認是亮部指令)：</strong><ul>
+            <li>計算：<span class="math inline">$p&#x27;_0 = 60 + (100 - 60) \times 0.8 \times 1 = 60 + 32 = 92$</span></li>
+            <li><strong>解讀：</strong> 雖然沒完全回到 100，但從 60 提升到 92，代表去噪器成功抓到了雜訊與目標的關聯，將資料大幅「提亮」，往正確方向修正了。</li>
+            </ul>
+            </li>
+            </ul>
+            <hr />
+            <h4>效益與適用情境</h4>
+            <ul>
+            <li><strong>為什麼有效：</strong> 傳統做法往往只針對像素平均處理，容易導致細節抹平。而這個設計透過訓練 <span class="math inline">$D$</span> 去理解「雜訊的長相」以及「條件 <span class="math inline">$g$</span> 對應的樣貌」，讓系統能像老練的畫家一樣，知道哪裡該補筆、哪裡該擦掉。</li>
+            <li><strong>限制與適用情境：</strong> 此方法非常依賴「條件 <span class="math inline">$g$</span>」的準確度。如果 <span class="math inline">$g$</span> 給錯了（例如把人像說成森林），去噪器就會產生「幻覺」，硬把人臉修成樹皮。因此，它最適合應用在<strong>條件明確的生成任務</strong>，如文字轉影像（Text-to-Image）或特定風格的畫質修復。</li>
+            </ul>
+            <h3>3.2. Reverse Process：如何從「雜訊」中還原手語動作？</h3>
+            <p>在擴散模型（Diffusion Model）的世界裡，我們處理的不是直接的數據，而是將數據「磨碎」後的雜訊。為什麼我們要大費周章從雜訊開始？因為直接生成複雜的手語序列太難了，但如果我們將過程拆解成一小步一小步的「去噪」，就像從一團亂麻中慢慢理出頭緒，模型就能學會將雜訊轉化為精準的動作。</p>
+            <h4>為什麼要這麼做？（動機與直覺）</h4>
+            <p>想像你要畫出一張複雜的素描，如果直接畫細節，很容易畫崩。但如果你先隨手灑上一層灰塵（雜訊），然後每天擦掉一點灰塵，直到輪廓清晰，這就是去噪的過程。在手語生成中，<span class="math inline">$p_T$</span> 就是那張灑滿灰塵的畫布，而 <span class="math inline">$D$</span>（去噪器）就是你的橡皮擦。</p>
+            <h4>核心公式拆解：從雜訊回推動作</h4>
+            <p>在推論階段，我們透過以下公式從雜訊中預測乾淨的動作：</p>
+            <div class="formula">$$\tilde{p}_0 = D(p_T, g)$$</div>
+            
+            <p><strong>公式白話文：</strong><br />
+            *   <span class="math inline">$\tilde{p}_0$</span>：我們最終想得到的「乾淨手語動作序列」。<br />
+            *   <span class="math inline">$D$</span>：去噪器（Denoiser），就像一個經驗豐富的修圖師。<br />
+            *   <span class="math inline">$p_T$</span>：初始的雜訊，這是一個隨機的高斯分佈樣本。<br />
+            *   <span class="math inline">$g$</span>：條件（Condition），這就像是題目，告訴模型你要比劃的是什麼動作（例如「謝謝」或「再見」）。</p>
+            <p><strong>具體數值範例：</strong><br />
+            假設我們定義雜訊程度為 <span class="math inline">$p_T = 0.8$</span>（接近純雜訊），條件 <span class="math inline">$g$</span> 代表「揮手」。<br />
+            代入模型計算：<span class="math inline">$\tilde{p}_0 = 0.95 \times \text{揮手特徵} + 0.05 \times \text{雜訊残留}$</span>。<br />
+            <strong>解讀：</strong> 透過一次去噪，模型成功將 80% 的雜訊濾除，預測出 95% 接近原始動作的序列，這代表模型已經抓到了「揮手」的核心骨架。</p>
+            <hr />
+            <h4>迭代生成：DDIM 的接力策略</h4>
+            <p>為了讓生成品質更高，我們不會一次就跑完，而是採取「接力」的方式。我們利用剛預測出的 <span class="math inline">$\tilde{p}_0$</span>，去推算下一個時間點的雜訊序列 <span class="math inline">$\tilde{p}_{t&#x27;}$</span>。這不僅是數學上的迭代，更是一種「修正路徑」的手段。</p>
+            <p><strong>公式拆解：</strong></p>
+            <div class="formula">$$\tilde{p}_{t&#x27;} = \text{DDIM\_Update}(\tilde{p}_0, p_t, \dots)$$</div>
+            
+            <p><strong>公式白話文：</strong><br />
+            這是一個回饋機制。我們用目前預測出的「理想結果」<span class="math inline">$\tilde{p}_0$</span>，去引導下一步該產生什麼樣的「半成品」<span class="math inline">$\tilde{p}_{t&#x27;}$</span>。這就像你在拼圖時，先拼出核心架構，再根據架構去填補剩餘空缺。</p>
+            <p><strong>具體數值範例：</strong><br />
+            若我們設定迭代步數為 <span class="math inline">$t=50$</span> 到 <span class="math inline">$t=49$</span>：<br />
+            *   目前狀態 <span class="math inline">$\tilde{p}_{50}$</span> 是充滿雜訊的。<br />
+            *   預測結果 <span class="math inline">$\tilde{p}_0$</span> 給出了一個模糊但正確的骨架。<br />
+            *   計算得出下一階段 <span class="math inline">$\tilde{p}_{49} = 0.9 \times \tilde{p}_{50} + 0.1 \times \tilde{p}_0$</span>。<br />
+            <strong>解讀：</strong> 這裡的 0.1 係數代表我們每一次都在「微調」方向。這比直接跳到結果更穩，因為我們每一步都確保動作的流暢性與物理合理性。</p>
+            <h4>效益與適用情境</h4>
+            <ul>
+            <li><strong>效益：</strong> 相比一次性生成的模型，這種逐步去噪的方式能大幅減少動作「抖動」或「肢體扭曲」，因為每一步都在受控的去噪範圍內。</li>
+            <li><strong>限制：</strong> 需要多次進行矩陣運算，計算成本較高。</li>
+            <li><strong>適用情境：</strong> 特別適合需要「高精準度」與「流暢度」的長序列手語生成。</li>
+            </ul>
+            <h3>3.2 逆向擴散：如何把「雜訊」變回「訊號」</h3>
+            <h4>為什麼要這麼做？</h4>
+            <p>在擴散模型（Diffusion Model）的世界裡，我們其實在玩一場「拼圖遊戲」。我們把清晰的圖片徹底打碎成無法辨識的雜訊，然後訓練一個去雜訊器（Denoiser），目標是讓它學會把這些雜訊一點一滴地修復回原貌。</p>
+            <p>這段公式描述的是<strong>「從雜訊中提取初步線索」</strong>的過程。與其一次到位，我們選擇分步驟慢慢靠近目標，就像你在迷霧森林中，利用指南針與地圖多次校正方向，比閉著眼睛衝向終點準確得多。</p>
+            <hr />
+            <h4>公式拆解：重建初步結構</h4>
+            <div class="formula">$$\tilde{p}_{t&#x27;} = \gamma_{t&#x27;} \tilde{p}_0 + \sigma_{t&#x27;} \epsilon$$</div>
+            
+            <p>這個公式就像是「製作雞尾酒」的比例調配，將我們預測的「骨架」與「雜訊」混合：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\tilde{p}_{t&#x27;}$</span></td>
+            <td style="text-align: left;">當前步驟下，我們認為該有的「半成品」狀態</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\gamma_{t&#x27;}$</span></td>
+            <td style="text-align: left;">訊號保留係數，決定保留多少原圖的結構資訊</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\tilde{p}_0$</span></td>
+            <td style="text-align: left;">我們目前嘗試預測的「完整清晰圖片」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\sigma_{t&#x27;}$</span></td>
+            <td style="text-align: left;">雜訊注入強度，決定還要保留多少混亂感</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\epsilon$</span></td>
+            <td style="text-align: left;">標準高斯雜訊，就像電視機的雪花雜訊</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話文字版公式：</strong><br />
+            「目前狀態 = (清晰程度權重 × 預測目標) + (雜訊比例權重 × 隨機雪花)」</p>
+            <hr />
+            <h4>數值演示：這在算什麼？</h4>
+            <p>假設我們現在處於某個去雜訊階段，設定 <span class="math inline">$\gamma_{t&#x27;} = 0.8$</span>（強烈參考預測目標），<span class="math inline">$\sigma_{t&#x27;} = 0.6$</span>（維持一定模糊度），而模型預測的初步目標 <span class="math inline">$\tilde{p}_0 = 10$</span>，當下隨機產生的雜訊強度 <span class="math inline">$\epsilon = 0.5$</span>。</p>
+            <p><strong>計算過程：</strong></p>
+            <div class="formula">$$\tilde{p}_{t&#x27;} = (0.8 \times 10) + (0.6 \times 0.5) = 8 + 0.3 = 8.3$$</div>
+            
+            <p><strong>結果解讀：</strong><br />
+            這個 <span class="math inline">$8.3$</span> 就是下一階段模型要面對的輸入。它告訴我們，模型不需要立刻輸出完美的結果，而是根據目前的條件（<span class="math inline">$g$</span>）與當前的雜訊狀態，反覆迭代 <span class="math inline">$i$</span> 次。每一次迭代，<span class="math inline">$\tilde{p}_0$</span> 的預測準確度就會像剝洋蔥一樣，層層遞進，越來越接近真實畫面。</p>
+            <hr />
+            <h4>核心邏輯總結</h4>
+            <ol>
+            <li><strong>為什麼有效？</strong> 直接把雜訊變回成品太難，透過 <span class="math inline">$\tilde{p}_{t&#x27;}$</span> 這種「折衷狀態」，模型可以專注於每一小步的修正，減少計算誤差累積。</li>
+            <li><strong>條件引導 (<span class="math inline">$g$</span>)：</strong> 去雜訊器 <span class="math inline">$D$</span> 不是隨便亂猜，它參考了條件 <span class="math inline">$g$</span>（例如：「我要產生一隻貓」的指令），這確保了最終成品不會偏離主題。</li>
+            <li><strong>迭代關鍵：</strong> 為什麼要跑 <span class="math inline">$i$</span> 次？這就像雕刻師傅雕塑作品，每一刀都要輕，重複多次才能精細，一次下重手反而會破壞結構。這套流程能確保輸出既有細節，又不失邏輯的一致性。</li>
+            </ol>
+            <h3>3.3. Denoiser：為何需要「線性嵌入層 (Linear Embedding Layer)」？</h3>
+            <p>在擴散模型（Diffusion Model）的世界裡，去噪器（Denoiser）就像是一位修復古畫的藝術家。但原始的輸入數據（比如手語動作序列 <span class="math inline">$p_t$</span>）往往帶有雜訊，且維度不一定能直接與神經網路內部的處理機制「對頻」。</p>
+            <p><strong>為什麼需要這個設計？</strong><br />
+            如果直接把原始數據丟進模型，就像是用粗糙的畫筆去修補精細的裂痕，容易造成細節丟失。我們需要一個「轉接器」，也就是 Linear Embedding (LE) 層，它的核心任務是將原始序列映射到一個「維度更高、資訊密度更豐富」的特徵空間。這就像是把一張模糊的小圖，先放大並轉換成畫家看得懂的色塊編碼，讓後續的處理流程更高效。</p>
+            <hr />
+            <h3>公式拆解：線性嵌入層的核心邏輯</h3>
+            <p>Linear Embedding 的數學表達式如下：</p>
+            <div class="formula">$$E(p_t) = p_t \cdot W_{le} + b_{le}$$</div>
+            
+            <h4>1. 變數白話對照表</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">生活化類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_t$</span></td>
+            <td style="text-align: left;">輸入的雜訊手語序列</td>
+            <td style="text-align: left;">一籃子剛從市場買回、沒經過分類的食材</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$W_{le}$</span></td>
+            <td style="text-align: left;">權重矩陣 (Weight)</td>
+            <td style="text-align: left;">一把專業的廚房切菜刀（負責分配與篩選重要資訊）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$b_{le}$</span></td>
+            <td style="text-align: left;">偏置項 (Bias)</td>
+            <td style="text-align: left;">廚房檯面的微調設定（確保數據基底不會跑掉）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$E(p_t)$</span></td>
+            <td style="text-align: left;">輸出結果</td>
+            <td style="text-align: left;">準備好進入烹飪程序的預處理食材包</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>2. 公式白話文版</h4>
+            <p>這公式說穿了就是一種「矩陣乘法加平移」。我們透過矩陣 <span class="math inline">$W_{le}$</span> 把原始輸入的特徵進行加權組合，放大我們感興趣的特徵維度，再透過 <span class="math inline">$b_{le}$</span> 進行校正，確保輸出的數據能完美銜接後續的深度神經網路處理。</p>
+            <h4>3. 具體數值示例</h4>
+            <p>假設我們有一筆手語數據 <span class="math inline">$p_t$</span> 的維度是 3（代表手腕的 X, Y, Z 座標），我們希望將其提升到維度 5 的特徵空間進行處理。</p>
+            <ul>
+            <li>設定：<span class="math inline">$p_t = [1, 0.5, -1]$</span></li>
+            <li>簡化權重 <span class="math inline">$W_{le}$</span> (3x5 矩陣) 與偏置 <span class="math inline">$b_{le}$</span> (1x5 矩陣)：<ul>
+            <li><span class="math inline">$W_{le} = [[0.1, 0.2, 0.3, 0.4, 0.5], [0.1, 0.1, 0.1, 0.1, 0.1], [0.2, 0.2, 0.2, 0.2, 0.2]]$</span></li>
+            <li><span class="math inline">$b_{le} = [0.1, 0.1, 0.1, 0.1, 0.1]$</span></li>
+            </ul>
+            </li>
+            <li>計算：<ul>
+            <li><span class="math inline">$E(p_t) = ([1, 0.5, -1] \cdot W_{le}) + b_{le}$</span></li>
+            <li>結果 <span class="math inline">$E(p_t) = [0.1+0.05-0.2, 0.2+0.05-0.2, 0.3+0.05-0.2, 0.4+0.05-0.2, 0.5+0.05-0.2] + [0.1, ...]$</span></li>
+            <li>得出結果：<span class="math inline">$E(p_t) = [0.05, 0.15, 0.25, 0.35, 0.45] + [0.1, ...]$</span> = <strong><span class="math inline">$[0.15, 0.25, 0.35, 0.45, 0.55]$</span></strong></li>
+            </ul>
+            </li>
+            </ul>
+            <p><strong>實務意義解讀：</strong><br />
+            原本僅有 3 個維度的簡單座標點，透過這個運算轉換成了 5 個維度的「特徵向量」。這個過程不僅讓數據進入了模型可以操作的維度空間，更重要的是，權重 <span class="math inline">$W_{le}$</span> 在訓練過程中會自動學習「哪些手語細節最重要」，將重要的資訊分布到這 5 個維度中，讓後續的去噪運算更精準。</p>
+            <hr />
+            <h3>總結</h3>
+            <ul>
+            <li><strong>效益</strong>：提供了從「原始數據」到「模型特徵」的平滑過渡，避免資訊在進入複雜神經網路前就被截斷。</li>
+            <li><strong>適用情境</strong>：任何需要處理時間序列或空間座標的擴散模型，只要輸入數據與網路處理維度不一致，線性嵌入層就是最簡潔有效的起手式。</li>
+            <li><strong>限制</strong>：它是線性變換，無法捕捉輸入序列中過於複雜的非線性關係，因此後續必須緊接更多非線性層（如 ReLU 或 Transformer block）來處理深度邏輯。</li>
+            </ul>
+            <h3>3.2. Reverse Process：如何從雜訊中「重構」姿勢？</h3>
+            <h4>為什麼要這麼做？（設計動機）</h4>
+            <p>在動作生成的任務中，我們常會遇到一個難題：輸入的姿勢序列往往夾雜著雜訊（Noisy pose sequence），導致模型看不清動作的走向。如果你把這些數據想像成一張<strong>被潑了墨水的繪畫草稿</strong>，我們不能直接把它當成成品，必須先進行「去雜訊」處理。</p>
+            <p>這行公式 <span class="math inline">$p_u = W^p \cdot p_t + b^p$</span> 的核心目的，就是透過一個線性轉換，將充滿雜訊的原始序列 <span class="math inline">$p_t$</span> 重新「校準」並映射回更有邏輯的姿勢空間 <span class="math inline">$p_u$</span>。這就好比導航軟體在 GPS 訊號不穩時，透過路網模型自動修正駕駛路徑，確保車輛不會「穿牆」行駛。</p>
+            <h4>公式拆解：線性映射的魔法</h4>
+            <p>這條公式其實就是在做一個「加權濾鏡」，將不穩定的資訊轉化為模型能理解的狀態。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話定義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_u$</span></td>
+            <td style="text-align: left;">輸出的重構姿勢序列（最終我們想要的乾淨資料）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$W^p$</span></td>
+            <td style="text-align: left;">權重矩陣（篩選器，負責決定哪些特徵重要、哪些該捨棄）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_t$</span></td>
+            <td style="text-align: left;">輸入的雜訊姿勢序列（原料）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$b^p$</span></td>
+            <td style="text-align: left;">偏差項（底層偏移量，確保資料不會全部堆疊在零點）</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話文字版公式：</strong><br />
+            「重構後的姿勢」＝（權重篩選器 × 輸入的雜訊姿勢）＋ 基礎偏移量。</p>
+            <hr />
+            <h4>數值範例：看看這怎麼運作</h4>
+            <p>假設我們簡化模型的維度，只看單個關節的數值：<br />
+            * 假設權重 <span class="math inline">$W^p = 0.8$</span>（這代表我們相信 80% 的輸入訊號是有用的）<br />
+            * 假設輸入的雜訊姿勢 <span class="math inline">$p_t = 10$</span><br />
+            * 假設偏差項 <span class="math inline">$b^p = 2$</span></p>
+            <p>代入公式計算：<br />
+            <span class="math inline">$p_u = 0.8 \times 10 + 2 = 8 + 2 = 10$</span> </p>
+            <p><strong>解讀意義：</strong><br />
+            在這個例子中，原始數值為 10，經過計算後結果為 10。如果權重 <span class="math inline">$W^p$</span> 為 0.5，結果則會變成 <span class="math inline">$0.5 \times 10 + 2 = 7$</span>。這意味著：<br />
+            1. <strong>權重 <span class="math inline">$W^p$</span> 若小於 1</strong>，具有「平滑」效果，能壓制雜訊中的極端突變（像是攝影機晃動造成的抖動）。<br />
+            2. <strong>偏差項 <span class="math inline">$b^p$</span></strong> 則扮演了「錨點」的角色，確保即使輸入訊號很弱時，模型輸出的姿勢也不會完全消失或崩塌到原點，維持動作結構的完整性。</p>
+            <h4>為什麼這個做法有效？</h4>
+            <p>相比於直接把數據塞入深度模型，這種設計在運算效率上極高。它利用 <span class="math inline">$W^p$</span> 這種矩陣運算，快速學習出不同姿勢之間「誰該靠近誰」的結構化關係。這就像是在工廠的流水線上，先經過一道「自動校準機」，將原料位置擺正，後續的複雜處理步驟才能精確運作，大幅降低了深度學習模型的學習負擔。</p>
+            <h3>3.2. 為什麼需要位置編碼（Positional Encoding）？</h3>
+            <p>在深度學習模型（如 Transformer）處理序列數據時，模型天生是「臉盲」的——它只看得到每個節點的數值，卻分不清誰在前、誰在後。這就像把一堆拼圖碎片丟進去，如果沒有順序標籤，模型就無法理解句子結構或時間先後的因果關係。</p>
+            <p>我們引入「位置編碼（Positional Encoding, PE）」，目的就是為了給每個資料點貼上一張「名牌」，告訴模型：「你是第幾個時間點的數據」。這樣一來，模型就不再是處理一坨雜亂的數據，而是能掌握時間先後脈絡，這對於捕捉數據的趨勢與週期變化至關重要。</p>
+            <hr />
+            <h3>公式拆解：為時間序列貼上座標</h3>
+            <p>位置編碼的核心思想，是透過三角函數（正弦與餘弦）來產生一組週期性的波動。這就像是給數據安上了一個精準的時鐘，讓模型能透過波形的相位差，識別出不同位置的絕對順序。</p>
+            <p>公式定義如下：</p>
+            <div class="formula">$$PE(pos, 2i) = \sin\left(\frac{pos}{10000^{2i/d_{model}}}\right)$$</div>
+            
+            <div class="formula">$$PE(pos, 2i+1) = \cos\left(\frac{pos}{10000^{2i/d_{model}}}\right)$$</div>
+            
+            <h4>變數白話對照表</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">生活化類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$pos$</span></td>
+            <td style="text-align: left;">當前數據點的「位置索引」</td>
+            <td style="text-align: left;">隊伍中的排隊序號（如第 1 位、第 2 位）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$2i$</span> / <span class="math inline">$2i+1$</span></td>
+            <td style="text-align: left;">向量中的維度索引</td>
+            <td style="text-align: left;">碼表上的刻度（不同的維度對應不同頻率的波）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$d_{model}$</span></td>
+            <td style="text-align: left;">總嵌入維度</td>
+            <td style="text-align: left;">碼表的總刻度密度</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話版公式意義：</strong><br />
+            這組公式利用不同頻率的波，為每個位置產生一個獨一無二的「特徵向量」。隨著位置 <span class="math inline">$pos$</span> 變大，波的相位會移動，藉此讓模型能分辨出「位置 1」與「位置 10」的細微差異。</p>
+            <hr />
+            <h3>具體數值試算</h3>
+            <p>假設我們設定模型維度 <span class="math inline">$d_{model} = 4$</span>，且我們要計算第 <span class="math inline">$pos = 1$</span> 個位置的第 <span class="math inline">$i = 0$</span> 維度（即 <span class="math inline">$2i = 0$</span>）：</p>
+            <ol>
+            <li><strong>代入公式：</strong></li>
+            </ol>
+            <div class="formula">$$PE(1, 0) = \sin\left(\frac{1}{10000^{0/4}}\right) = \sin\left(\frac{1}{10000^0}\right) = \sin(1) \approx 0.841$$</div>
+            
+            <ol>
+            <li><strong>結果解讀：</strong><br />
+               此處計算出的 <span class="math inline">$0.841$</span> 就是位置 1 的編碼數值。在實務上，這個數值會直接加到該位置的特徵向量中。透過這種方式，模型在進行後續計算時，不僅考慮了數值本身的含義，還額外攜帶了「這是一個位於開端（位置 1）的資訊」這一屬性。</li>
+            </ol>
+            <hr />
+            <h3>效益與適用情境</h3>
+            <ul>
+            <li><strong>為什麼這樣做有效？</strong> <br />
+                使用三角函數的優點在於它們具有「連續性」與「週期性」，即便模型在訓練時沒見過更長序列，也能透過這種編碼方式，讓模型具備推論長度以外位置的能力（外推性）。</li>
+            <li><strong>與直覺做法的差異：</strong> <br />
+                比起簡單地給每個位置編號（如 1, 2, 3...），三角函數編碼避免了數值過大導致計算不穩定的問題，同時透過不同維度的高低頻率組合，讓空間中的距離更具備「相對性」意義。</li>
+            <li><strong>適用場景：</strong> <br />
+                適用於任何具有時間軸的序列模型，特別是處理股價趨勢、感測器波形或語言文字序列時，它是讓模型「產生時間感」的關鍵底層設施。</li>
+            </ul>
+            <h3>為什麼要引入位置編碼 (Position Encoding)？</h3>
+            <p>在處理序列資料（如影片的連續影格）時，模型通常會像閱讀流水帳一樣處理資訊。如果不給這些影格加上「標籤」，模型就會發生「時序失憶症」——它知道內容是什麼，卻分不清楚這是在第 1 秒還是第 10 秒發生的。</p>
+            <p>這就像是參加一場混亂的拼圖大賽，我們拿到了一堆風景碎片，卻沒有編號。為了讓模型準確還原時序，我們引入了 <span class="math inline">$PE(n)$</span>，這就像是給每一張照片背後貼上一個「這是第幾張」的標籤，幫助模型在處理資訊時，能夠精準抓到每個影格在整段影片中的相對位置。</p>
+            <hr />
+            <h3>公式拆解：給影格貼上時序標籤</h3>
+            <p>公式 (5) 展示了如何將位置資訊注入到原本的內容表示中：</p>
+            <div class="formula">$$\hat{p}_u = p_u + PE(n)$$</div>
+            
+            <h4>變數與邏輯說明</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">稱呼</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{p}_u$</span></td>
+            <td style="text-align: left;">最終特徵</td>
+            <td style="text-align: left;">加入時序定位後，影格最終呈現出的「完整樣貌」。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_u$</span></td>
+            <td style="text-align: left;">原始特徵</td>
+            <td style="text-align: left;">影格本身的內容資訊（例如裡面有個人、一隻貓）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$PE(n)$</span></td>
+            <td style="text-align: left;">位置編碼</td>
+            <td style="text-align: left;">根據當前影格序號 <span class="math inline">$n$</span> 計算出來的「時序座標」。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話文字版公式：</strong><br />
+            最終影格資訊 = 影格原本的內容 + 對應位置的時序座標。</p>
+            <hr />
+            <h3>數值範例：為什麼選用正弦函數 (Sinusoidal)？</h3>
+            <p>這裡使用正弦函數並非隨機選擇，而是因為它具有「連續性」與「週期性」。就像鐘擺一樣，位置編碼不會因為數值變大就變得雜亂無章，而是平滑地隨著影格序號 <span class="math inline">$n$</span> 波動。</p>
+            <p>假設我們簡化設定 <span class="math inline">$PE(n) = \sin(n \times \frac{\pi}{4})$</span>，我們來計算第 1 張與第 2 張影格的差異：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">影格序號 (<span class="math inline">$n$</span>)</th>
+            <th style="text-align: left;">計算過程</th>
+            <th style="text-align: left;"><span class="math inline">$PE(n)$</span> 結果</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">第 1 張</td>
+            <td style="text-align: left;"><span class="math inline">$\sin(1 \times \pi / 4)$</span></td>
+            <td style="text-align: left;"><span class="math inline">$\approx 0.707$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">第 2 張</td>
+            <td style="text-align: left;"><span class="math inline">$\sin(2 \times \pi / 4)$</span></td>
+            <td style="text-align: left;"><span class="math inline">$= 1.000$</span></td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值意義解讀：</strong><br />
+            當模型看到 <span class="math inline">$0.707$</span> 和 <span class="math inline">$1.000$</span> 這兩個數值時，它能透過數值的細微變化，判斷出這兩張影格是有序且相鄰的。這種設計的好處在於：即使影片長度超出訓練範圍，正弦函數依然能提供具備「區分度」的編碼，不會像直接給影格編號（如 1, 2, 3...）那樣，導致數值過大而讓模型訓練不穩。</p>
+            <hr />
+            <h3>設計效益與適用情境</h3>
+            <ul>
+            <li><strong>為什麼有效：</strong> 相較於簡單的「硬編號」（例如直接加上 1, 2, 3），正弦函數能提供一個「連續且平滑」的空間。這讓模型不僅知道「誰在前、誰在後」，還能理解「影格與影格之間距離有多遠」。</li>
+            <li><strong>生活化類比：</strong> 這就像是為捷運站設置了經緯度座標。如果不加編碼，模型只知道這站是「忠孝復興」，但不知道它在哪裡；加上了 <span class="math inline">$PE(n)$</span>，模型就像擁有了一份地圖，知道「忠孝復興」位於「忠孝敦化」之後，且兩者距離很近。</li>
+            <li><strong>限制與適用：</strong> 此方法非常適合處理固定維度的序列特徵，但由於正弦函數的週期性，若序列長度極端巨大，需謹慎選擇週期頻率，以避免位置資訊發生「重複混淆」。</li>
+            </ul>
+            <h3>為什麼需要設計這兩個 Loss Function？</h3>
+            <p>想像你在訓練一個機器人去學習模仿人類的動作。如果我們只告訴它「你的手要到這裡（關節點）」，它可能會為了達成目標而把手臂扭曲成一個不合常理的角度，像是把手肘反向彎曲，這雖然座標對了，但動作看起來卻像恐怖片。</p>
+            <p>因此，我們引入了 <strong><span class="math inline">$\mathcal{L}_{joint}$</span>（關節損失）</strong> 與 <strong><span class="math inline">$\mathcal{L}_{bone}$</span>（骨骼損失）</strong>。這就像是教練在訓練學生時的「雙重標準」：<br />
+            1. <strong><span class="math inline">$\mathcal{L}_{joint}$</span></strong> 確保你的「終點」沒錯，就像是在比對測驗題的答案選項。<br />
+            2. <strong><span class="math inline">$\mathcal{L}_{bone}$</span></strong> 確保你的「姿態」沒錯，就像是規定揮拍時手腕與球拍的角度必須符合物理力學。</p>
+            <hr />
+            <h3>公式拆解與白話說明</h3>
+            <p>這兩個損失函數的結合 <span class="math inline">$\mathcal{L}_{joint} + \mathcal{L}_{bone}$</span>，能同時限制模型產出的「空間位置」與「骨架結構」。</p>
+            <h4>1. 關節損失 <span class="math inline">$\mathcal{L}_{joint}$</span></h4>
+            <p>這是衡量模型預測的關節座標與真實數據之間的誤差。<br />
+            *   <strong>白話文：</strong> 「你預測的關節位置，距離正確位置還差幾公分？」<br />
+            *   <strong>公式意義：</strong> 通常採用 MSE（均方誤差），即 <span class="math inline">$\mathcal{L}_{joint} = \| \hat{J} - J \|^2$</span><br />
+                *   <span class="math inline">$\hat{J}$</span>：模型預測出來的關節座標。<br />
+                *   <span class="math inline">$J$</span>：真實動作的關節座標。<br />
+                *   <span class="math inline">$\| \cdot \|^2$</span>：計算兩點之間的歐式距離平方，距離越遠，懲罰越大。</p>
+            <h4>2. 骨骼損失 <span class="math inline">$\mathcal{L}_{bone}$</span></h4>
+            <p>這是衡量預測出的骨架方向是否正確，確保關節之間的連接符合真實人體的結構。<br />
+            *   <strong>白話文：</strong> 「你畫出的這段骨頭方向，是不是轉錯角度了？」<br />
+            *   <strong>公式意義：</strong> <span class="math inline">$\mathcal{L}_{bone} = \| \hat{B} - B \|^2$</span><br />
+                *   <span class="math inline">$\hat{B}$</span>：模型計算出的骨架向量（即兩點相減產生的向量）。<br />
+                *   <span class="math inline">$B$</span>：真實骨架向量。<br />
+                *   透過限制向量，模型會強迫學會「長度」與「旋轉角度」的正確比例。</p>
+            <hr />
+            <h3>數值操作範例</h3>
+            <p>假設我們在訓練模型計算手臂的「肩膀」到「手肘」這一段骨頭：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">說明</th>
+            <th style="text-align: left;">數值示例</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{J}_{elbow}$</span></td>
+            <td style="text-align: left;">預測手肘座標</td>
+            <td style="text-align: left;"><span class="math inline">$(1.1, 0.9)$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$J_{elbow}$</span></td>
+            <td style="text-align: left;">真實手肘座標</td>
+            <td style="text-align: left;"><span class="math inline">$(1.0, 1.0)$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{B}$</span></td>
+            <td style="text-align: left;">預測骨架向量</td>
+            <td style="text-align: left;"><span class="math inline">$(0.1, -0.1)$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$B$</span></td>
+            <td style="text-align: left;">真實骨架向量</td>
+            <td style="text-align: left;"><span class="math inline">$(0.0, 0.0)$</span></td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>計算結果：</strong><br />
+            *   <span class="math inline">$\mathcal{L}_{joint} = \| (1.1, 0.9) - (1.0, 1.0) \|^2 = \| (0.1, -0.1) \|^2 = 0.1^2 + (-0.1)^2 = 0.02$</span><br />
+            *   <span class="math inline">$\mathcal{L}_{bone} = \| (0.1, -0.1) - (0.0, 0.0) \|^2 = 0.02$</span></p>
+            <p><strong>實務解讀：</strong><br />
+            如果總誤差是 <span class="math inline">$0.04$</span>，這代表模型現在的產出與現實有 <span class="math inline">$0.02$</span> 單位的偏差。如果今天模型為了降低 <span class="math inline">$\mathcal{L}_{joint}$</span> 把座標點拉得太近，但卻導致骨頭變形，那麼 <span class="math inline">$\mathcal{L}_{bone}$</span> 會隨之變大，從而懲罰模型，迫使它在「座標正確」的同時，也要維持「骨架結構」的穩定。</p>
+            <hr />
+            <h3>適用情境與限制</h3>
+            <ul>
+            <li><strong>適用情境：</strong> 適用於任何需要精確控制骨架運動的生成模型（如 AI 影片生成、虛擬角色驅動）。</li>
+            <li><strong>效益：</strong> 有效解決模型在處理複雜動作時，出現「關節脫臼」或「肢體扭曲」的異常現象。</li>
+            <li><strong>限制：</strong> 模型必須要有預先定義好的骨架連接關係。如果場景中的物件沒有固定結構（例如液體或柔軟布料），使用 <span class="math inline">$\mathcal{L}_{bone}$</span> 就會因為骨架定義不明而失去效力。</li>
+            </ul>
+            <h3>為什麼需要「關節約束 (Joint Constraint)」？</h3>
+            <p>在動作生成的任務中，我們最怕生成的骨架看起來「歪七扭八」。如果只讓 AI 自行發揮，它生成的動作可能會出現手肘穿過身體、腳掌位置漂移等違反人體工學的情況。</p>
+            <p>這就像是教小孩子畫畫：如果只給他畫筆而不告訴他結構，他畫出來的人可能手長腳短。為了確保 AI 生成的姿勢與真實參考資料（Ground Truth）精確對齊，我們引入了「關節約束」。這就像是在畫布上先畫好幾條輔助線，強迫 AI 必須把關鍵的骨骼節點（關節）擺在正確的位置上。</p>
+            <hr />
+            <h3>公式拆解：關節約束 <span class="math inline">$\mathcal{L}_{joint}$</span></h3>
+            <p>為了確保生成的關節位置準確，我們使用了以下損失函數：</p>
+            <div class="formula">$$\mathcal{L}_{joint} = \sum_{t=1}^{T} \sum_{j=1}^{J} \| \hat{P}_{t,j} - P_{t,j} \|^2$$</div>
+            
+            <h4>1. 變數字典</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">符號</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">生活化類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{joint}$</span></td>
+            <td style="text-align: left;">關節損失總值</td>
+            <td style="text-align: left;">總共扣了多少分（越低越好）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$T$</span></td>
+            <td style="text-align: left;">總時間步長</td>
+            <td style="text-align: left;">總共有幾張動作畫面</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$J$</span></td>
+            <td style="text-align: left;">關節數量</td>
+            <td style="text-align: left;">骨架上有幾個關鍵支點（如肩膀、手肘）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\hat{P}_{t,j}$</span></td>
+            <td style="text-align: left;">模型生成的關節座標</td>
+            <td style="text-align: left;">AI 擺出來的位置</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$P_{t,j}$</span></td>
+            <td style="text-align: left;">真實的關節座標</td>
+            <td style="text-align: left;">教練示範的標準位置</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>2. 白話文解釋</h4>
+            <p>這公式其實就是在算「偏差距離」：我們把每一幀畫面中，AI 生成的每一個關節位置，去跟標準答案（Ground Truth）對照，算出兩者距離的平方。最後把所有時間點、所有關節的距離都加起來。<strong>距離差越小，分數越低，代表 AI 擺姿勢擺得越精準。</strong></p>
+            <hr />
+            <h3>數值計算範例</h3>
+            <p>假設我們現在只看「手肘」這一個關節在「某一秒」的誤差：<br />
+            *   <strong>真實位置 <span class="math inline">$P$</span></strong>：<span class="math inline">$(10, 5)$</span><br />
+            *   <strong>AI 生成位置 <span class="math inline">$\hat{P}$</span></strong>：<span class="math inline">$(12, 8)$</span></p>
+            <p><strong>計算過程：</strong><br />
+            1. 計算水平與垂直距離：<span class="math inline">$(12 - 10) = 2$</span>；<span class="math inline">$(8 - 5) = 3$</span><br />
+            2. 平方相加：<span class="math inline">$2^2 + 3^2 = 4 + 9 = 13$</span><br />
+            3. 因此該關節在該時間點的貢獻值為 <span class="math inline">$13$</span>。</p>
+            <p><strong>實務意義：</strong><br />
+            這個數字 <span class="math inline">$13$</span> 代表了「失真程度」。如果在訓練過程中，我們看到這個數值從 <span class="math inline">$100$</span> 掉到 <span class="math inline">$10$</span> 再降到 <span class="math inline">$1$</span>，就表示 AI 從原本隨意亂擺，逐漸學會了精準對位，最後生成的姿勢幾乎與人類教練的示範完全重疊。</p>
+            <hr />
+            <h3>適用情境與限制</h3>
+            <ul>
+            <li><strong>適用情境</strong>：任何需要精確骨架姿勢的任務，如虛擬直播、運動員動作分析、醫療復健評估。</li>
+            <li><strong>效益</strong>：強制模型守住底線，避免動作變形。</li>
+            <li><strong>潛在限制</strong>：雖然這個約束保證了位置精確，但它無法單獨解決「動作流暢度」。如果只盲目追求位置準確，動作可能會顯得生硬。在實作上，通常會結合其他平滑度指標一起使用，達到「既準確又自然」的效果。</li>
+            </ul>
+            <div class="formula">$$\mathcal{L}_{joint} = \frac{1}{J} \sum_{j=1}^{J} |p_j - p&#x27;_j| \quad (9)$$</div>
+            
+            <h3>為什麼需要「骨架約束 (Bone Constraint)」？</h3>
+            <p>在生成動作或姿態時，我們常遇到一個尷尬的狀況：模型雖然畫出了手腳，但肢體結構卻扭曲了——例如大腿長度突然變短、或者關節呈現不合人體工學的扭曲。這就像是一個學畫畫的新手，人物輪廓畫對了，但比例卻嚴重失真。</p>
+            <p>為了讓生成的骨架更精準，我們引入了 <span class="math inline">$\mathcal{L}_{bone}$</span>。它的核心邏輯很簡單：<strong>直接要求生成骨架的長度與標準人體比例保持一致</strong>。透過這種約束，我們確保了模型產出的骨架結構既穩固又具備物理真實感。</p>
+            <hr />
+            <h3>公式拆解與變數意義</h3>
+            <p>我們使用以下公式來計算骨架誤差：</p>
+            <div class="formula">$$\mathcal{L}_{bone} = \frac{1}{N} \sum_{i=1}^{N} \| \|p_{i, start} - p_{i, end}\| - l_i \|^2$$</div>
+            
+            <h4>變數白話對照表</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">符號</th>
+            <th style="text-align: left;">代表意義</th>
+            <th style="text-align: left;">生活化類比</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$N$</span></td>
+            <td style="text-align: left;">骨架關節的數量</td>
+            <td style="text-align: left;">這副骨架總共有幾根「棍子」</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_{i, start}, p_{i, end}$</span></td>
+            <td style="text-align: left;">骨骼兩端的 3D 座標</td>
+            <td style="text-align: left;">棍子兩端的空間定位點</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\|p_{i, start} - p_{i, end}\|$</span></td>
+            <td style="text-align: left;">計算出來的骨骼長度</td>
+            <td style="text-align: left;">實際量測這根棍子有多長</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$l_i$</span></td>
+            <td style="text-align: left;">標準人體骨骼長度</td>
+            <td style="text-align: left;">測量標準模型中該部位的固定長度</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>公式白話文：</strong><br />
+            這公式是在計算「真實測量的骨長」與「預設的標準骨長」之間的差距平方。我們把每一根骨頭的誤差算出來，加總後取平均。當誤差為 0 時，代表骨架完美符合標準比例。</p>
+            <hr />
+            <h3>具體數值示例</h3>
+            <p>假設我們在檢測「大腿骨」的長度：<br />
+            *   <strong>標準長度 <span class="math inline">$l_i$</span></strong>：設定為 0.5 公尺。<br />
+            *   <strong>模型生成座標</strong>：測量後發現大腿長度 <span class="math inline">$\|p_{i, start} - p_{i, end}\|$</span> 為 0.6 公尺。</p>
+            <p><strong>計算過程：</strong><br />
+            1.  誤差值 = <span class="math inline">$|0.6 - 0.5| = 0.1$</span><br />
+            2.  平方誤差 = <span class="math inline">$0.1^2 = 0.01$</span></p>
+            <p><strong>意義解讀：</strong><br />
+            如果總損失值 <span class="math inline">$\mathcal{L}_{bone}$</span> 很大，代表模型生成的骨骼長度飄移嚴重；如果數值接近 0，代表模型的動作姿態已經嚴格鎖定在正確的身體比例內。這就像是訓練模型戴上一副「比例眼鏡」，讓它看世界時會自動糾正扭曲的肢體。</p>
+            <hr />
+            <h3>效益與適用情境</h3>
+            <ul>
+            <li><strong>為什麼有效？</strong> 它提供了明確的幾何物理參考（Ground Truth），讓模型不再只靠猜測「動作該長怎樣」，而是有了「骨骼長度不能變」的硬指標。</li>
+            <li><strong>適用情境：</strong> 特別適合應用於角色動畫生成、數位替身製作等需要高度還原人體結構的場景。</li>
+            <li><strong>限制：</strong> 此約束假設人體骨架長度是固定不變的。若應用於包含變形（如怪物、伸縮自如的動畫角色）的場景，則需調整 <span class="math inline">$l_i$</span> 為動態變數，否則會限制模型的創意發揮。</li>
+            </ul>
+            <h3>為什麼需要這套「骨骼對齊機制」？</h3>
+            <p>在生成人體動作或姿態的模型中，如果只看整體的「像素位置」是否對齊，往往會忽略骨架的結構邏輯。這就像拼圖一樣，即便你把所有拼圖塊都放在正確的範圍內，如果零件之間的連接角度錯了，拼出來的人物就會扭曲、骨折。</p>
+            <p>為了確保模型生成的姿勢不僅「看起來」像，還要「動起來」符合生物力學，我們引入了 <span class="math inline">$\mathcal{L}_{bone}$</span> 這個損失函數（Loss Function）。它的核心作用是<strong>強迫模型學習骨骼的方向性</strong>，透過直接比對「真實骨骼向量」與「預測骨骼向量」的誤差，讓模型在生成動作時，能像訓練有素的舞者一樣，精準掌握關節的連接方向。</p>
+            <hr />
+            <h3>公式拆解：骨骼誤差 <span class="math inline">$\mathcal{L}_{bone}$</span></h3>
+            <p>這是一個經典的「均方誤差（MSE）」變體，用來衡量預測骨架與真實骨架之間的「角度偏差」。</p>
+            <div class="formula">$$\mathcal{L}_{bone} = \frac{1}{B} \sum_{b=1}^{B} (q_b - q&#x27;_b)^2$$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">符號</th>
+            <th style="text-align: left;">意義</th>
+            <th style="text-align: left;">白話解釋</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{bone}$</span></td>
+            <td style="text-align: left;">骨骼損失值</td>
+            <td style="text-align: left;">數字越小，代表模型生成的骨架姿勢越精準。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$B$</span></td>
+            <td style="text-align: left;">骨骼總數</td>
+            <td style="text-align: left;">模型的骨架總共有幾根骨頭（例如手肘到手腕是一根）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$q_b$</span></td>
+            <td style="text-align: left;">真實骨骼方向向量</td>
+            <td style="text-align: left;">這是標準答案，代表骨骼正確的指向位置。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$q&#x27;_b$</span></td>
+            <td style="text-align: left;">預測骨骼方向向量</td>
+            <td style="text-align: left;">這是模型算出來的結果，可能會有誤差。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話版公式意義：</strong><br />
+            「先算每一根骨頭的誤差（平方值），把所有骨頭的誤差加起來，最後除以骨頭數量算出『平均每一根骨頭錯了多少』。」</p>
+            <hr />
+            <h3>具體數值範例</h3>
+            <p>假設我們現在要比對「前臂」這一根骨頭的方向：<br />
+            *   <strong>真實指向 (<span class="math inline">$q_b$</span>)</strong>：<span class="math inline">$(0.8, 0.6)$</span><br />
+            *   <strong>預測指向 (<span class="math inline">$q&#x27;_b$</span>)</strong>：<span class="math inline">$(0.7, 0.5)$</span><br />
+            *   <strong>骨骼數量 (<span class="math inline">$B$</span>)</strong>：假設為了簡化，目前只看這一根骨頭 <span class="math inline">$B=1$</span></p>
+            <ol>
+            <li>計算誤差：<span class="math inline">$(q_b - q&#x27;_b) = (0.8-0.7, 0.6-0.5) = (0.1, 0.1)$</span></li>
+            <li>平方誤差：<span class="math inline">$0.1^2 + 0.1^2 = 0.01 + 0.01 = 0.02$</span></li>
+            <li>最終結果：<span class="math inline">$\mathcal{L}_{bone} = \frac{0.02}{1} = 0.02$</span></li>
+            </ol>
+            <p><strong>結果解讀：</strong><br />
+            這個 <span class="math inline">$0.02$</span> 的數字代表目前的誤差程度。在實務上，我們會將這個數值回傳給模型，模型會根據這個「0.02」的懲罰訊號，自動修正其參數，使得下次生成的向量更接近 <span class="math inline">$(0.8, 0.6)$</span>。數值越接近 0，代表生成的動作骨架越自然、沒有錯位。</p>
+            <hr />
+            <h3>如何計算骨骼方向？（實作關鍵）</h3>
+            <p>如圖 4 所示，計算骨骼方向的邏輯非常直觀：我們把人體視為一棵「樹」。<br />
+            *   <strong>父節點 (Parent Node)</strong>：骨骼的起始點（例如肩膀）。<br />
+            *   <strong>子節點 (Child Node)</strong>：骨骼的結束點（例如手肘）。</p>
+            <p>計算方式即為：<span class="math inline">$\vec{v} = \text{Child} - \text{Parent}$</span>。<br />
+            只要將這一節向量正規化（Normalization），就能得到該骨骼的「方向」。透過這種計算方式，即便模型生成的關節點稍微位移，只要整體的「方向向量」維持一致，最終生成的動作依然能保持合理的骨架結構，不會出現關節扭曲的恐怖谷現象。</p>
+            <div class="formula">$$q = (\vec{x}_b, \vec{y}_b, \vec{z}_b) \quad (11)$$</div>
+            
+            <p>The final optimization goal is:</p>
+            <h3>為什麼要這樣設計：平衡「整體效果」與「結構骨架」</h3>
+            <p>在生成模型（如擴散模型）的逆向過程（Reverse Process）中，我們通常追求產出整體的完美影像。但如果只專注於像素的整體品質，模型往往會忽略物體內部的「骨架結構」，導致生成的姿態支離破碎。</p>
+            <p>這就像是<strong>裝潢一間房子</strong>：<span class="math inline">$\mathcal{L}_{joint}$</span> 負責牆面粉刷與裝飾（整體觀感），而 <span class="math inline">$\mathcal{L}_{bone}$</span> 則是確保房屋的梁柱結構正確（骨架關鍵點）。如果只看裝飾，牆面可能很漂亮，但結構卻是歪的。因此，我們引入一個權重 <span class="math inline">$\lambda$</span> 來進行「校準」，讓模型在優化的過程中，既顧及大局，又不會忘記支撐主體的骨架。</p>
+            <hr />
+            <h3>公式拆解：損失函數的權重平衡</h3>
+            <div class="formula">$$\mathcal{L} = \mathcal{L}_{joint} + \lambda \mathcal{L}_{bone}$$</div>
+            
+            <h4>變數與邏輯說明</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}$</span></td>
+            <td style="text-align: left;"><strong>總損失值</strong>。數值越小，代表生成效果越接近目標。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{joint}$</span></td>
+            <td style="text-align: left;"><strong>整體損失</strong>。衡量模型生成的所有點位（如全身像素）與真實情況的偏差。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\lambda$</span></td>
+            <td style="text-align: left;"><strong>骨架加權係數</strong>。調整「骨架結構」相對於「整體外觀」的重要性。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{bone}$</span></td>
+            <td style="text-align: left;"><strong>骨架損失</strong>。專門衡量骨骼關節位置是否準確。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>白話公式意義：</strong><br />
+            總體滿意度 = （整體表現的分數）+ （骨架正確度的分數 <span class="math inline">$\times$</span> 重視程度）。</p>
+            <hr />
+            <h3>數值範例：假設我們正在訓練一個虛擬人像</h3>
+            <p>假設在某個訓練步驟中，模型計算出的誤差數據如下：<br />
+            *   整體影像的偏差程度 <span class="math inline">$\mathcal{L}_{joint} = 0.5$</span><br />
+            *   骨架關節的偏差程度 <span class="math inline">$\mathcal{L}_{bone} = 2.0$</span><br />
+            *   依據原文設定 <span class="math inline">$\lambda = 0.1$</span></p>
+            <p><strong>帶入計算：</strong></p>
+            <div class="formula">$$\mathcal{L} = 0.5 + (0.1 \times 2.0) = 0.5 + 0.2 = 0.7$$</div>
+            
+            <p><strong>解讀意義：</strong><br />
+            如果不加這 <span class="math inline">$0.2$</span> 的權重，模型只會看到 <span class="math inline">$0.5$</span> 的整體誤差，可能會為了讓影像看起來「模糊但整體色調正確」而忽略了骨架偏移。透過加入 <span class="math inline">$\lambda \mathcal{L}_{bone}$</span>，我們強制模型多花 <span class="math inline">$0.2$</span> 的心力去修正骨架問題。這 <span class="math inline">$0.7$</span> 的數值代表了模型目前「在整體與結構之間取得的妥協」，數值越小，代表模型生成的動作與外觀越精準。</p>
+            <hr />
+            <h3>效益與適用情境</h3>
+            <ul>
+            <li><strong>為什麼這樣有效？</strong> 透過 <span class="math inline">$\lambda=0.1$</span> 的設定，我們賦予了骨架結構「優先權」，但又不會讓它完全淹沒整體外觀的學習。這是一種「細節引導整體」的策略。</li>
+            <li><strong>適用情境：</strong> 凡是涉及<strong>身體姿態、動作生成、或具有特定幾何結構的物體生成</strong>，這種結合「全域」與「局部骨架」的雙重損失函數，能有效避免生成的影像出現「肢體亂長」或「關節錯位」的怪異現象。</li>
+            <li><strong>限制：</strong> 如果 <span class="math inline">$\lambda$</span> 設得太大，模型會過度糾結於骨架精準度，導致皮膚紋理、細節模糊（因為過度犧牲 <span class="math inline">$\mathcal{L}_{joint}$</span>）；反之，設得太小則無法發揮校正結構的作用。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-8">
+        <h2>Section 8 - 3.5. Dataset</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>3.5. 數據集說明：為什麼要用 PHENIX14T？</h3>
+            <p>在開發手語識別系統時，我們面臨的最大挑戰是「語言的歧異性」。手語並非單純的手部動作，它包含臉部表情與肢體軌跡，如果數據集太單薄，模型就會像剛學外語的初學者，只能死記硬背，卻無法學會「語法」。因此，我們選用 <strong>PHENIX14T</strong> 作為核心訓練素材，它就像是一本內容豐富的「手語百科全書」。</p>
+            <h4>為什麼選擇這個數據集？</h4>
+            <p>想像你要訓練一名專業的口譯員。如果你只讓他看 10 張圖片，他永遠無法掌握語言的流動感。PHENIX14T 的強大之處在於其<strong>「多樣性與完整性」</strong>：<br />
+            *   <strong>規模適中</strong>：擁有 8,257 個完整的動作實例。這就像讓學生讀了八千篇情境故事，足以涵蓋各種手勢的變化。<br />
+            *   <strong>詞彙密度高</strong>：涵蓋了 2,887 個獨特的德語詞彙。這解決了傳統模型在遇到生僻字時就「當機」的問題。<br />
+            *   <strong>標記豐富</strong>：包含了 1,066 種不同的手勢符號。這讓模型能分辨出「細微差異」（例如：手指微彎與平直可能代表不同意思）。</p>
+            <hr />
+            <h4>數據集核心結構拆解</h4>
+            <p>我們可以用一個簡單的關係式來理解數據集的「資訊密度」：</p>
+            <div class="formula">$$ \text{Density} = \frac{N_{instances}}{V_{unique}} $$</div>
+            
+            <p><strong>公式拆解說明：</strong><br />
+            *   <span class="math inline">$\text{Density}$</span>（數據密度）：代表模型平均每個詞彙擁有的訓練範例數，數值越高，模型越不容易過度擬合（Overfitting）。<br />
+            *   <span class="math inline">$N_{instances}$</span>：數據集中的總實例數量（本研究為 8,257）。<br />
+            *   <span class="math inline">$V_{unique}$</span>：數據集中獨特的詞彙總數（本研究為 2,887）。</p>
+            <p><strong>白話版公式意思：</strong><br />
+            這公式是在算「每個詞彙到底有多少個不同的手語姿勢可以參考」。如果這數字太低，模型就像是沒看過幾次這單字，考試肯定寫不出來。</p>
+            <p><strong>具體數值範例：</strong><br />
+            代入 PHENIX14T 的數據：</p>
+            <div class="formula">$$ \text{Density} = \frac{8,257}{2,887} \approx 2.86 $$</div>
+            
+            <p><strong>實務上的解讀：</strong><br />
+            這意味著對於每一個德語詞彙，我們平均有約 <strong>2.86 個不同的手語演繹方式</strong>。這是一個非常健康的數字，代表模型在學習過程中，不僅能看到該詞彙的「標準動作」，還能看到些許的變化型（例如不同拍攝角度、速度或習慣動作），這大幅提升了系統在真實場景中的穩定性。</p>
+            <hr />
+            <h4>適用場景與限制</h4>
+            <ul>
+            <li><strong>適用情境</strong>：適合需要精確識別複雜手語，且詞彙量需求在三千字以內的德語手語識別研究。</li>
+            <li><strong>潛在挑戰</strong>：雖然 PHENIX14T 數據量充足，但仍屬於「封閉環境下的錄製」。若將此系統移至戶外、雜亂背景或光線不佳的環境，模型可能仍需透過額外的數據增強（Data Augmentation）來提升泛化能力。</li>
+            </ul>
+            <p>簡單來說，PHENIX14T 是我們確保模型「聽得懂、看得到、猜得準」的基石，為後續的識別實驗提供了最穩固的訓練養分。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-9">
+        <h2>Section 9 - 3.6. Implementation Details</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>3.6 實作細節：讓 AI 學會精準翻譯與重構的「工程配方」</h3>
+            <p>在深入模型架構前，我們先釐清一個核心問題：<strong>為什麼這些參數設定很重要？</strong></p>
+            <p>想像你要訓練一位頂尖廚師（模型），不僅要具備閱讀食譜（Text Encoder）的能力，還要能根據殘破的食材殘影（Diffusion 模型中的 Denoiser）還原出完整料理。如果廚師的「心智階層」（層數與維度）太低，就記不住複雜的步驟；如果「火候控制」（排程器 Scheduler）不對，最後的成品就會糊掉。</p>
+            <p>本研究採用了經過驗證的架構，確保模型既有足夠的深度來理解語意，又不會因為架構過於沈重而導致訓練崩潰。</p>
+            <hr />
+            <h3>1. 模型架構的「深度與廣度」</h3>
+            <p>我們選用了與 Progressive Transformer 相同的結構，這是為了確保模型在處理序列資訊時，能保留良好的長短期記憶。</p>
+            <ul>
+            <li><strong>層數 (Layers = 4)：</strong> 就像蓋房子有 4 層樓，分別處理語意從淺層到深層的抽象化。</li>
+            <li><strong>注意力頭數 (Heads = 8)：</strong> 就像會議室裡有 8 位專家同時聽取不同的重點，讓模型能從「語法」、「時態」、「語氣」、「指代」等多個角度同時分析句子。</li>
+            <li><strong>嵌入維度 (Embedding Dimension = 1024)：</strong> 這是模型理解世界的「解析度」。每個詞彙被轉化成 1024 個數字組成的向量，維度越高，模型能捕捉的細節越細膩。</li>
+            </ul>
+            <hr />
+            <h3>2. 擴散模型的「時光機」：Cosine Scheduler</h3>
+            <p>擴散模型（Diffusion Model）的運作邏輯，是從「純雜訊」中一點一滴找回「原始資訊」。這裡使用的 <code>Cosine Scheduler</code>（餘弦排程器）就像是一個倒數計時器，決定了模型在還原過程中，每一步要走得多快。</p>
+            <p><strong>公式拆解：</strong><br />
+            在擴散模型中，時間步 <span class="math inline">$T$</span> 定義了還原過程的總長度：</p>
+            <div class="formula">$$T = 1000$$</div>
+            
+            <ul>
+            <li><strong>白話解釋：</strong> 這代表模型把「從模糊到清晰」的過程切分成 1000 個微小的步驟。</li>
+            <li><strong>為什麼這樣做：</strong> 如果步驟太少，跳躍感太大，模型會「看不清楚」；步驟太多則運算成本太高。餘弦排程器確保了在接近完成時，還原的動作會變得更細緻，不會因急躁而產生雜訊。</li>
+            </ul>
+            <hr />
+            <h3>3. 訓練的核心引擎：Adam Optimizer</h3>
+            <p>訓練模型就像開車，<code>Adam</code> 是我們選擇的導航系統，而 <code>Learning Rate</code> 是我們踩油門的力度。</p>
+            <p><strong>公式拆解：</strong></p>
+            <div class="formula">$$LR = 1 \times 10^{-3}$$</div>
+            
+            <ul>
+            <li><strong>變數解釋：</strong> <span class="math inline">$LR$</span> 為學習率（Learning Rate），即每次迭代參數更新的步長。</li>
+            <li><strong>白話解釋：</strong> 這是模型自我修正的腳步大小。若 <span class="math inline">$LR$</span> 太大，模型會像暴衝的車子，錯過最佳解；若太小，模型則會走得太慢，訓練永遠跑不完。</li>
+            </ul>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">參數設定</th>
+            <th style="text-align: left;">數值</th>
+            <th style="text-align: left;">實際意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>層數 (Layers)</strong></td>
+            <td style="text-align: left;">4</td>
+            <td style="text-align: left;">維持適度模型複雜度，平衡訓練與效能</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>注意力頭數 (Heads)</strong></td>
+            <td style="text-align: left;">8</td>
+            <td style="text-align: left;">同時處理 8 種不同層級的語意特徵</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>嵌入維度 (Dim)</strong></td>
+            <td style="text-align: left;">1024</td>
+            <td style="text-align: left;">賦予模型細膩的語意辨識精度</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>總步驟數 (T)</strong></td>
+            <td style="text-align: left;">1000</td>
+            <td style="text-align: left;">確保從雜訊到圖像/文字的還原過程平滑</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>學習率 (LR)</strong></td>
+            <td style="text-align: left;">0.001</td>
+            <td style="text-align: left;">設定合理的參數更新步調，避免震盪</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>4. 具體數值示例</h3>
+            <p>假設我們正在訓練模型，當前的損失函數（Loss）誤差為 <span class="math inline">$L$</span>，我們使用 <span class="math inline">$LR = 1 \times 10^{-3}$</span> 來調整參數 <span class="math inline">$W$</span>：</p>
+            <div class="formula">$$W_{new} = W_{old} - (LR \times \nabla L)$$</div>
+            
+            <ul>
+            <li>假設當前梯度的變化量 <span class="math inline">$\nabla L = 0.5$</span>：</li>
+            <li>計算：<span class="math inline">$W_{new} = W_{old} - (0.001 \times 0.5) = W_{old} - 0.0005$</span></li>
+            </ul>
+            <p><strong>解讀：</strong> <br />
+            這個計算結果告訴我們，模型每進行一次迭代，會根據誤差反向調整參數 0.0005 個單位。這是一個相當穩定且標準的更新速度，確保模型在 1000 個時間步的擴散過程中，能平滑地收斂到正確的生成路徑，不會因為大幅度的數值震盪而遺失已經學到的特徵。</p>
+            <h3>總結</h3>
+            <p>本方法的設計邏輯在於<strong>「精簡且標準」</strong>：透過 4 層深度架構確保模型容量，利用 Cosine 排程器控制還原進度，並以 <span class="math inline">$10^{-3}$</span> 的學習率精準導向最佳參數。這套組合拳的效益在於它能極大化訓練效率，同時避免了過度擬合（Overfitting）或是訓練發散的問題。</p>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-10">
+        <h2>Section 10 - 4. Conclusions</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>4. 總結：手語生成的關鍵升級</h3>
+            <h4>為什麼要這樣設計？（解決痛點）</h4>
+            <p>手語不只是單純的手勢動作，它包含了極其複雜的「時序變化」（動作的先後順序）與「空間依賴」（手的位置與身體的距離）。傳統的 Transformer 模型雖然擅長處理序列資料，但在面對手語這種極度細膩、充滿動態細節的影像時，往往會產生「模糊」或是「邏輯斷層」的問題。</p>
+            <p>這就像是請一位畫家根據一段描述畫出動作：普通模型可能畫得出來大概，但細節總是不夠精準。因此，我們引入了「擴散模型（Diffusion Model）」，就像是給畫家加上了一層「反覆修復與細化」的濾鏡，讓每一幀動作都能精確落在正確的時空位置上。</p>
+            <h4>核心技術邏輯：堆疊與細化</h4>
+            <p>我們的作法可以類比為「草稿 + 精修」的工序：<br />
+            1.  <strong>基座（Progressive Transformer）：</strong> 負責描繪手語生成的「大骨架」，確保動作邏輯沒跑偏。<br />
+            2.  <strong>升級（Diffusion Model）：</strong> 在大骨架基礎上，透過不斷的反覆運算（Diffusion Process），將模糊的動作轉化為清晰、具備連貫性的手語影像。</p>
+            <h4>關鍵成果解讀（公式與數據說明）</h4>
+            <p>在學術評估中，我們使用 BLEU-1 分數來衡量生成的內容與真實手語的相似度。BLEU 分數越高，代表生成的語句與人類真實手語越接近。</p>
+            <p>公式架構與變數說明如下：</p>
+            <div class="formula">$$ \text{BLEU-1} = \exp\left(\sum_{n=1}^{1} w_n \ln p_n\right) \cdot BP $$</div>
+            
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">變數</th>
+            <th style="text-align: left;">白話含義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$p_n$</span></td>
+            <td style="text-align: left;">精準度（Precision），即模型生成的詞彙有多少比例命中參考答案。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$w_n$</span></td>
+            <td style="text-align: left;">權重，針對 n-gram 的重要性分配（此處為 1-gram）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$BP$</span></td>
+            <td style="text-align: left;">短句懲罰（Brevity Penalty），防止模型只生成極短句子來灌高分數。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>數值計算與實務意義示例：</strong><br />
+            *   <strong>計算情境：</strong> 在 PHENIX14T 資料集測試中，我們的模型達到了 <span class="math inline">$20.17$</span> 的 BLEU-1 分數。<br />
+            *   <strong>公式拆解舉例：</strong> 假設模型生成了 100 個手勢詞，其中有 20.17 個詞與專家標註完全吻合。若 <span class="math inline">$BP$</span> 為 1（代表長度適中），則得分為 <span class="math inline">$20.17$</span>。<br />
+            *   <strong>意義：</strong> 這不僅僅是一個數字，它代表了我們的模型在處理高度複雜的手語轉換任務時，已經能從「模擬動作」提升到「精確表意」的水平。</p>
+            <h4>總結與限制</h4>
+            <p>透過結合 Progressive Transformer 與擴散模型，我們成功解決了手語生成中長期存在的「動態細節丟失」難題。</p>
+            <ul>
+            <li><strong>優勢：</strong> 能精確捕捉極其細微的時空交互關係。</li>
+            <li><strong>適用情境：</strong> 特別適合需要高度精準翻譯的遠距醫療導覽、手語自動教學系統。</li>
+            <li><strong>未來挑戰：</strong> 擴散模型的生成過程涉及多次反覆運算，雖然效果好，但對算力（GPU）的要求較高，未來的優化方向將集中在提升生成速度，使其能達到即時對話的門檻。</li>
+            </ul>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

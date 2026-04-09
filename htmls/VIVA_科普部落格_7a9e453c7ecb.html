@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: "Noto Sans TC", sans-serif; line-height: 1.8; max-width: 780px; margin: 0 auto; padding: 24px; background: #fffdf7; color: #2c2c2c; }
+h1 { font-size: 1.8rem; color: #1a3a5c; border-bottom: 3px solid #4a90d9; padding-bottom: 10px; }
+h2 { font-size: 1.3rem; color: #2c5f8a; margin-top: 32px; border-left: 5px solid #4a90d9; padding-left: 12px; }
+.meta { color: #888; font-size: 13px; margin-bottom: 24px; }
+.blog-section { margin-bottom: 36px; }
+.blog-section p { margin-bottom: 14px; font-size: 1.05rem; }
+.hook { font-size: 1.15rem; color: #c0392b; font-weight: bold; margin-bottom: 16px; }
+.thinking { background: #f0f7ff; border-left: 4px solid #4a90d9; padding: 14px 18px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 0.97rem; color: #3a5a7a; }
+.thinking-title { font-weight: bold; color: #2c5f8a; margin-bottom: 6px; }
+.thinking::before { content: "🤔 "; }
+.analogy { background: #fff9e6; border-left: 4px solid #f0ad4e; padding: 14px 18px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 0.97rem; }
+.analogy::before { content: "💡 "; }
+.takeaway { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 14px 18px; margin: 16px 0; border-radius: 0 8px 8px 0; font-size: 0.97rem; }
+.takeaway::before { content: "📌 "; }
+.end-question { font-size: 1.1rem; color: #c0392b; font-weight: bold; margin-top: 20px; text-align: center; padding: 16px; background: #fff3f0; border-radius: 12px; border: 2px dashed #c0392b; }
+.term { background: #e8f4fd; padding: 1px 5px; border-radius: 4px; color: #2980b9; }
+</style>
+</head>
+<body>
+<h1>🤖 當 AI 學會「聽懂人話」：VIVA 論文解析</h1>
+<p class="meta">科普部落格版 · 2026-04-07</p>
+
+<div class="blog-section" id="intro">
+<h2>你會怎麼教 AI 編輯影片？</h2>
+<p class="hook">你有沒有想過，為什麼 AI 修圖能精準到毛髮邊緣，但面對「把這段影片的風格改成王家衛電影」這種指令，卻完全失效？</p>
+<p>這不是 AI 不夠強，而是「指令」本身就是一個模糊的東西。「王家衛風格」對你來說可能是色調偏暖、對比度高一點，但對 AI 來說，它從來沒有「看過」你的理解，所以只能瞎猜。</p>
+<p>這就是 VIVA 論文要解決的核心問題：如何讓 AI 影片編輯系統，真正「聽懂」複雜的、自然語言的指令？</p>
+<p class="end-question">❓ 問題來了：純文字不夠，那麼加入「視覺參考」之後，AI 的理解能精準多少？</p>
+</div>
+
+<div class="blog-section" id="core">
+<h2>VIVA 的核心思路：一個翻譯官 + 一個工匠 + 一個裁判</h2>
+<p>VIVA 的解決方案意外直覺：如果純文字會丟失訊息，那就讓模型同時「看著影片截圖」來理解指令。</p>
+<div class="thinking">
+<div class="thinking-title">🔍 這個設計解決了什麼問題？</div>
+<p>過去的影片編輯 AI 就像一個只看食譜做菜、卻從來沒有見過成品的廚師。食譜寫「糖少許」，廚師完全不知道「少許」是多少，因為他從來沒有吃過甜的東西。</p><p>VLM Instructor（視覺語言模型教練）的角色，就是讓廚師先看一眼最終成品長什麼樣，再去讀食譜。這樣「糖少許」翻譯成實際份量，自然就精準了。</p>
+</div>
+<p>系統分三個角色：</p>
+<p>① <span class="term">VLM Instructor</span>：同時吃「文字指令 + 影片第一幀 + 參考圖」，產生精準的視覺操作信號</p>
+<p>② <span class="term">DiT（Diffusion Transformer）</span>：根據信號生成編輯後的影片</p>
+<p>③ <span class="term">Edit-GRPO</span>：強化學習裁判，告訴模型「哪個版本比較好」，讓系統越做越好</p>
+<p class="end-question">❓ 三個角色裡，你覺得哪一個最關鍵？</p>
+</div>
+
+<div class="blog-section" id="method1">
+<h2>VLM Instructor：為什麼「看過畫面」這麼重要？</h2>
+<p>想像你請室內設計師幫你裝修，你不會只發語音說「把客廳弄得北歐風」，而是會傳一張現況照片、在圖上標註「這面牆打掉、那個角落放什麼」。</p>
+<div class="analogy">類比：VLM Instructor 就是那個「在照片上幫你標註」的角色——它把抽象指令翻譯成具體的視覺座標。</div>
+<p>VLM Instructor 會同時接收三樣東西：</p>
+<p>① 文字指令（「把背景改成夜景」）</p>
+<p>② 影片第一幀截圖（讓模型知道「現在長什麼樣」）</p>
+<p>③ 參考圖（可選，讓模型知道「目標長什麼樣」）</p>
+<p>三者結合之後，VLM Instructor 就能產生一個精準的「編輯操作信號」，DiT 收到這個信號後，就知道「要在哪個位置、做什麼修改」。</p>
+<p class="end-question">❓ 如果不放第一幀截圖，只放參考圖，行不行？這兩種「視覺上下文」的差異在哪？</p>
+</div>
+
+<div class="blog-section" id="method2">
+<h2>Token Refiner：中間的翻譯官</h2>
+<p>有了 VLM Instructor 翻譯指令，還需要有人把翻譯的內容轉達給 DiT。這就是 Token Refiner 的角色——一個輕量級的「即時口譯器」。</p>
+<div class="analogy">類比：VLM Instructor 像是說中文的導演，DiT 像是只懂英文的攝影師，Token Refiner 就是現場的口譯員，確保導演說的每句話都能一分不差地傳到攝影師耳朵裡。</div>
+<p>另一個設計：把「原始影片的壓縮特徵」也一起傳給 DiT。這確保了 DiT 在編輯時，不會把「不想改的地方」也一起改壞了。</p>
+<p>最後用 Masked Loss——告訴模型「這個區域是重點要多學，其他背景只要保持不破壞就好」。就像考試前老師幫你標出重點章節。</p>
+<p class="end-question">❓ 為什麼 DiT 需要原始影片的特徵？單靠 VLM Instructor 的指令不夠嗎？</p>
+</div>
+
+<div class="blog-section" id="method3">
+<h2>Edit-GRPO：讓 AI 自己在錯誤中進步</h2>
+<p>前面兩個設計解決了「聽懂指令」的問題，但「執行得好不好」還需要一個反饋機制。</p>
+<p>Edit-GRPO 的核心思想：不要只告訴模型「標準答案是什麼」，而是讓模型一次生成多個版本，然後比較「哪個比較好」。</p>
+<div class="thinking">
+<div class="thinking-title">🔍 三個維度的獎懲信號</div>
+<p>① <strong>指令遵循度</strong>：編輯後的影片有沒有按照指令執行？</p>
+<p>② <strong>原始保留度</strong>：不想改的地方有沒有被破壞？</p>
+<p>③ <strong>人類偏好</strong>：這個結果好不好看？符不符合人類審美？</p>
+</div>
+<p>這三個分數加起來，決定了模型本次表現的總獎勵。模型根據這些相對分數持續自我修正，慢慢學會「什麼是好編輯」。</p>
+<p>實際操作時，用 LoRA 來做輕量微調——就像在跑車上加裝一套新的煞車系統，不需要整輛車重建，卻能大幅提升操控性。</p>
+<p class="end-question">❓ 如果三個獎懲維度有衝突，例如「很聽話但破壞了背景」，模型會怎麼取捨？</p>
+</div>
+
+<div class="blog-section" id="exp">
+<h2>實驗結果：數據說了什麼？</h2>
+<p>VIVA 在 VIE-Bench（140 題專業考試）上的表現：</p>
+<p>① 在所有開源模型中排名第一</p>
+<p>② 分數與商業模型 Runway 差不多</p>
+<p>③ 14 位專業人士盲測：VIVA 在三個維度全面碾壓所有五個對手</p>
+<div class="takeaway">📌 最有趣的發現：消融實驗證明，VLM Instructor（視覺上下文）的貢獻是所有零件裡最大的——說明了「讓模型先看過畫面」這件事，本身就是關鍵突破。</div>
+<p>這對開源社群來說是一個重要的里程碑：專注優化後的開源方案，確實可以跟燒了大錢研發預算的商業系統一較高下，而且還免費開源。</p>
+<p class="end-question">❓ 如果讓你設計下一個實驗，你最想知道 VIVA 在哪種指令類型上最弱？</p>
+</div>
+
+<div class="blog-section" id="conclusion">
+<h2>結語：語言與視覺的橋樑</h2>
+<p>VIVA 的核心啟示是：當語言模型能真正「看到」視覺上下文時，它對複雜指令的理解會有一個質的飛躍。</p>
+<p>這個教訓不只在影片編輯領域有效——任何需要從「模糊指令」到「精準執行」的任務，都能從這個思路中受益。</p>
+<div class="takeaway">📌 最後一句話：最好的翻譯，不只是文字的轉換，而是文化的橋樑。最好的 AI 指令系統，不只是語言的解析，而是視覺與語言的橋樑。</div>
+</div>
+</body>
+</html>

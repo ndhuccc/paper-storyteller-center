@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<style>
+body { font-family: "Noto Sans TC", sans-serif; line-height: 1.9; max-width: 700px; margin: 0 auto; padding: 24px; background: #1a1a2e; color: #e8e8e8; }
+h1 { font-size: 1.6rem; color: #e94560; border-bottom: 2px solid #e94560; padding-bottom: 10px; margin-bottom: 6px; }
+.meta { color: #888; font-size: 12px; margin-bottom: 24px; }
+.podcast-section { background: #16213e; border-radius: 16px; padding: 24px 28px; margin-bottom: 28px; border: 1px solid #0f3460; }
+.podcast-section h2 { color: #e94560; font-size: 1.2rem; margin-bottom: 16px; border-bottom: 1px dashed #533483; padding-bottom: 8px; }
+.podcast-section p { margin-bottom: 12px; font-size: 1.02rem; color: #c8c8c8; }
+.seg { margin-bottom: 10px; }
+.pause { color: #f0a500; font-weight: bold; }
+.quote { color: #a8d8ea; font-style: italic; }
+.analogy { color: #f0a500; font-size: 0.97rem; margin-top: 10px; }
+.analogy::before { content: "🔑 "; }
+.sound { color: #e94560; font-size: 0.97rem; }
+.sound::before { content: "🎙️ "; }
+.term { color: #e94560; }
+</style>
+</head>
+<body>
+<h1>🎙️ VIVA 論文 Podcast</h1>
+<p class="meta">口語化逐字稿 · 可搭配 TTS 語音輸出</p>
+
+<div class="podcast-section" id="intro">
+<h2>EP0｜開場：為什麼你的 AI 影片編輯總是聽不懂人話？</h2>
+<p class="seg">哈囉，歡迎回來。今天我們聊一篇很有意思的論文，叫 VIVA。</p>
+<p class="seg">你有沒有遇到過這種情況：你跟 AI 說「把這段影片的風格改成王家衛的感覺」，然後 AI 做出來的東西……跟王家衛完全沒有關係？</p>
+<p class="seg"><span class="pause">等等，這裡有個關鍵問題：</span>「王家衛的感覺」這五個字，對你來說可能是暖色調、慢動作、藍色紫色對比強烈——但對 AI 來說，它從來沒有「看過」你心中的王家衛是什麼樣子。</p>
+<p class="seg"><span class="pause">所以它只能瞎猜。</span></p>
+<p class="seg">這就是這篇論文要解決的核心問題：如何讓 AI 影片編輯系統，真正「聽懂」複雜的、自然語言的指令？</p>
+<p class="seg"><span class="pause">簡單來說就是：</span> 給 AI 看一張「目標長什麼樣」的照片，比只給它一句話，效果要好太多了。</p>
+</div>
+
+<div class="podcast-section" id="problem">
+<h2>EP1｜問題：舊方法為什麼不行？</h2>
+<p class="seg">先說一下過去的做法。</p>
+<p class="seg">早期的方法叫「反演ベース」——把影片逆推回噪聲，再重新生出編輯版本。厲害之處是零樣本就能用，但效果普普通通。</p>
+<p class="seg"><span class="pause">後來有了開源影片擴散模型，各式各樣的「單一任務專家」冒出來了：</span> 有人專門做去背、有人專門做人像替換。但問題來了——每個模型只會一招。</p>
+<p class="seg"><span class="pause">這就像你請了三位水電技師：</span> 第一位只會修水管、第二位只會修電燈、第三位只會補牆壁。熱水管漏了，你得叫三個人來，流水線既慢又容易出錯。</p>
+<p class="seg"><span class="pause">後來有所謂「一個模型搞定所有指令」的方向。</span> 但這些模型需要大量「原始影片 + 編輯後影片」的配對資料，而這種資料很難自動生成——你不可能在網路上找到一千種「把火車變成冰塊」的範例。</p>
+<p class="analogy">所以問題的本質是：訓練資料只能涵蓋簡單操作，碰到「把背景改成賽博龐克但主角不動」這類複雜指令，AI 直接失效。</p>
+</div>
+
+<div class="podcast-section" id="vlm-instructor">
+<h2>EP2｜VLM Instructor：讓 AI 先看過畫面再翻譯</h2>
+<p class="seg">好，VIVA 的第一個核心創新來了。</p>
+<p class="seg"><span class="pause">VLM Instructor 做的事情，其實很直覺：</span> 不只給 AI 文字指令，還要給它看影片的第一幀截圖。</p>
+<p class="seg">這就像你請室內設計師，你不會只發語音說「把客廳弄得北歐風」——你一定會傳一張現況照片，在上面標註「這面牆打掉」。</p>
+<p class="seg"><span class="pause">翻譯官在開會的時候，如果能先看過原始文件，再聽客戶的需求，翻譯出來的東西自然更精準。</span></p>
+<p class="seg">VLM Instructor 就是這個翻譯官。它同時吃三樣東西：① 文字指令 ② 影片第一幀截圖 ③ 參考圖（可選）。三者結合，產生一個精準的「編輯操作信號」，告訴 DiT「要在哪裡改、改什麼」。</p>
+<p class="analogy">有人可能會問：光放參考圖不就好了嗎？答案是：不夠。參考圖告訴你「目標長什麼樣」，但第一幀告訴你「現在長什麼樣」——兩個缺一不可。</p>
+</div>
+
+<div class="podcast-section" id="dit">
+<h2>EP3｜DiT + Token Refiner：工匠要聽得懂指令</h2>
+<p class="seg">教練翻譯得好，運動員也要聽得懂。</p>
+<p class="seg">VLM Instructor 是教練，DiT（Diffusion Transformer）是工匠——負責實際生成編輯後的影片。</p>
+<p class="seg"><span class="pause">問題來了：</span> VLM Instructor 翻譯出來的信號是「VLM 語言」，但 DiT 認識的是另一種「語言」。就像英文很好的翻譯官，他的中文再好，說出來的中文也不是每個外國人都能百分百聽懂。</p>
+<p class="seg"><span class="pause">所以在中間加了一個 Token Refiner。</span> 這是一個輕量級的小模組，專門負責「口譯」——把 VLM 的信號翻譯成 DiT 認識的格式。</p>
+<p class="seg">另一個設計：把「原始影片的壓縮特徵」也一起傳給 DiT。這確保了 DiT 在編輯時，不會把「不想改的地方」也一起改壞了——就像你在畫蒙娜麗莎時，如果能看到整張臉的輪廓，就比較能保持風格一致。</p>
+<p class="analogy">Masked Loss 的概念：考試前老師幫你標出重點章節，你的注意力自然會聚焦在刀口上。</p>
+</div>
+
+<div class="podcast-section" id="edit-grpo">
+<h2>EP4｜Edit-GRPO：讓 AI 自己在錯誤中學習</h2>
+<p class="seg">好，到第三個核心創新：Edit-GRPO。</p>
+<p class="seg"><span class="pause">前面的設計解決了「聽懂指令」的問題，但「執行得好不好」還需要一個反饋機制。</span></p>
+<p class="seg">傳統做法是：做一個版本，老師打分數，不合格就重來。Edit-GRPO 不這麼做——它讓模型一次生成好幾個版本，然後內部互相比較，透過「誰比誰好」來引導學習。</p>
+<p class="seg"><span class="pause">獎懲分三個維度：</span></p>
+<p class="seg"><span class="pause">第一，指令遵循度：</span> 編輯後的影片有沒有按照要求執行？這用 CLIP 相似度來衡量。</p>
+<p class="seg"><span class="pause">第二，原始保留度：</span> 編輯有沒有傷及無辜？直接把原始影片和編輯後的影片測相似度，越高代表融合得越好。</p>
+<p class="seg"><span class="pause">第三，人類偏好：</span> 這個結果好不好看？PickScore 就是一面「神奇的鏡子」，能反映人類觀眾真實的審美偏好。</p>
+<p class="seg"><span class="pause">三個分數加起來，決定了模型本次的總獎勵。</span> 這就像你寫五個笑話，老師說「第二個比第一個好笑，因為⋯⋯」，你慢慢就抓到好笑話的精髓了。</p>
+<p class="analogy">實際操作的時候，用 LoRA 來做輕量微調——就像在跑車上加裝一套新的煞車系統，不需要整輛車重建，卻能大幅提升操控性。</p>
+</div>
+
+<div class="podcast-section" id="data">
+<h2>EP5｜資料準備：自己當教練、自己出考古題</h2>
+<p class="seg">最後聊一下資料準備。</p>
+<p class="seg">巧婦難為無米之炊。150 萬對「原始影片→編輯後影片」的訓練資料，裡面每一對都是「手術前」和「手術後」的對照組。</p>
+<p class="seg"><span class="pause">這麼多資料不可能全部手動標註。</span> 團隊用 Grounding-DINO 和 SAM 2 這兩個工具，自動在影片中找到「要編輯的目標主體」在哪裡，然後持續追蹤它在後續幀的位置，自動產出「編輯區域」標籤。</p>
+<p class="seg"><span class="pause">另外還收了 540 萬對圖片編輯資料。</span> 因為圖片取得容易、成本低，可以用來快速建立「靜態編輯」的基本功。</p>
+<p class="seg"><span class="pause">一個意外的發現：</span> 圖片領域學到的編輯能力，竟然可以遷移到影片領域，而且這些類型在配對影片資料中根本沒有出現過。</p>
+<p class="seg">模型在影片上從來沒有見過「全域風格轉換」，但因為圖片訓練的關係，它學會了。</p>
+<p class="analogy">這就像你學會了素描技巧，之後去畫油畫時也會用得上——底層的「感覺」是通用的。</p>
+</div>
+
+<div class="podcast-section" id="exp">
+<h2>EP6｜實驗結果：數據說了什麼？</h2>
+<p class="seg">好，數據說話。</p>
+<p class="seg">在開源模型中，VIVA 在所有維度上全部碾壓對手。而且和需要付費的商業模型 Runway 比起來，實力相當。</p>
+<p class="seg"><span class="pause">但更有意思的是這個：</span> 14 位專業人士的盲測。測評者不知道哪個結果是哪個模型生成的，只能根據畫面優劣打分。</p>
+<p class="seg"><span class="pause">結果：VIVA 在三個維度（指令聽話度、原畫保留度、編輯品質）上，全部領先或平手。</span></p>
+<p class="seg">也就是說，不只機器打分高，人眼也比較喜歡 VIVA 的結果。</p>
+<p class="analogy">消融實驗也很有趣：把 VLM Instructor 拔掉之後，指令理解分數直接暴跌。說明了「讓模型先看過畫面」這件事，本身就是核心關鍵。</p>
+</div>
+
+<div class="podcast-section" id="conclusion">
+<h2>EP7｜結語：語言與視覺的橋樑</h2>
+<p class="seg">最後，來個總結。</p>
+<p class="seg">VIVA 這篇論文的核心啟示是：當語言模型能真正「看到」視覺上下文時，它對複雜指令的理解會有一個質的飛躍。</p>
+<p class="seg"><span class="pause">這個教訓不只在影片編輯領域有效。</span> 任何需要從「模糊指令」到「精準執行」的任務——不管是影像生成、聲音合成、還是代碼自動化——都能從這個思路中受益。</p>
+<p class="seg"><span class="pause">一句話總結：</span> 最好的翻譯，不只是文字的轉換，而是文化的橋樑。最好的 AI 指令系統，不只是語言的解析，而是視覺與語言的橋樑。</p>
+<p class="seg">好了，今天就聊到這裡。我是蝦蝦，下次見。</p>
+<p class="sound">🎙️ [End of Recording]</p>
+</div>
+</body>
+</html>

@@ -11,13 +11,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 
-STORYTELLERS_DIR = Path.home() / "Documents" / "Storytellers"
-LANCEDB_PATH = STORYTELLERS_DIR / "papers.lance"
+PROJECT_DIR = Path(__file__).resolve().parent
+STORYTELLERS_DIR = PROJECT_DIR / "htmls"
+# 向量索引庫（LanceDB）位於專案根目錄 ./papers.lance/
+LANCEDB_PATH = PROJECT_DIR / "papers.lance"
 OLLAMA_BASE_URL = "http://localhost:11434"
 EMBEDDING_MODEL = "qwen3-embedding:8b"
 CHUNK_SIZE = 800
 CHUNK_OVERLAP = 100
-INDEX_METADATA_FILE = STORYTELLERS_DIR / ".papers_index_meta.json"
+INDEX_METADATA_FILE = PROJECT_DIR / "papers.lance" / ".papers_index_meta.json"
 INDEX_METADATA_VERSION = 1
 INDEX_SCHEMA_VERSION = 1
 
