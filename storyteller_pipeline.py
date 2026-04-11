@@ -3696,6 +3696,8 @@ def _build_story_html_document(
         story_html = _text_to_html_blocks(str(section.get("story_text", "")))
         if style == "lazy":
             story_html = _normalize_lazy_section_headings(story_html)
+        elif style == "log":
+            story_html = _normalize_log_entry_tags(story_html)
 
         # Build terms table
         terms = section.get("terms", [])
@@ -3992,6 +3994,38 @@ def _build_story_html_document(
         table:not(.term-table) tbody tr:nth-child(even) {{
             background: #fafafa;
         }}
+        /* ── Log 風格：Entry 標題與 tag 標籤 ──────────────────────────────── */
+        .log-entry-title strong {{
+            display: block;
+            font-size: 1.05em;
+            color: #1e3a5f;
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+            margin: 20px 0 4px;
+        }}
+        .log-tag {{
+            margin: 12px 0 2px;
+            padding: 0;
+        }}
+        .log-tag span {{
+            display: inline-block;
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 2px 10px;
+            border-radius: 4px;
+            color: #fff;
+        }}
+        .log-tag-observation span {{ background: #0369a1; }}
+        .log-tag-hypothesis  span {{ background: #7c3aed; }}
+        .log-tag-decision    span {{ background: #b45309; }}
+        .log-tag-result      span {{ background: #15803d; }}
+        .log-tag + p {{
+            margin-top: 4px;
+            border-left: 3px solid #e2e8f0;
+            padding-left: 12px;
+        }}
     </style>
 </head>
 <body>
@@ -4113,6 +4147,110 @@ def _ensure_list_blank_lines(text: str) -> str:
             result.append("")
         result.append(line)
     return "\n".join(result)
+
+
+def _extract_log_tags_from_blockquotes(html: str) -> str:
+    """Move log-tag <p> elements (and their content siblings) out of <blockquote> blocks.
+
+    When [Result]/[Decision] etc. appear without a blank line after a > 公式 explanation,
+    Python markdown absorbs them as lazy blockquote continuations.  After _normalize_log_entry_tags
+    splits the inline tags, they are still nested inside <blockquote>.  This function moves them
+    (and all subsequent sibling <p> elements that belong to that tag's content) out of the
+    blockquote so they render at the normal indentation level.
+
+    Strategy: for each <blockquote> that contains a log-tag <p>, split at the FIRST log-tag
+    occurrence.  Everything before stays inside the <blockquote>; the log-tag and everything
+    after are placed immediately after the closing </blockquote>.
+    """
+    BQ_RE = re.compile(r"<blockquote>(.*?)</blockquote>", re.DOTALL)
+    LOG_TAG_OPEN = re.compile(r'<p class="log-tag[^"]*">')
+
+    def _process(m: re.Match) -> str:
+        inner = m.group(1)
+        tag_m = LOG_TAG_OPEN.search(inner)
+        if not tag_m:
+            return m.group(0)
+        before = inner[: tag_m.start()]
+        extracted = inner[tag_m.start() :]
+        # Keep blockquote only if there's still content in it
+        before_stripped = before.strip()
+        if before_stripped:
+            return f"<blockquote>{before}</blockquote>\n{extracted}"
+        return extracted
+
+    return BQ_RE.sub(_process, html)
+
+
+def _normalize_log_entry_tags(html: str) -> str:
+    """Split [Observation]/[Hypothesis]/[Decision]/[Result] inline tags into individual heading+content blocks.
+
+    The LLM typically emits all tags crammed into a single <p>:
+
+        <p><strong>Log Entry 1 — Title</strong><br/>
+        [Observation] text... [Hypothesis] text... [Decision] text... [Result] text...</p>
+
+    This post-processor splits them into separate styled elements:
+
+        <p class="log-entry-title"><strong>Log Entry 1 — Title</strong></p>
+        <p class="log-tag log-tag-observation"><span>[Observation]</span></p>
+        <p>observation text...</p>
+        <p class="log-tag log-tag-decision"><span>[Decision]</span></p>
+        <p>decision text...</p>
+        ...
+    """
+    TAGS = ["Observation", "Hypothesis", "Decision", "Result"]
+    TAG_RE = re.compile(r"\[(" + "|".join(TAGS) + r")\]", re.IGNORECASE)
+    P_RE = re.compile(r"<p>((?:(?!</p>).)*)</p>", re.DOTALL)
+
+    def _process(m: re.Match) -> str:
+        inner = m.group(1)
+        if not TAG_RE.search(inner):
+            return m.group(0)
+
+        parts: List[str] = []
+
+        # Extract leading <strong>Log Entry…</strong> title block (with optional <br/>)
+        title_m = re.match(
+            r"^(<strong>.*?</strong>)\s*(?:<br\s*/?>)?\s*",
+            inner,
+            re.DOTALL | re.IGNORECASE,
+        )
+        if title_m:
+            parts.append(f'<p class="log-entry-title">{title_m.group(1)}</p>')
+            inner = inner[title_m.end():]
+
+        # Remove any stray leading <br /> before the first [Tag]
+        inner = re.sub(r"^(?:<br\s*/?>\s*)+", "", inner).strip()
+
+        # Split at each [Tag] boundary, keeping the tag name as a captured group
+        segments = TAG_RE.split(inner)
+        # segments: [pre_text, tag1, content1, tag2, content2, ...]
+
+        pre = segments[0].strip()
+        pre = re.sub(r"^(?:<br\s*/?>\s*)+", "", pre).strip()
+        if pre:
+            parts.append(f"<p>{pre}</p>")
+
+        i = 1
+        while i < len(segments):
+            tag_name = segments[i].capitalize()
+            content = segments[i + 1] if i + 1 < len(segments) else ""
+            content = re.sub(r"^(?:<br\s*/?>\s*)+", "", content).strip()
+            # Strip trailing stray </br> artifact emitted by some LLMs
+            content = re.sub(r"</br>\s*$", "", content).strip()
+
+            css = f"log-tag-{tag_name.lower()}"
+            parts.append(f'<p class="log-tag {css}"><span>[{tag_name}]</span></p>')
+            if content:
+                parts.append(f"<p>{content}</p>")
+            i += 2
+
+        return "\n".join(parts)
+
+    html = P_RE.sub(_process, html)
+    # Safety net: move any log-tag elements that ended up inside <blockquote> back out
+    html = _extract_log_tags_from_blockquotes(html)
+    return html
 
 
 def _normalize_lazy_section_headings(html: str) -> str:
@@ -4262,9 +4400,87 @@ def _split_multi_inline_math_paragraph(html: str) -> str:
     return _P_RE.sub(_process, html)
 
 
+_LOG_ENTRY_TAGS_RE = re.compile(
+    r"^\[(?:Observation|Hypothesis|Decision|Result)\]",
+    re.IGNORECASE,
+)
+
+
+def _split_inline_formula_quote(text: str) -> str:
+    """Ensure '> 公式：' blockquotes always start on their own line with a blank line before them,
+    and that log entry tags ([Observation/Hypothesis/Decision/Result]) always have a blank line
+    before them so they are never absorbed into a preceding blockquote as lazy continuation lines.
+
+    The LLM sometimes emits '> 公式：...' appended to the end of the same line as the
+    preceding decision/result text, e.g.:
+
+        [Decision] text... > 公式：$PLACEHOLDER0X$
+        explanation line
+        [Result] result text          ← no blank line → absorbed into blockquote!
+
+    Python markdown sees the '>' as a literal character when not at line-start, and treats
+    subsequent non-blank lines as lazy blockquote continuations. This function:
+
+    1. Splits any line at an in-line ' > 公式[：:]' occurrence so the formula quote moves
+       to its own subsequent line.
+    2. Inserts a blank line before every '> 公式' line preceded by non-blank, non-'>' content.
+    3. Inserts a blank line before every '[Tag]' line that follows any non-blank line
+       (including blockquote explanation lines) so the tag breaks out of the blockquote.
+    """
+    # Step 1: split lines where '> 公式' appears mid-line (not at the very start)
+    lines: List[str] = []
+    for line in text.splitlines():
+        m = re.match(r"^(.+?)\s+(> 公式[：:].*)$", line)
+        if m:
+            before = m.group(1).rstrip()
+            quote_part = m.group(2)
+            if before:
+                lines.append(before)
+                lines.append("")  # blank line separator
+            lines.append(quote_part)
+        else:
+            lines.append(line)
+
+    # Step 1b: split lines where '[Tag]' appears mid-line (e.g. after explanation text)
+    lines2: List[str] = []
+    _TAG_MID_RE = re.compile(
+        r"^(.+?)\s+(\[(?:Observation|Hypothesis|Decision|Result)\].*)$",
+        re.IGNORECASE,
+    )
+    for line in lines:
+        m2 = _TAG_MID_RE.match(line)
+        if m2:
+            before = m2.group(1).rstrip()
+            tag_part = m2.group(2)
+            if before:
+                lines2.append(before)
+                lines2.append("")
+            lines2.append(tag_part)
+        else:
+            lines2.append(line)
+
+    # Step 2 & 3: ensure blank line before '> 公式' and before any '[Tag]' marker
+    result: List[str] = []
+    prev_nonempty_is_content = False
+    for line in lines2:
+        stripped = line.strip()
+        needs_blank_before = (
+            re.match(r"> 公式[：:]", stripped) and prev_nonempty_is_content
+        ) or (
+            _LOG_ENTRY_TAGS_RE.match(stripped) and prev_nonempty_is_content
+        )
+        if needs_blank_before:
+            result.append("")
+        result.append(line)
+        if stripped:
+            prev_nonempty_is_content = not stripped.startswith(">")
+    return "\n".join(result)
+
+
 def _text_to_html_blocks(text: str) -> str:
     protected, formulas = _protect_latex(text)
     markdown_input = _inject_display_formula_blocks(protected, formulas)
+    markdown_input = _split_inline_formula_quote(markdown_input)
     markdown_input = _split_inline_list_markers(markdown_input)
     markdown_input = _ensure_list_blank_lines(markdown_input)
     rendered = markdown.markdown(
