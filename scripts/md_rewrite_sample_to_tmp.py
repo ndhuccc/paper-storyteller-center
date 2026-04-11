@@ -21,6 +21,7 @@ import argparse
 import os
 import re
 import sys
+import time
 from pathlib import Path
 
 # Repo root
@@ -44,6 +45,8 @@ from storyteller_pipeline import (  # noqa: E402
     STYLE_PROMPTS,
     _build_story_html_document,
     _post_rewrite_blog_audit,
+    _post_rewrite_fairy_audit,
+    _post_rewrite_lazy_audit,
     _post_rewrite_professor_audit,
     _post_rewrite_storyteller_audit,
     _rewrite_section,
@@ -153,6 +156,30 @@ def main() -> int:
                 section_count=len(sections_raw),
                 introduced_concepts=introduced,
             )
+            if not ok:
+                print(f"[{idx}/{len(sections_raw)}] 第一次改寫失敗，等待 5 秒後重試…", flush=True)
+                time.sleep(5)
+                st2, te2, fe2, ok2, en2, um2 = _rewrite_section(
+                    section_title=title,
+                    source_text=body,
+                    model=model,
+                    fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,
+                    ollama_base_url=ollama_base,
+                    minimax_base_url=minimax_base,
+                    minimax_oauth_token=minimax_token,
+                    style=style,
+                    rewrite_response_format=DEFAULT_REWRITE_RESPONSE_FORMAT,
+                    append_missing_formulas=DEFAULT_APPEND_MISSING_FORMULAS,
+                    style_params=None,
+                    section_index=idx,
+                    section_count=len(sections_raw),
+                    introduced_concepts=introduced,
+                )
+                if ok2:
+                    story_text, terms, formula_expls, ok, err_note, used_model = st2, te2, fe2, ok2, en2, um2
+                    print(f"[{idx}/{len(sections_raw)}] 重試成功 (model={um2})", flush=True)
+                else:
+                    err_note = f"兩次均失敗 — 第一次: {err_note}; 第二次: {en2}"
         used_models.append(used_model or model)
         if args.fail_fast and not offline:
             if not ok:
@@ -245,6 +272,46 @@ def main() -> int:
         elif style == "professor":
             print("post_rewrite_professor_audit…", flush=True)
             _post_rewrite_professor_audit(
+                rendered,
+                primary_model=model,
+                fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,
+                ollama_base_url=ollama_base,
+                minimax_base_url=minimax_base,
+                minimax_oauth_token=minimax_token,
+                rewrite_response_format=DEFAULT_REWRITE_RESPONSE_FORMAT,
+                append_missing_formulas=DEFAULT_APPEND_MISSING_FORMULAS,
+                style_params={},
+                concise_level=DEFAULT_CONCISE_LEVEL,
+                anti_repeat_level=DEFAULT_ANTI_REPEAT_LEVEL,
+                gemini_preflight_enabled=DEFAULT_GEMINI_PREFLIGHT_ENABLED,
+                gemini_preflight_timeout_seconds=DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
+                gemini_rewrite_timeout_seconds=DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
+                fallback_timeout_seconds=DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
+                llm_failures=audit_notes,
+            )
+        elif style == "fairy":
+            print("post_rewrite_fairy_audit…", flush=True)
+            _post_rewrite_fairy_audit(
+                rendered,
+                primary_model=model,
+                fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,
+                ollama_base_url=ollama_base,
+                minimax_base_url=minimax_base,
+                minimax_oauth_token=minimax_token,
+                rewrite_response_format=DEFAULT_REWRITE_RESPONSE_FORMAT,
+                append_missing_formulas=DEFAULT_APPEND_MISSING_FORMULAS,
+                style_params={},
+                concise_level=DEFAULT_CONCISE_LEVEL,
+                anti_repeat_level=DEFAULT_ANTI_REPEAT_LEVEL,
+                gemini_preflight_enabled=DEFAULT_GEMINI_PREFLIGHT_ENABLED,
+                gemini_preflight_timeout_seconds=DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
+                gemini_rewrite_timeout_seconds=DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
+                fallback_timeout_seconds=DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
+                llm_failures=audit_notes,
+            )
+        elif style == "lazy":
+            print("post_rewrite_lazy_audit…", flush=True)
+            _post_rewrite_lazy_audit(
                 rendered,
                 primary_model=model,
                 fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,

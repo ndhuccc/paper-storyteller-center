@@ -40,7 +40,7 @@ DEFAULT_ANTI_REPEAT_LEVEL = 6
 DEFAULT_GEMINI_PREFLIGHT_ENABLED = True
 DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS = 8
 DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS = 75
-DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS = 45
+DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS = 300
 DEFAULT_POST_REWRITE_AUDIT_ENABLED = True
 POST_REWRITE_AUDIT_BATCH_MAX_CHARS = 72000
 GEMINI_PREFLIGHT_CACHE_TTL_SECONDS = 120
@@ -237,65 +237,95 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 正式度 {formality}／10、條理化程度 {structure}／10、初學者友善度 {beginner_friendly}／10、數學密度 {math_density}／10、考點導向 {exam_focus}／10。
 """ + _COMMON_RULES,
 
-    "fairy": """【思考流程】在開始改寫之前，請先在內部思考以下三個問題（不需要輸出）：
+    "fairy": """【思考流程】在開始改寫之前，請先在內部思考以下四個問題（不需要輸出）：
 ① 原文的核心概念應該映射成童話中怎樣的角色或道具？
 ② 運作流程如何轉化為主角遭遇的衝突與解決過程？
-③ 故事最後要帶出什麼核心寓意（知識點）？
+③ 原文中的公式或數值，要用「咒語」「石碑刻文」「魔法結界方程」還是其他形式嵌入故事？
+④ 故事最後要帶出什麼核心寓意（知識點）？
 思考完後，直接輸出改寫結果。
 
-童話故事（知識童話 + 角色化 + 寓意對應）
+童話故事（知識童話 + 角色化 + 公式融入 + 寓意對應）
 
 【任務目標】
-- 保留原文最核心的概念與邏輯關係，改寫成有角色、有場景、有衝突、有解法、有寓意的童話故事。
+- 保留原文**最核心的概念、邏輯關係與所有公式**，改寫成有角色、有場景、有衝突、有解法、有寓意的童話故事。
+
+【改寫單元規則】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 若某改寫單元僅包含一個段落，可與前後較合適的單元合併（合併後須完整涵蓋原屬各單元之知識重點，不得縮減內容）。
 
 【改寫原則】
-- 將重要概念轉化為角色、道具、地點、力量或規則。
-- 將技術流程改寫成故事中的任務、困難與解決過程。
-- 保留核心機制，不可只剩童話氣氛而失去知識內容。
+- 將重要概念轉化為角色、道具、地點、力量或規則；故事中角色**第一次登場**時，須隱含或明示其對應的真實技術概念。
+- 將技術流程改寫成故事中的任務、困難與解決過程；情節轉折須忠實反映原文的**技術邏輯**，而非單純製造戲劇衝突。
+- **保留核心機制**：不可只剩童話氣氛而失去知識內容。
 - 優先用故事事件呈現概念，而不是直接講術語。
-- 可在故事結尾補一小段白話說明，點出這個童話在對應什麼知識。
+- **任一原文公式與數值範例均不可省略**：須以「神秘咒語」「石碑刻文」「魔法結界方程」等故事化包裝**無縫嵌入**情節，並在角色使用或解讀該式的過程中說清楚變數意義。
+- **開場句勿制式重複**：各節請輪替使用不同開場策略（懸念、旁白、角色對白、場景描寫、反問、時間序等），避免多節連續以相同套語起首；若非第 1 節，尤須與前序節開場策略差異化。
 
 【輸出格式】
-- 請包含：故事標題、開場、情節發展、問題如何解決、寓意與真實知識對應。
-- 各段請使用清楚的小標題。
+- 故事須依序包含以下五段，各段使用清楚的小標題：
+    1. **故事標題**
+    2. **開場**（場景與主角登場）
+    3. **情節發展**（衝突與挑戰，融入公式與核心機制）
+    4. **問題如何解決**（技術邏輯的展開與收束）
+    5. **寓意與真實知識對應**（需包含：① 一段話明示故事元素↔技術概念映射摘要；② 若有公式，複述其在故事中的「真實身份」，一句話即可）
 
-【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
-<!-- EVAL: 角色映射[有/無] | 寓意說明[有/無] -->
-若任一項為「無」，必須重新修改故事內容後再輸出。
+【本節角色與概念對照表、公式意義白話說明表（必附，不可省略）】
+- **位置**：兩表皆須在**本節改寫輸出**的末尾、自評 EVAL 行**之前**；**每一節各自**附兩表。
+- **表一「本節角色與概念對照」**：Markdown 表，欄位「故事元素（角色／道具／地點）｜對應真實技術概念」；列出本節**新登場或新賦予意義**的故事元素，單格不宜過長；**禁止**整表留空或僅「無」敷衍；跨節勿無意義重複前序節已交代的映射（可極短註「見前節」）。
+- **表二「本節公式意義白話說明」**：Markdown 表，欄位「公式（LaTeX 原文）｜故事中的身份與數學意義白話說明」；針對本節**首次出現或在情節中有實質新角色**之 LaTeX 式；若本節無任何須獨立展開的新公式，表中須註明並簡述本節與公式的銜接關係，**不可**省略此表。
+- **輸出順序**：故事正文（含上述五段）→ **表一** → **表二** → 最末一行 `<!-- EVAL: ... -->`。
+
+【自評機制】本節改寫完成後，必須在**本節輸出之最末一行**加上自評標記（**緊接兩表之後**），格式如下：
+<!-- EVAL: 角色映射[有/無] | 公式融入[有/無] | 核心知識保留[有/無] | 寓意說明[有/無] | 對照表檢核[通過/未通過] | 虛構[無/有] -->
+若任一項為「無」或「有（虛構）」或「未通過」，必須重新修改後再輸出。
 
 【風格參數】
 - 童話感 {fairy_tone}／10、知識保真度 {fidelity}／10、年齡定位 {age_level}／10、畫面感 {visual}／10、解說顯性程度 {explicitness}／10。
 """ + _COMMON_RULES,
 
-    "lazy": """【思考流程】在開始改寫之前，請先在內部思考以下兩件事（不需要輸出）：
+    "lazy": """【思考流程】在開始改寫之前，請先在內部思考以下三件事（不需要輸出）：
 ① 貫穿本節最核心的一句話結論是什麼？
 ② 要列出哪幾個最關鍵的 bullet points 才能涵蓋所有重點？
+③ 原文中哪些公式或數值是理解核心機制不可或缺的？要怎樣以最精簡的一行融入條列？
 思考完後，直接輸出改寫結果。
 
-懶人包（結論先行 + 條列整理 + 快速吸收）
+懶人包（結論先行 + 條列整理 + 公式速查 + 快速吸收）
 
 【角色視角】
 - 你是一位擅長把複雜內容濃縮成高可讀懶人包的知識編輯。
-- 優先追求可快速掃描與快速理解。
+- 優先追求可快速掃描與快速理解，但不以犧牲公式與關鍵數值為代價。
+
+【改寫單元規則】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 若某改寫單元僅包含一個段落，可與前後較合適的單元合併（合併後須完整涵蓋各單元重點，不得縮減資訊）。
 
 【改寫原則】
 - 先講結論，再補背景與細節。
 - 用條列、短段、對照與重點框架幫助快速吸收。
-- 技術術語第一次出現時，給一句最短可懂的白話解釋。
+- 技術術語第一次出現時，給一句最短可懂的白話解釋；重要概念首次出現加 **粗體**。
 - 不可為了精簡而刪掉會影響理解的關鍵限制、前提或結果。
+- **任一原文公式與數值範例均不可省略**；若有 LaTeX 式，須以 `> 公式：$...$` 區塊或嵌入對應條列點的方式呈現，並用括號或短句說明式子意涵。
+- 跨節勿無意義重複已在前節解釋過的術語（可極短註「見前節」）。
 
 【輸出格式】
 - 依序整理為：
-    1. 一句話結論
-    2. 背景／問題
-    3. 重點條列（約 {bullet_count} 點，每點 1-2 句）
-    4. 限制或注意事項
-    5. 一句帶走重點
+    1. **一句話結論**
+    2. **背景／問題**
+    3. **重點條列**（約 {bullet_count} 點，每點 1-2 句）
+    4. **（選用）公式速查**：若本節有須理解的 LaTeX 式，集中列於此處，每式一行，格式：`$式$ ← 一句意涵`；若本節無公式可省略此塊。
+    5. **限制或注意事項**
+    6. **一句帶走重點**
 - 不要寫成長篇散文。
 
-【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
-<!-- EVAL: 結論先行[有/無] | 條列摘要[有/無] -->
-若任一項為「無」，必須重新修改後再輸出。
+【本節術語速查表與公式速查對照表（必附，不可省略）】
+- **位置**：兩表皆須在**本節改寫輸出**的末尾、EVAL 行**之前**；**每一節各自**附兩表。
+- **表一「本節術語速查」**：Markdown 表，欄位「術語｜一句白話」；僅列本節**新增或須獨立對照**之術語（含縮寫）；**禁止**整表留空或僅「無」敷衍；跨節已詳解者可極短註「見前節」。
+- **表二「本節公式速查」**：Markdown 表，欄位「公式（LaTeX 原文）｜意涵一句話」；針對本節**首次出現或語境有新角色**之 LaTeX 式；若本節無任何須獨立展開的新公式，表中須標明並簡述本節與公式的銜接關係，**不可**省略此表。
+- **輸出順序**：六段正文 → **表一** → **表二** → 最末一行 `<!-- EVAL: ... -->`。
+
+【自評機制】本節改寫完成後，必須在**本節輸出之最末一行**加上自評標記（**緊接兩表之後**），格式如下：
+<!-- EVAL: 結論先行[有/無] | 條列摘要[有/無] | 公式保留[有/無] | 速查表檢核[通過/未通過] | 虛構[無/有] -->
+若任一項為「無」或「未通過」或「有（虛構）」，必須重新修改後再輸出。
 
 【風格參數】
 - 條列點數 {bullet_count}、濃縮度 {compression}／10、初學者友善度 {beginner_friendly}／10、圖像化程度 {visual}／10、重點力度 {takeaway_strength}／10。
@@ -609,7 +639,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         section_used_models: set[str] = set()
 
         for part_index, part in enumerate(rewrite_parts, start=1):
-            rewritten_text, terms, formula_explanations, used_llm, failure, used_model = _rewrite_section(
+            _rewrite_kwargs = dict(
                 section_title=part["title"],
                 source_text=part["source_text"],
                 model=primary_model,
@@ -631,10 +661,22 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 section_count=total_sections,
                 introduced_concepts=introduced_concepts if introduced_concepts else None,
             )
+            rewritten_text, terms, formula_explanations, used_llm, failure, used_model = _rewrite_section(
+                **_rewrite_kwargs
+            )
             if failure:
-                llm_failures.append(
-                    f"section {index} part {part_index}/{len(rewrite_parts)}: {failure}"
-                )
+                # Retry once after a brief pause for transient errors (e.g. Gemini 504, Ollama overload)
+                time.sleep(5)
+                rt2, te2, fe2, ul2, fa2, um2 = _rewrite_section(**_rewrite_kwargs)
+                if not fa2:
+                    rewritten_text, terms, formula_explanations, used_llm, failure, used_model = (
+                        rt2, te2, fe2, ul2, fa2, um2
+                    )
+                else:
+                    failure = f"兩次均失敗 — 第一次: {failure}; 第二次: {fa2}"
+                    llm_failures.append(
+                        f"section {index} part {part_index}/{len(rewrite_parts)}: {failure}"
+                    )
             if used_model:
                 section_used_models.add(used_model)
                 rewrite_models_used.add(used_model)
@@ -725,6 +767,50 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             if phase_reporter:
                 phase_reporter("講義體改寫總稽核與修正…")
             _post_rewrite_professor_audit(
+                rendered_sections,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                llm_failures=llm_failures,
+            )
+        elif style == "fairy":
+            post_rewrite_audit_executed = True
+            if phase_reporter:
+                phase_reporter("知識童話改寫總稽核與修正…")
+            _post_rewrite_fairy_audit(
+                rendered_sections,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                llm_failures=llm_failures,
+            )
+        elif style == "lazy":
+            post_rewrite_audit_executed = True
+            if phase_reporter:
+                phase_reporter("懶人包改寫總稽核與修正…")
+            _post_rewrite_lazy_audit(
                 rendered_sections,
                 primary_model=primary_model,
                 fallback_chain=fallback_chain,
@@ -2240,6 +2326,320 @@ def _post_rewrite_professor_audit(
                 )
 
 
+def _post_rewrite_fairy_audit(
+    rendered_sections: List[Dict[str, Any]],
+    *,
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    llm_failures: List[str],
+) -> None:
+    """One LLM audit pass after all sections: fix or rewrite sections that fail audit (fairy only)."""
+    if not rendered_sections:
+        return
+
+    openings_block, batches = _post_rewrite_audit_openings_and_batches(rendered_sections)
+
+    audit_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+
+    for bi, batch in enumerate(batches, start=1):
+        payload = [
+            {
+                "index": int(row.get("index", 0)),
+                "title": str(row.get("title", "")),
+                "source_text": str(row.get("source_text", "")),
+                "story_text": str(row.get("story_text", "")),
+            }
+            for row in batch
+        ]
+        batch_json = json.dumps(payload, ensure_ascii=False)
+        prompt = f"""你是論文「知識童話」改稿的總編輯稽核員。以下 JSON 陣列是本批 {len(batch)} 節的原文 source_text 與改稿 story_text（Markdown）。
+
+【全篇各節開頭摘錄（供比對開場句是否與他節過度重複）】
+{openings_block}
+
+【稽核標準（逐節檢查）】
+1. 忠於原文：無捏造數據／實驗／引用；無與原文明顯矛盾；原文未提及的資訊不得虛構。
+2. 公式融入（必核）：原文中所有 LaTeX 公式（$...$、$$...$$、\\(...\\)、\\[...\\] 等）及具體數值範例，必須以「咒語」「石碑刻文」「魔法結界方程」等故事化包裝**無縫嵌入**情節，並在角色使用或解讀該式的過程中說清楚變數意義；**不可無故消失或僅口號式帶過**。
+3. 故事結構：改稿須依序包含清楚小標題的五段：**故事標題**、**開場**、**情節發展**（含公式融入）、**問題如何解決**、**寓意與真實知識對應**（含映射摘要及公式真實身份）。
+4. 核心知識保留：故事化改寫後，原文技術邏輯仍可從故事情節中清楚還原；角色與技術概念的映射須一致、不可前後矛盾。
+5. **本節角色與概念對照表（必核）**：在**該節** `story_text` 的**節末**、且於 EVAL 行之前，須有標題清楚之 Markdown 表格（建議欄位「故事元素（角色／道具／地點）｜對應真實技術概念」）；須涵蓋本節新登場之故事元素；**禁止**整表留空或僅「無」敷衍；跨節勿無意義重複前序節已交代的映射。
+6. **本節公式意義白話說明表（必核）**：緊接對照表之後（EVAL 行之前），須有第二則 Markdown 表格（建議欄位「公式（LaTeX 原文）｜故事中的身份與數學意義白話說明」）；若本節無新公式，表中須標明並簡述銜接關係，**不可**省略此表。
+7. 開場多樣化：開場句型勿與其他節高度雷同（懸念、旁白、角色對白、場景描寫、反問、時間序等應輪替）。
+8. 自評行：**該節** `story_text` **最末一行**須為（括號內僅能有/無/通過/未通過）：
+<!-- EVAL: 角色映射[有/無] | 公式融入[有/無] | 核心知識保留[有/無] | 寓意說明[有/無] | 對照表檢核[通過/未通過] | 虛構[無/有] -->
+9. 若某節已完全符合，passes 為 true，issues 空陣列，replacement_story_markdown 為 null。
+
+【本批待審 JSON】
+{batch_json}
+
+請只輸出一個 JSON 物件（不要 markdown code fence），格式嚴格如下：
+{{"results":[{{"index":<整數>,"passes":true,"issues":[],"replacement_story_markdown":null}},{{"index":<整數>,"passes":false,"issues":["..."],"replacement_story_markdown":"<若 passes 為 false，請給完整可取代該節的 Markdown 改稿全文；若 passes 為 true 則 null>"}}]}}
+
+規則：passes=false 時，replacement_story_markdown 必須是非空字串，且須為**該單節**完整改稿（含五段故事結構、**兩表**、**該節**最末一行 EVAL），可直接覆蓋該節之 story_text。"""
+
+        try:
+            raw, _used = _complete_prompt_with_model_fallback(
+                prompt=prompt,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=audit_timeout,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+            )
+        except Exception as exc:
+            llm_failures.append(
+                f"post_rewrite_fairy_audit batch {bi}: {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        parsed = _try_parse_rewrite_payload(raw) or {}
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            llm_failures.append(f"post_rewrite_fairy_audit batch {bi}: invalid JSON shape")
+            continue
+
+        by_index = {int(row.get("index", 0)): row for row in rendered_sections}
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = int(item.get("index", 0))
+            row = by_index.get(idx)
+            if not row:
+                continue
+            passes = bool(item.get("passes", True))
+            issues = item.get("issues") or []
+            if not isinstance(issues, list):
+                issues = []
+            replacement = item.get("replacement_story_markdown")
+            if passes:
+                continue
+            issues_txt = "; ".join(str(x) for x in issues if str(x).strip())
+            if isinstance(replacement, str) and replacement.strip():
+                row["story_text"] = replacement.strip()
+                row["terms"] = []
+                row["formula_explanations"] = []
+                llm_failures.append(
+                    f"post_rewrite_fairy_audit: section {idx} revised in batch {bi} ({issues_txt or 'see replacement'})"
+                )
+                continue
+
+            title = str(row.get("title", ""))
+            source = str(row.get("source_text", ""))
+            extra = (
+                "總編輯稽核未通過，請依下列問題重寫本節（須完整符合知識童話風格：五段故事結構含公式融入、"
+                "**本節末尾兩表**（角色與概念對照＋公式意義白話說明）、**本節最末一行** EVAL 六欄）：\n"
+                + (issues_txt or "未註明具體問題，請自行對照稽核標準全面檢查。")
+            )
+            fixed, terms, fexps, ok, err, _um = _rewrite_section(
+                section_title=title,
+                source_text=source,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style="fairy",
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+                section_index=idx,
+                section_count=len(rendered_sections),
+                introduced_concepts=None,
+                extra_instruction=extra,
+            )
+            if ok and fixed.strip():
+                row["story_text"] = fixed.strip()
+                row["terms"] = terms or []
+                row["formula_explanations"] = fexps or []
+                llm_failures.append(
+                    f"post_rewrite_fairy_audit: section {idx} re-rewritten after audit batch {bi} "
+                    f"({issues_txt or 'no replacement from audit'})"
+                )
+            elif err:
+                llm_failures.append(
+                    f"post_rewrite_fairy_audit: section {idx} re-rewrite failed: {err}"
+                )
+
+
+def _post_rewrite_lazy_audit(
+    rendered_sections: List[Dict[str, Any]],
+    *,
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    llm_failures: List[str],
+) -> None:
+    """One LLM audit pass after all sections: fix or rewrite sections that fail audit (lazy only)."""
+    if not rendered_sections:
+        return
+
+    openings_block, batches = _post_rewrite_audit_openings_and_batches(rendered_sections)
+
+    audit_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+
+    for bi, batch in enumerate(batches, start=1):
+        payload = [
+            {
+                "index": int(row.get("index", 0)),
+                "title": str(row.get("title", "")),
+                "source_text": str(row.get("source_text", "")),
+                "story_text": str(row.get("story_text", "")),
+            }
+            for row in batch
+        ]
+        batch_json = json.dumps(payload, ensure_ascii=False)
+        prompt = f"""你是論文「懶人包」改稿的總編輯稽核員。以下 JSON 陣列是本批 {len(batch)} 節的原文 source_text 與改稿 story_text（Markdown）。
+
+【全篇各節開頭摘錄（供比對結論句是否與他節過度重複）】
+{openings_block}
+
+【稽核標準（逐節檢查）】
+1. 忠於原文：無捏造數據／實驗／引用；無與原文明顯矛盾。
+2. 公式保留（必核）：原文中所有 LaTeX 公式（$...$、$$...$$、\\(...\\)、\\[...\\] 等）及具體數值範例，必須出現在改稿中，以 `> 公式：$...$` 區塊或嵌入條列點的方式呈現，並附簡短意涵說明；**不可無故消失**。
+3. 懶人包結構：改稿須依序包含：**一句話結論** → **背景／問題** → **重點條列**（每點 1-2 句）→（選用）**公式速查** → **限制或注意事項** → **一句帶走重點**；不得退化成長篇散文或故事化口吻。
+4. 精簡不失真：重要限制、前提、結果不可為了精簡而刪除；術語首次出現須有一句白話解釋。
+5. **本節術語速查表（必核）**：在**該節** `story_text` 的**節末**（EVAL 行之前），須有標題清楚之 Markdown 表格（欄位「術語｜一句白話」）；涵蓋本節應獨立對照之術語；**禁止**整表留空或僅「無」敷衍；跨節已詳解者可極短「見前節」。
+6. **本節公式速查對照表（必核）**：緊接術語表之後（EVAL 行之前），須有第二則 Markdown 表格（欄位「公式（LaTeX 原文）｜意涵一句話」）；若本節無新公式，表中須標明並簡述銜接關係，**不可**省略此表。
+7. 跨節：一句話結論句型勿與其他節高度雷同；術語不得無意義重複定義。
+8. 自評行：**該節** `story_text` **最末一行**須為（括號內僅能有/無/通過/未通過）：
+<!-- EVAL: 結論先行[有/無] | 條列摘要[有/無] | 公式保留[有/無] | 速查表檢核[通過/未通過] | 虛構[無/有] -->
+9. 若某節已完全符合，passes 為 true，issues 空陣列，replacement_story_markdown 為 null。
+
+【本批待審 JSON】
+{batch_json}
+
+請只輸出一個 JSON 物件（不要 markdown code fence），格式嚴格如下：
+{{"results":[{{"index":<整數>,"passes":true,"issues":[],"replacement_story_markdown":null}},{{"index":<整數>,"passes":false,"issues":["..."],"replacement_story_markdown":"<若 passes 為 false，請給完整可取代該節的 Markdown 改稿全文；若 passes 為 true 則 null>"}}]}}
+
+規則：passes=false 時，replacement_story_markdown 必須是非空字串，且須為**該單節**完整改稿（含六段結構、**兩表**、**該節**最末一行 EVAL），可直接覆蓋該節之 story_text。"""
+
+        try:
+            raw, _used = _complete_prompt_with_model_fallback(
+                prompt=prompt,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=audit_timeout,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+            )
+        except Exception as exc:
+            llm_failures.append(
+                f"post_rewrite_lazy_audit batch {bi}: {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        parsed = _try_parse_rewrite_payload(raw) or {}
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            llm_failures.append(f"post_rewrite_lazy_audit batch {bi}: invalid JSON shape")
+            continue
+
+        by_index = {int(row.get("index", 0)): row for row in rendered_sections}
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = int(item.get("index", 0))
+            row = by_index.get(idx)
+            if not row:
+                continue
+            passes = bool(item.get("passes", True))
+            issues = item.get("issues") or []
+            if not isinstance(issues, list):
+                issues = []
+            replacement = item.get("replacement_story_markdown")
+            if passes:
+                continue
+            issues_txt = "; ".join(str(x) for x in issues if str(x).strip())
+            if isinstance(replacement, str) and replacement.strip():
+                row["story_text"] = replacement.strip()
+                row["terms"] = []
+                row["formula_explanations"] = []
+                llm_failures.append(
+                    f"post_rewrite_lazy_audit: section {idx} revised in batch {bi} ({issues_txt or 'see replacement'})"
+                )
+                continue
+
+            title = str(row.get("title", ""))
+            source = str(row.get("source_text", ""))
+            extra = (
+                "總編輯稽核未通過，請依下列問題重寫本節（須完整符合懶人包格式：六段結構含公式速查、"
+                "**本節末尾兩表**（術語速查＋公式速查）、**本節最末一行** EVAL 五欄）：\n"
+                + (issues_txt or "未註明具體問題，請自行對照稽核標準全面檢查。")
+            )
+            fixed, terms, fexps, ok, err, _um = _rewrite_section(
+                section_title=title,
+                source_text=source,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style="lazy",
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+                section_index=idx,
+                section_count=len(rendered_sections),
+                introduced_concepts=None,
+                extra_instruction=extra,
+            )
+            if ok and fixed.strip():
+                row["story_text"] = fixed.strip()
+                row["terms"] = terms or []
+                row["formula_explanations"] = fexps or []
+                llm_failures.append(
+                    f"post_rewrite_lazy_audit: section {idx} re-rewritten after audit batch {bi} "
+                    f"({issues_txt or 'no replacement from audit'})"
+                )
+            elif err:
+                llm_failures.append(
+                    f"post_rewrite_lazy_audit: section {idx} re-rewrite failed: {err}"
+                )
+
+
 def _normalize_style(style: Any) -> str:
     normalized = str(style or "").strip().lower()
     if normalized == "podcast":
@@ -2392,21 +2792,28 @@ def _call_minimax_portal_llm(*, prompt: str, model: str, oauth_token: str, base_
         endpoint_candidates.append(f"{normalized_base}/v1/text/chatcompletion_v2")
         endpoint_candidates.append(f"{normalized_base}/v1/text/chatcompletion_pro")
 
-    request_payload = {
+    # chatcompletion_v2 uses standard OpenAI-compatible messages format.
+    # chatcompletion_pro requires an additional bot_setting field.
+    base_payload = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.2,
+    }
+    pro_payload = {
+        **base_payload,
+        "bot_setting": [{"bot_name": "AI", "content": "You are a helpful assistant."}],
     }
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {token}",
     }
 
-    last_error: Optional[str] = None
+    all_errors: List[str] = []
     for endpoint in endpoint_candidates:
+        payload_to_send = pro_payload if "chatcompletion_pro" in endpoint else base_payload
         req = urllib.request.Request(
             endpoint,
-            data=json.dumps(request_payload).encode(),
+            data=json.dumps(payload_to_send).encode(),
             headers=headers,
             method="POST",
         )
@@ -2414,20 +2821,20 @@ def _call_minimax_portal_llm(*, prompt: str, model: str, oauth_token: str, base_
             with urllib.request.urlopen(req, timeout=timeout) as response:
                 payload = json.loads(response.read())
         except Exception as exc:
-            last_error = f"{endpoint}: {type(exc).__name__}: {exc}"
+            all_errors.append(f"{endpoint}: {type(exc).__name__}: {exc}")
             continue
 
         provider_error = _extract_provider_error(payload)
         if provider_error:
-            last_error = f"{endpoint}: {provider_error}"
+            all_errors.append(f"{endpoint}: {provider_error}")
             continue
 
         text = _extract_text_from_chat_payload(payload)
         if text:
             return text
-        last_error = f"{endpoint}: empty response content"
+        all_errors.append(f"{endpoint}: empty response content")
 
-    raise RuntimeError(last_error or "minimax-portal call failed")
+    raise RuntimeError(" | ".join(all_errors) if all_errors else "minimax-portal call failed")
 
 
 def _parse_rewrite_response(

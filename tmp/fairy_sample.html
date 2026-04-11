@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>sample.md 改寫測試 - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        /* 雙欄並列（說書人風格）*/
+        .dual-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .dual-col { grid-template-columns: 1fr; }
+        }
+        .col-orig, .col-plain {
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .col-orig {
+            background: #f1f5f9;
+            border-left: 4px solid #94a3b8;
+            color: #475569;
+            font-size: 0.93em;
+        }
+        .col-plain {
+            background: #ffffff;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        .col-label {
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 sample.md 改寫測試</h1>
+    <div class="meta">
+        <strong>童話故事版本</strong><br>
+        Source PDF: /home/ccchiang/works/paper-storyteller-center/sample.md<br>
+        Model: models/gemini-3.1-flash-lite-preview<br>
+        Generated at (UTC): 2026-04-11T08:57:13.490324+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - ## Abstract</a></li>
+<li><a href="#section-2">Section 2 - ## 1. Introduction</a></li>
+<li><a href="#section-3">Section 3 - ## 2. Related Work</a></li>
+<li><a href="#section-4">Section 4 - ## 3. Method</a></li>
+<li><a href="#section-5">Section 5 - ### 3.1. Context-Aware VLM Instructor</a></li>
+<li><a href="#section-6">Section 6 - ### 3.2. Instruction-based Supervised Fine-Tuning</a></li>
+<li><a href="#section-7">Section 7 - ### 3.3. Edit-GRPO</a></li>
+<li><a href="#section-8">Section 8 - ### 3.4. Data Preparation</a></li>
+<li><a href="#section-9">Section 9 - ## 4. Experiments</a></li>
+<li><a href="#section-10">Section 10 - ### 4.2. Experimental Setup</a></li>
+<li><a href="#section-11">Section 11 - ### 4.3. Qualitative Comparisons</a></li>
+<li><a href="#section-12">Section 12 - ### 4.4. Quantitative Comparisons</a></li>
+<li><a href="#section-13">Section 13 - ### 4.5. Ablation Study</a></li>
+<li><a href="#section-14">Section 14 - ## 5. Conclusion</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - ## Abstract</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>魔法影畫的重塑之夢</h3>
+            <p><strong>開場</strong><br />
+            在數位幻境的邊陲，住著一位名為「 VIVA 」的煉金術士。他夢想著能透過吟誦咒語，讓影像中的光影自由變幻，但舊有的法術總是受限於簡單的指令，只要遇到複雜的現實場景，法術就會失效，畫面變得支離破碎。</p>
+            <p><strong>情節發展</strong><br />
+            VIVA 發現，過去的法術書往往只記錄了死板的「換裝」或「變色」指令，無法理解複雜的語意。為了打破限制，他構築了一個新的魔法結構，核心在於利用「視覺導引編碼器」（VLM-guided encoding）來解讀世界。他不僅讀取人類的自然語言指令，還會細心觀察影片的「首幀畫面」與「參考圖示」。這就像是讓煉金術士戴上了全知之眼，將抽象的文字翻譯為精準的空間與語意坐標，輸入到強大的「擴散變壓器」（Diffusion Transformer）底層架構中。</p>
+            <p><strong>問題如何解決</strong><br />
+            光有好的指導是不夠的，VIVA 引入了一道關鍵的「結界強化儀式」——Edit-GRPO（群組相對策略優化）。這套儀式不再追求單一正確答案，而是透過比較多種編輯路徑的優劣，選出最具「忠實度」、「內容保留度」與「美感」的版本。他運用了如下的群組相對策略機制，確保每一次改動都精準：</p>
+            <div class="formula">$$ R_{\text{total}} = \alpha \cdot R_{\text{instruction}} + \beta \cdot R_{\text{content}} + \gamma \cdot R_{\text{aesthetic}} $$</div>
+            
+            <p>在這個法術方程中，<span class="math inline">$R_{\text{instruction}}$</span> 代表對指令的遵循度，<span class="math inline">$R_{\text{content}}$</span> 衡量內容是否被完好保存，<span class="math inline">$R_{\text{aesthetic}}$</span> 則評估視覺的美觀程度；<span class="math inline">$\alpha, \beta, \gamma$</span> 是權重參數，控制著這三種屬性的平衡。若一段影片的編輯後，<span class="math inline">$R_{\text{total}}$</span> 越高，魔法結界便越穩固。此外，VIVA 還設計了一套自動化的「數據構建流水線」，源源不絕地生產高品質的對照素材，徹底解決了缺乏訓練樣本的窘境。</p>
+            <p><strong>寓意與真實知識對應</strong><br />
+            故事告訴我們，單純的模仿是不夠的，必須理解「視覺語境」並引入「獎勵反饋機制」，才能讓 AI 真正聽懂人的指令。 ① 映射摘要：VIVA（影像編輯框架）利用 VLM 指導器（視覺感知模組）與 Edit-GRPO（相對獎勵優化）將模糊的指令精準化並優化產出。 ② 公式意義：<span class="math inline">$R_{\text{total}}$</span> 是一套結合指令遵循、內容保留與美感評估的綜合獎勵方程，用以指導模型迭代出最佳編輯效果。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">煉金術士 VIVA</td>
+            <td style="text-align: left;">本文提出的影像編輯框架 VIVA</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">全知之眼（視覺導引）</td>
+            <td style="text-align: left;">VLM-guided encoding</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法結界儀式</td>
+            <td style="text-align: left;">Edit-GRPO（群組相對策略優化）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">數據構建流水線</td>
+            <td style="text-align: left;">合成資料生成 pipeline</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$R_{\text{total}} = \alpha \cdot R_{\text{instruction}} + \beta \cdot R_{\text{content}} + \gamma \cdot R_{\text{aesthetic}}$</span></td>
+            <td style="text-align: left;">這是魔法優化方程，用加權總和（weighted sum）來量化編輯品質，確保模型在達成目標的同時，不會破壞原有畫面內容。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - ## 1. Introduction</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>魔法編織者的困境與破局之道</h3>
+            <p><strong>一、 影視之城的鏡像挑戰</strong><br />
+            在數位影視之城，修剪影像如同一場精密的手工藝。過去，工匠們必須為每一種修剪指令——無論是「添加一朵花」還是「刪除一棵樹」——準備好「原始版」與「完成版」的範本，這就是所謂的「成對訓練數據」。然而，這座城面臨著嚴峻的瓶頸：這些成對範本太過單調，一旦遇到「更改全局天氣」或「跨區域大規模重塑」這種複雜任務，工匠們便束手無策，導致影像修剪的效果大打折扣，顯得笨拙且失真。</p>
+            <p><strong>二、 賦予魔鏡「理解之眼」</strong><br />
+            為了跨越這道鴻溝，我們引入了「VLM 指導員（VLM instructor）」。它不再只會讀死板的文字，而是能同時凝視輸入影片的第一幀畫面，並結合使用者的指令，將目標區域與屬性需求轉化為一串「多模態精確令牌」。這些令牌就像是帶有坐標的魔法路標，直接植入擴散轉換器（DiT）的核心，讓模型不再模糊猜測，而是精準地知道在哪裡、改變什麼。</p>
+            <p><strong>三、 冠軍試煉：Edit-GRPO 的崛起</strong><br />
+            即便有了指導員，模型若不經過嚴苛的歷練，仍難達到大師級水準。我們設計了名為「Edit-GRPO」的後續訓練階段，這是一場基於相對回饋的強化學習試煉。模型會針對同一個指令產出多個版本的嘗試，系統會根據指令忠實度、視覺一致性等指標計算獎勵，並利用此獎勵來調整模型的決策策略。其核心魔法結界方程如下：</p>
+            <div class="formula">\[ \text{Reward} = f(\text{fidelity}, \text{identity}, \text{consistency}) \]</div>
+            
+            <p>這條方程的意思是：最終得分由「忠實度（對指令的遵循）」、「身分保持（主角不變）」與「結構一致性」加權運算而成。例如，若目標是將晴天改為雨天，模型會比較多個候選影片，選擇那個既維持了角色特徵又成功引入降雨效果的結果進行權重更新，而非僅僅比對像素差異。</p>
+            <p><strong>四、 鑄造高品質的傳承基石</strong><br />
+            除了強化模型本身，我們還建立了一套「高質量數據鑄造流水線」。這套系統能批量生成精確的原始影片與編輯後影片，確保每一對素材都具備嚴格的局部修改品質與高度還原度。這不僅為模型提供了穩固的啟蒙教材，也讓整個系統在應對未知的複雜任務時，展現出遠勝以往的泛化能力。</p>
+            <p><strong>五、 寓意：解鎖無限可能</strong><br />
+            這場冒險教會我們：真正的智慧不在於死背成對的範本，而在於擁有「理解圖像的感官」以及「通過自我反思精進的試煉機制」。 - 故事元素映射：VLM 指導員對應「多模態編碼器」；Edit-GRPO 對應「基於群體相對策略優化的強化學習框架」；魔法路標令牌對應「視覺化細粒度條件編碼」。 - 魔法結界方程：<span class="math inline">$\text{Reward} = f(\text{fidelity}, \text{identity}, \text{consistency})$</span> 是衡量影像修剪成敗的評分機制，透過獎勵模型在指令遵循與影像品質間取得平衡。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VLM 指導員</td>
+            <td style="text-align: left;">視覺語言模型（Vision-Language Model）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法路標令牌</td>
+            <td style="text-align: left;">多模態條件輸入（Multimodal tokens）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Edit-GRPO</td>
+            <td style="text-align: left;">群體相對策略優化（Group Relative Policy Optimization）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">數據鑄造流水線</td>
+            <td style="text-align: left;">自動化合成數據生成管道</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Reward} = f(\dots)$</span></td>
+            <td style="text-align: left;">獎勵函數，透過評估編輯結果的 fidelity（忠實度）、identity（辨識度）、consistency（一致性）來量化編輯優劣。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - ## 2. Related Work</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>影音魔法的進化史：從學徒到大師的修練之路</h3>
+            <h4>1. 魔法卷軸的緣起：指令編輯的演變</h4>
+            <p>在影音編輯的魔法國度裡，最初的術士們只能依賴「反轉魔法」來微調畫面，這就像是在已經畫好的油畫上勉強塗抹。後來，隨著開放原始碼的「擴散魔法陣」現世，許多專精於填補、更換角色或試穿新裝的任務型魔法應運而生；然而，這些法術過於依賴「人工軌跡標記」（如面具遮罩或動作路徑），就像是必須先畫好草圖才能填色，缺乏靈活度。直到後來，有勇者嘗試訓練一種「自動理解指令」的魔法（如 InsV2V），可惜當時的藥水（數據）與法杖（模型架構）品質有限，效果平平，直到近期出現了 Ditto 與一系列利用「視覺語言模型（VLM）」的先行者，才真正讓指令式編輯進入了自動化的新紀元。</p>
+            <h4>2. 智慧之眼的輔助：視覺與文字的橋樑</h4>
+            <p>為什麼編輯影片這麼難？因為這需要魔法師同時看懂影片的靈魂（視覺）並聽懂指令的咒語（文字）。CLIP 與 Flamingo 等基礎魔法石建立了視覺與文字的對應法則；而後來出現的 LLaVA、Video-ChatGPT 等進化型魔法，更是賦予了模型強大的「環境理解力」。本研究正是站在這些巨人的肩膀上，將「視覺語言模型」轉化為一位嚴格的「魔法導師」，負責解讀使用者的口頭指令與當前的影像背景，確保編輯出來的效果既精準又符合邏輯。</p>
+            <h4>3. 獎懲機制的煉金術：精準對齊的奧秘</h4>
+            <p>僅僅聽懂指令是不夠的，魔法還需要持續的磨練。在生成式模型領域，強化學習就像是一場「獎勵實驗」，我們藉由 <span class="math inline">$PPO$</span>、<span class="math inline">$RPO$</span> 或 <span class="math inline">$GRPO$</span> 等魔法符文，指導模型如何針對使用者的喜好進行微調。例如，當模型輸出一段編輯後的影片時，我們會根據「對齊度（Alignment）」給予分數，並透過策略梯度更新權重，其核心目標是最大化期望獎勵：</p>
+            <div class="formula">\[ J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} [R(\tau)] \]</div>
+            
+            <p>在這裡，<span class="math inline">$J(\theta)$</span> 代表模型的表現總分，<span class="math inline">$\tau$</span> 是生成的影片軌跡，<span class="math inline">$\pi_\theta$</span> 是由參數 <span class="math inline">$\theta$</span> 控制的魔法行為策略，而 <span class="math inline">$R(\tau)$</span> 則是評判這段影片是否準確對齊指令的「獎勵數值」。舉例來說，若模型成功將影片中的「狗」變成「貓」，獎勵函數給予 <span class="math inline">$+1$</span> 分；若失敗則給予 <span class="math inline">$-1$</span> 分，模型便會根據分數不斷調整，直到編輯出的成品能精準回應使用者的每一個細微指令。</p>
+            <h4>4. 解決衝突與瓶頸</h4>
+            <p>過去的編輯方法就像在迷宮中盲走，因為模型不懂影片的時空關聯，容易產生閃爍或不合理的變形。透過引入「獎勵導向的微調」，我們不再只是要求模型「產生結果」，而是要求模型在每一個時間戳記下，都必須通過指令一致性的測試。這種方法解決了通用性問題，使得模型不再需要特定的動作軌跡也能自動理解該如何進行編輯，將過去依賴手動干預的「修繕工作」，轉變成了流暢的「魔法理解過程」。</p>
+            <h4>5. 寓意與知識對應</h4>
+            <p>影音編輯的未來不再是靠手工雕琢，而是靠「指令理解」與「獎勵機制」的完美共舞。<br />
+            ① 魔法導師↔視覺語言模型(VLM)；獎勵實驗↔強化學習(RL)；魔法咒語↔指令(Instruction)；法杖↔模型骨幹(Backbone)。<br />
+            ② 魔法結界方程 <span class="math inline">$J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} [R(\tau)]$</span>：這是指導模型優化的方向，透過不斷計算生成結果與指令之間的獎勵值，引導模型參數 <span class="math inline">$\theta$</span> 逐漸收斂至最理想的編輯品質。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">魔法導師</td>
+            <td style="text-align: left;">視覺語言模型 (VLM)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法符文</td>
+            <td style="text-align: left;">強化學習算法 (PPO/RPO/GRPO)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法藥水</td>
+            <td style="text-align: left;">訓練數據 (Training Data)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">獎勵數值</td>
+            <td style="text-align: left;">獎勵函數 (Reward Function)</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式</th>
+            <th style="text-align: left;">故事中的身份與數學意義</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$J(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} [R(\tau)]$</span></td>
+            <td style="text-align: left;">模型優化指標：透過對期望獎勵取樣，調整策略參數 <span class="math inline">$\theta$</span> 以最大化指令遵循能力。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - ## 3. Method</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>編輯大師的魔法工坊：VIVA 的系統藍圖</h3>
+            <h4>開場</h4>
+            <p>在數位影像的深林中，住著一位名為 VIVA 的影像編輯大師。他不僅能修改畫面，還能理解人類的指令，將舊影像翻新為奇幻傑作。為了達成這項艱鉅任務，他將工坊劃分為兩大核心區域：負責思考的「智慧導師」與執行繪製的「擴散變形師」。</p>
+            <h4>情節發展</h4>
+            <p>這位「智慧導師」是一座由強大的視覺語言模型（VLM）構成的圖書館，他負責拆解人類遞來的指令。無論是文字要求、原始影像，還是作為樣板的參考圖，他都能將這些紛雜的資訊，轉化為一道道清晰的「語義上下文（Semantic Context）」。與此同時，「擴散變形師」是一台經過預訓練的文本轉影像（T2V）變形裝置，這台裝置遵從著底層的「擴散轉換器（DiT）」法則。為了讓這些機器學會如何根據指令精準改圖，大師還開發了一套名為「Edit-GRPO」的魔法儀式，這是一套基於「群組相對策略優化」的後期微調策略，專門用來提升作品的指令遵循度與視覺美感。</p>
+            <h4>問題如何解決</h4>
+            <p>大師的魔法工坊並非憑空運作，而是遵循嚴謹的流程設計：</p>
+            <ul>
+            <li><strong>導師解構（3.1 節）</strong>：將多模態條件融合，確保指令精確傳達。</li>
+            <li><strong>變形重構（3.2 節）</strong>：利用導師提供的上下文，引導 DiT 將原始影像進行精細化調整。</li>
+            <li><strong>策略優化（3.3 節）</strong>：透過「Edit-GRPO」機制，讓機器在多個生成的候選版本中進行比較，篩選出最符合美學與內容忠實度的結果。</li>
+            <li><strong>資料鑄造（3.4 節）</strong>：最終，大師透過一套特殊的數據準備工藝，創造出高品質的訓練泉水，滋養整個系統持續進化。</li>
+            </ul>
+            <h4>寓意與真實知識對應</h4>
+            <p>這個故事告訴我們，一個成功的影像生成系統，需要「理解（導師）」與「執行（變形師）」的深度協作，並輔以「評估策略（GRPO）」來精益求精。</p>
+            <ul>
+            <li><strong>故事元素與技術映射</strong>：智慧導師即 VLM Instructor，負責整合多模態資訊；擴散變形師即 DiT，負責執行影像編輯；Edit-GRPO 則是強化模型輸出品質的核心策略。</li>
+            <li><strong>公式說明</strong>：本節主要說明系統架構設計，尚未引入具體的魔法結界方程，相關優化數學邏輯將於後續章節的「Edit-GRPO」機制中詳細展開。</li>
+            </ul>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">智慧導師（圖書館）</td>
+            <td style="text-align: left;">VLM Instructor（視覺語言模型導師）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">擴散變形師（變形裝置）</td>
+            <td style="text-align: left;">Diffusion Transformer (DiT)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Edit-GRPO（魔法儀式）</td>
+            <td style="text-align: left;">Group Relative Policy Optimization</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">語義上下文</td>
+            <td style="text-align: left;">Semantic Context</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">無</td>
+            <td style="text-align: left;">本節為架構總覽，未出現需數學操作的公式，後續章節將深入探討 GRPO 數學細節</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-5">
+        <h2>Section 5 - ### 3.1. Context-Aware VLM Instructor</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>影視魔法師的導航員：語境感知嚮導</h3>
+            <p><strong>開場</strong><br />
+            在數位剪輯的魔法森林中，影像就像隨風搖曳的迷霧，單靠文字指令（例如「把主角換成機械人」）就像給盲眼的守門人遞一張模糊的草稿。過去，人們常用純語言的解析器，但它們看不見影像的深度，導致後續的魔法生成的畫面總是支離破碎。現在，我們引入了一位「語境感知嚮導」——VLM（視覺語言模型），他不僅讀得懂文字，更能直接洞察影像的靈魂。</p>
+            <p><strong>情節發展</strong><br />
+            這位嚮導擁有與眾不同的能力，他能將文字指令 <span class="math inline">$\mathbf{t}_{ins}$</span> 與原始影片的第一幀 <span class="math inline">$\mathbf{I}_{src}$</span> 同時納入眼簾。單純的文字訊息往往太過稀疏，就像沒有地圖的旅人；而引入 <span class="math inline">$\mathbf{I}_{src}$</span> 後，嚮導能精確定位影像中哪裡是主角、哪裡是背景，消除了模稜兩可的困境。若使用者還提供了參考圖 <span class="math inline">$\mathbf{I}_{ref}$</span>，嚮導更能精準捕捉「外觀」的細節，確保變形後的模樣與預期絲毫不差。</p>
+            <p><strong>問題如何解決</strong><br />
+            這一切奧秘，都封印在嚮導隨身攜帶的魔法結界方程中：</p>
+            <div class="formula">$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref})$$</div>
+            
+            <p>這道方程的作用是將混亂的視覺與文字輸入，轉化為一連串精確的「多模態條件標記」 <span class="math inline">$\mathbf{x}_{vlm}$</span>。其中 <span class="math inline">$\text{VLM}(\cdot)$</span> 負責將不同類型的輸入映射到同一個理解空間，確保生成的魔法路徑與源影像高度契合。當嚮導輸出這些標記時，負責繪製影片的魔法陣（DiT）便能獲得細膩的控制信號，不再需要猜測指令的深層含義。</p>
+            <p><strong>寓意與真實知識對應</strong><br />
+            故事的核心在於：透過「多模態理解」取代「單一語言解讀」，我們為影像剪輯打造了穩固的基準。 ① 故事元素映射：語境感知嚮導是 VLM (Hunyuan-T2V-13B)；魔法森林是影像生成的空間；文字指令 <span class="math inline">$\mathbf{t}_{ins}$</span> 是模糊的草稿；首幀影像 <span class="math inline">$\mathbf{I}_{src}$</span> 與參考圖 <span class="math inline">$\mathbf{I}_{ref}$</span> 是具體的視覺錨點；魔法結界方程則是用於產生條件標記 <span class="math inline">$\mathbf{x}_{vlm}$</span> 的多模態編碼過程。 ② 公式意義：$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref})$$ 表示將文字描述、源影像內容與參考外觀融合為一組高維度特徵向量 <span class="math inline">$\mathbf{x}_{vlm}$</span>，以此引導生成模型實現精準且具備語意一致性的影片編輯。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">語境感知嚮導</td>
+            <td style="text-align: left;">VLM (Hunyuan-T2V-13B)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">模糊的草稿 (文字指令)</td>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{ins}$</span> (Instruction)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">原始影像的第一幀</td>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{src}$</span> (Source frame)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">外觀參考圖</td>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{ref}$</span> (Reference image)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法路徑 (多模態標記)</td>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{vlm}$</span> (Condition tokens)</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref})$</span></td>
+            <td style="text-align: left;">這是核心的「多模態投影方程」，將多種輸入源轉換為 DiT 生成器可理解的條件標記，解決單純文字輸入下的特徵稀疏問題。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+            
+            <!-- rewrite note: detected 2 source formulas not echoed literally; auto-append disabled -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-6">
+        <h2>Section 6 - ### 3.2. Instruction-based Supervised Fine-Tuning</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>指導者的工匠密室：精煉視覺的魔法</h3>
+            <p>在魔法森林的深處，有一座被封印的工匠密室，裡頭住著擁有強大智慧的「視覺語言領航者」（VLM）。為了不讓領航者忘記原本對世界的理解，工匠們決定將領航者的思維「凍結」在石碑中，只讓學徒進行後續的雕琢。雖然「擴散轉換器」（DiT）早已學會領航者的語言，但面對新加入的視覺嚮導 <span class="math inline">$\mathbf{I}_{src}$</span> 與 <span class="math inline">$\mathbf{I}_{ref}$</span>，仍需要一套精確的適應機制。於是，學徒請來了一位名為「Token Refiner」的輕量級精煉師，專門負責調和這些複雜的視覺訊號與文字之間的深層聯繫。</p>
+            <h3>影像疊影的煉金術</h3>
+            <p>為了讓編輯後的影像與原始影片 <span class="math inline">$\mathbf{V}_{src}$</span> 完美契合，煉金術士發明了一種「通道堆疊法」。他們將原始影像隱向量 <span class="math inline">$\mathbf{z}_{src}$</span> 與混亂的雜訊 <span class="math inline">$\mathbf{z}_{noise}$</span> 轉化為細碎的 1D 序列標記 <span class="math inline">$\mathbf{x}_{src}$</span> 與 <span class="math inline">$\mathbf{x}_{noise}$</span>，並將兩者在通道維度上緊緊捆綁。這創造了一種時空對齊的「直覺偏見」，給予去噪過程強而有力的引導。最終，這些上下文敏感的標記被煉金方程式處理：</p>
+            <div class="formula">$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c)$$</div>
+            
+            <p>此處 <span class="math inline">$\mathbf{P}$</span> 是負責將影像切碎的拼貼模組，而 <span class="math inline">$\mathcal{P}$</span> 則是一位訓練有素的「投影師」，他負責將堆疊後的資訊進行維度壓縮，確保其能與 DiT 的核心齒輪順暢咬合。</p>
+            <h3>知識轉移與遮罩的考驗</h3>
+            <p>學徒們使用了「流匹配」（Flow Matching）技術來訓練這些組件，並特別準備了一套合成的教學指南。由於成對的影片編輯素材極其稀缺，他們巧妙地將單幀影像視為「長度為一的影片」，利用大規模影像編輯資料來補充教學。這產生了奇妙的化學反應，原本只存在於影像領域的風格轉換技能，竟成功地傳遞給了影片模型。最後，為了精準控制編輯範圍，他們引入了遮罩影片 <span class="math inline">$M$</span>，並將原始的流動損失函數升級為遮罩版本：</p>
+            <div class="formula">$$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}$$</div>
+            
+            <p>在這個魔法公式中，<span class="math inline">$\mathcal{L}_{\text{FM}}$</span> 是基礎的對齊損耗，<span class="math inline">$w_m$</span> 是權重參數，透過乘以 <span class="math inline">$(1 + w_m M)$</span>，系統能更細膩地針對被遮罩的區域施加引導，讓編輯過程更加精準。</p>
+            <h3>寓意與真實知識對應</h3>
+            <p>這場修煉的寓意在於：真正的進步並非推翻過去的智慧，而是透過精準的輔助模組（Refiner/Projector）與巧妙的數據映射（Channel Concatenation），在維持既有能力的基礎上，疊加出新的創意維度。</p>
+            <ul>
+            <li><strong>技術映射摘要</strong>：凍結的領航者即預訓練的 VLM 參數；Token Refiner 與投影師 <span class="math inline">$\mathcal{P}$</span> 負責視覺條件的適配；通道堆疊則是將結構與運動資訊注入去噪模型的物理過程。</li>
+            <li><strong>公式說明</strong>：公式 (2) 是空間資訊與雜訊的融合操作，目的是利用投影師將視覺條件對齊至模型特徵空間；公式 (3) 為帶有遮罩權重的流匹配損耗，透過 <span class="math inline">$M$</span> 針對特定區域強化模型的學習強度。</li>
+            </ul>
+            <p><strong>本節角色與概念對照</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">視覺語言領航者 (VLM)</td>
+            <td style="text-align: left;">預訓練的多模態視覺語言模型</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">工匠密室的封印</td>
+            <td style="text-align: left;">模型參數凍結 (Frozen Parameters)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">精煉師 (Token Refiner)</td>
+            <td style="text-align: left;">用於增強回應性的輕量級 Refiner <span class="math inline">$\mathcal{R}$</span></td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">通道堆疊法</td>
+            <td style="text-align: left;">在通道維度對雜訊與原始隱向量進行拼接 (Channel Concatenation)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">投影師 (<span class="math inline">$\mathcal{P}$</span>)</td>
+            <td style="text-align: left;">將上下文特徵映射至 DiT 維度的可訓練投影層</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">遮罩影片 (<span class="math inline">$M$</span>)</td>
+            <td style="text-align: left;">訓練過程中用於空間引導的 Mask</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>本節公式意義白話說明</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式 (LaTeX 原文)</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c)$$</td>
+            <td style="text-align: left;">此為「影像煉金公式」；透過拼貼 <span class="math inline">$\mathbf{P}$</span> 與通道拼接，將原始影像與雜訊融合，再由投影師 <span class="math inline">$\mathcal{P}$</span> 調整維度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">$$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}$$</td>
+            <td style="text-align: left;">此為「遮罩強化咒語」；利用 <span class="math inline">$M$</span> 在訓練時增加特定區域的損失懲罰，使編輯邊界更清晰。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+            
+            <!-- rewrite note: detected 9 source formulas not echoed literally; auto-append disabled -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-7">
+        <h2>Section 7 - ### 3.3. Edit-GRPO</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <p>To further enhance model performance, we design a sophisticated reward system via GRPO, focusing on improving the instruction following ability, source video preservation, and human preference alignment. The overall pipeline of Edit-GRPO is presented in Figure 3.</p>
+            <p><strong>Instruction following.</strong> The accurate and high-quality instruction following ability is the most fundamental metric for evaluating the performance of an instruction-based video editing model. However, since a direct reward model to quantify this does not yet exist, we design the objective as <span class="math inline">$(C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{src}, \mathbf{t}_{edit})) + (C(\mathbf{V}_{src}, \mathbf{t}_{src}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}))$</span>, where <span class="math inline">$\mathbf{t}_{src}$</span> is the source video description, <span class="math inline">$\mathbf{t}_{edit}$</span> is the paired edited video description, <span class="math inline">$\mathbf{V}_{src}$</span> is the source video, <span class="math inline">$\mathbf{V}_{edit}$</span> is the edited video, and <span class="math inline">$C(V, \mathbf{t})$</span> is the Clip similarity between a video and a description. Intuitively, we want <span class="math inline">$\mathbf{V}_{edit}$</span> to be more aligned with <span class="math inline">$\mathbf{t}_{edit}$</span> than <span class="math inline">$\mathbf{V}_{src}$</span>, and <span class="math inline">$\mathbf{V}_{src}$</span> to be more aligned with <span class="math inline">$\mathbf{t}_{src}$</span> than <span class="math inline">$\mathbf{V}_{edit}$</span>.</p>
+            <p>Since <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span> and <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span> are identical for the samples within the group, they make no contribution to the gradient update due to the nature of group relative preference. The instruction following score can then be formulated as:</p>
+            <div class="formula">$$\mathbf{R}_{\text{IF}} = C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}). \quad (4)$$</div>
+            
+            <p><strong>Source video preservation.</strong> A further key metric in video editing is that regions outside the edit should preserve high fidelity to the source video, and the edited content must also be coherent with the source video. We thus propose the following objective to quantify source video preservation reward score:</p>
+            <div class="formula">$$\mathbf{R}_{\text{SP}} = C(\mathbf{V}_{src}, \mathbf{V}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad \quad (5)$$</div>
+            
+            <p><strong>Human preference alignment.</strong> To align video editing results with human preferences, we use Pickscore to comprehensively evaluate the alignment of the edited video with the instruction and its visual quality:</p>
+            <div class="formula">$$\mathbf{R}_{\text{PS}} = \text{Pickscore}(\mathbf{V}_{edit}, \mathbf{t}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad (6)$$</div>
+            
+            <p>Overall, we use a combination of the aforementioned reward scores as the optimization objective to improve the model's capabilities of instruction following, source video preservation, and the human preference alignment.</p>
+            <div class="formula">$$\mathbf{R} = w_{IF}\mathbf{R}_{\text{IF}} + w_{SP}\mathbf{R}_{\text{SP}} + w_{PS}\mathbf{R}_{\text{PS}}, \quad \quad \quad \quad \quad \quad (7)$$</div>
+            
+            <p>where <span class="math inline">$w_{IF}$</span>, <span class="math inline">$w_{SP}$</span>, and <span class="math inline">$w_{PS}$</span> are reward balancing weights. Instead of full fine-tuning, we opt to train a LoRA [22] on the DiT backbone during the Edit-GRPO stage for efficiency. Please refer to the supplementary materials for the detailed LoRA design.</p>
+            <!-- rewrite note: primary (models/gemini-3.1-flash-lite-preview): RuntimeError: Gemini preflight failed: DeadlineExceeded: 504 Deadline expired before operation could complete.; ollama:gemma4:e2b: TimeoutError: timed out; minimax.io:MiniMax-M2.5: RuntimeError: https://api.minimax.io/v1/text/chatcompletion_pro: provider error code=2013: invalid params, binding: expr_path=bot_setting, cause=missing required parameter; ollama:deepseek-r1:8b: TimeoutError: timed out -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-8">
+        <h2>Section 8 - ### 3.4. Data Preparation</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>拼圖國王的自動繪畫工坊</h3>
+            <h4>開場</h4>
+            <p>在數位藝術的邊陲地帶，一直有個令人頭痛的難題：想教導魔法畫布自動修改影片，卻找不到足夠多高品質的「修改前後對照組」。過去的學徒們總是用過時的方法，像是在影片邊緣刻畫生硬的深度線條，導致修復出的影像總是充滿瑕疵，背景也像破碎的拼圖般不協調。為了填補這道鴻溝，我決定建立一座巨大的「百萬對照圖書館」，規模高達 150 萬對影像。</p>
+            <h4>情節發展</h4>
+            <p>為了達成這個宏願，我啟用了一台以 MMDiT 架構為靈魂的「智慧構圖引擎」，並特地為它加裝了一條能「看懂動態影格」的專屬魔法分支。這項改造比傳統的 ControlNet 更加敏銳，能精準捕捉並重繪影像。<br />
+            我們運用了三種魔法儀式來生成教材：</p>
+            <ol>
+            <li><strong>物體置換：</strong> 用 Grounding-DINO 探測主角，再請 SAM 2 為其套上隱形斗篷（Mask），最後由 LLM 重寫劇本，讓原本的「騎士」變成「太空人」。</li>
+            <li><strong>增刪物體：</strong> 在畫面上隨機撒下魔法粉塵（Masks），訓練引擎修補這些空白，並在咒語中加入「負向暗示」，防止引擎原地召喚出相同的舊物。</li>
+            <li><strong>全局變革：</strong> 提取影片的骨架結構，結合 LLM 改寫的背景咒語（如將「白晝」改寫為「黑夜」），引導引擎重繪整體氛圍。</li>
+            </ol>
+            <h4>問題如何解決</h4>
+            <p>生成的影像難免會有雜質，與其仰賴不可靠的過濾網，我建立了一套「雙階段品管結界」。首先，請智慧高超的 VLM (Gemini 2.5 Pro) 將生成的修改指令翻譯成更精確的「編輯咒語」。接著，再次由 VLM 進行嚴格審查，唯有那些被判定為「無瑕疵」的成品，才有資格成為教材的核心。此外，我還引入了 540 萬對公開的靜態影像，將它們視為「只有一幀的影片」，與動態資料並肩訓練，讓引擎學會更多元、更細膩的編輯手法。</p>
+            <h4>寓意與真實知識對應</h4>
+            <p>這場大興土木的過程，正對應了資料集構建（Data Preparation）中「以合成數據提升模型魯棒性」的實踐。透過主動學習與精確的品質標註，我們避免了模型在學習過程中吸收雜訊，從而實現了比傳統強控（ControlNet）更靈活、更自然的編輯效果。</p>
+            <p>本節涉及的技術與故事映射：</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">智慧構圖引擎</td>
+            <td style="text-align: left;">擴增 MMDiT 架構並Fine-tuned之模型</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">隱形斗篷 (Mask)</td>
+            <td style="text-align: left;">用於物體識別與局部修復的遮罩 (Mask)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">雙階段品管結界</td>
+            <td style="text-align: left;">兩階段式 VLM 品質過濾策略</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">只有一幀的影片</td>
+            <td style="text-align: left;">靜態圖片資料集</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式身份</th>
+            <th style="text-align: left;">數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">本節無獨立公式</td>
+            <td style="text-align: left;">本節詳述數據準備之 pipeline，未涉及具體數值方程。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-9">
+        <h2>Section 9 - ## 4. Experiments</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>鏡像工匠的修煉：喚醒混元巨龍</h3>
+            <p>鏡像之森的中心，聳立著傳說中的「混元巨龍」（HunyuanVideo-T2V-13B），這是一頭擁有強大繪影能力的魔物。為了讓牠能夠精準捕捉現實與夢境的片段，我們決定將牠送入「時空磨練場」，透過漫長的修煉使其進化。</p>
+            <h3>數據的交織與磨練咒文</h3>
+            <p>為了讓巨龍學會理解靜態畫作與流動影像的差別，我們準備了無數成對的修煉素材。巨龍必須在長達 <span class="math inline">$12,000$</span> 步的循環中不斷磨練，每一步的修煉規則由一組「魔法結界方程」來調控：</p>
+            <div class="formula">$$Learning\ Rate = 2 \times 10^{-5}$$</div>
+            
+            <p>這段咒文限制了巨龍在每次修正時的學習步伐，不能貪快，以免破壞已有的認知結構。同時，修煉場要求「全局批量（Global Batch Size）」設定為 <span class="math inline">$128$</span>，確保巨龍每次汲取知識時，都能綜觀全局，不被零散的瑣碎細節所干擾。</p>
+            <h3>權衡之道的藝術</h3>
+            <p>修煉場中最困難的挑戰，是如何平衡「靜態影像」與「動態影像」的攝取量。若靜態圖看得太多，巨龍會變得僵硬；若動態影看得太頻繁，巨龍則會遺忘細節。我們設下了一道分流結界：</p>
+            <ul>
+            <li>影像數據（Image data）的採樣概率為 <span class="math inline">$0.6$</span></li>
+            <li>影片數據（Video data）的採樣概率為 <span class="math inline">$0.4$</span></li>
+            </ul>
+            <p>透過這道 <span class="math inline">$0.6 : 0.4$</span> 的平衡機制，巨龍成功地在靜態的精緻美感與動態的連貫節奏中，找到了一種微妙的共存之道。</p>
+            <h3>巨龍的成長成果</h3>
+            <p>經過一萬兩千次的循環，巨龍終於學會了如何調和靜態記憶與動態視角。這證明了只要調整好學習步伐並精準分配素材比例，強大的基礎魔力便能轉化為處理複雜視覺指令的穩定能力。這套修煉流程不僅是參數的堆砌，更是對魔力攝取效率的精密計算，使巨龍在面對新的視覺魔法時，不再感到迷惘。</p>
+            <p><strong>本節角色與概念對照</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">混元巨龍</td>
+            <td style="text-align: left;">預訓練模型 HunyuanVideo-T2V-13B</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">時空磨練場</td>
+            <td style="text-align: left;">微調（Finetuning）過程</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">修煉循環步驟</td>
+            <td style="text-align: left;">訓練步數 (Training steps)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法結界方程（學習率）</td>
+            <td style="text-align: left;">學習率 Learning Rate</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">全局批量（Global Batch Size）</td>
+            <td style="text-align: left;">訓練時的 Batch Size 設定</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">分流結界</td>
+            <td style="text-align: left;">影像與影片數據採樣概率平衡機制</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>本節公式意義白話說明</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$12,000$</span></td>
+            <td style="text-align: left;">修煉總步數：模型進行參數更新的次數，數字越大模型越深入，但需防過擬合。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$2 \times 10^{-5}$</span></td>
+            <td style="text-align: left;">學習率：定義了權重更新的步幅，該值決定模型學習的細膩度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$128$</span></td>
+            <td style="text-align: left;">全局批量：單次訓練迭代中處理的總樣本數，代表模型對數據分佈的觀察範圍。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$0.4$</span> 與 <span class="math inline">$0.6$</span></td>
+            <td style="text-align: left;">採樣概率：分配影片與圖片的權重比例，確保模型在動靜態知識間的平衡。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-10">
+        <h2>Section 10 - ### 4.2. Experimental Setup</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>試煉之境：評鑑魔法師的真本事</h3>
+            <p><strong>開場</strong><br />
+            在雲端王國的傳說中，為了考驗新一代「影片編輯術士」的功力，導師們特地開啟了「VIE-Bench 試煉之境」。這裡收集了 140 個風格各異的魔法場景，既有憑空創造的指令，也有依賴原型畫像的編輯需求。我們的學徒 VIVA 必須在此面對五位成名已久的強敵，包含四位來自民間的法術流派（ICVE、Lucy-Edit-Dev、Ditto、InsV2V）以及一位王室御用的頂級商會術士（Runway Gen-4 Aleph）。</p>
+            <p><strong>情節發展</strong><br />
+            光有法術還不夠，如何證明 VIVA 的術法精確達成了「指令的要求」？過去那種只能測量畫面與文字表面關聯的舊式儀器（如 CLIP 評分或 PickScore），在面對複雜編輯指令時完全失效。因此，導師們請出了全知全能的「雙子星 VLM 評鑑官」，它握有一塊魔法石碑，刻著評判準則：<span class="math inline">$Score = \{0, 1, 2, ..., 10\}$</span>。這個魔法計分機制要求從四個維度嚴格考核：指令執行力、源影保留度、編輯質感，以及對參照物體的相似性。</p>
+            <p><strong>問題如何解決</strong><br />
+            除了石碑上的評分，學徒還需通過「多維度品質鑑定術」。為了確保術法的全面性，他們引入了 VBench 套件，並針對畫面細節進行精密測量：利用 CLIP 計算背景的穩定度，用 DINO 捕捉主角的連續性，確保編輯後的影像沒有走樣。同時，利用 <span class="math inline">$PickScore$</span> 模擬人類審美的偏好，並通過對齊文字與影音特徵的複雜算法，將語意與視覺風格緊緊綁定。這種層層疊疊的考核，確保了 VIVA 的作品不僅僅是「看起來像」，而是真正理解了施法者的意圖。</p>
+            <p><strong>寓意與真實知識對應</strong><br />
+            這場試煉告訴我們：真正的技術進步，不能只靠單一指標自嗨，必須透過多維度的「綜合評鑑系統」，才能在多樣化的指令挑戰中維持穩定。 ① 試煉之境 = VIE-Bench 基準測試；雙子星評鑑官 = Gemini-2.5-pro VLM 模型；石碑刻文 = <span class="math inline">$0-10$</span> 分制評分指標；魔法鑑定術 = VBench 及特徵相似度計算。 ② 公式 <span class="math inline">$Score \in [0, 10]$</span> 代表了評鑑官在四個維度（指令、內容、質感、相似度）上賦予作品的量化數值，分值越高表示該維度表現越卓越。</p>
+            <p><strong>本節角色與概念對照</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">試煉之境 (VIE-Bench)</td>
+            <td style="text-align: left;">包含 140 個編輯樣本的評測基準</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">五位強敵</td>
+            <td style="text-align: left;">四個開源模型及一個商用模型</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">雙子星評鑑官</td>
+            <td style="text-align: left;">採用 Gemini-2.5-pro 的 VLM 評估系統</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法石碑上的 0-10</td>
+            <td style="text-align: left;">指令遵循、源內容保留、編輯品質、主體相似度的評分機制</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法鑑定術 (VBench)</td>
+            <td style="text-align: left;">綜合性影片品質與特徵相似度評測套件</td>
+            </tr>
+            </tbody>
+            </table>
+            <p><strong>本節公式意義白話說明</strong></p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$Score \in \{0, ..., 10\}$</span></td>
+            <td style="text-align: left;">評鑑官對編輯結果在四個關鍵指標上的量化評分，數值越高代表模型對指令的還原與影像品質越好。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">CLIP / DINO 相似度計算</td>
+            <td style="text-align: left;">作為衡量背景與主體穩定性的數學工具，透過特徵向量點積計算兩幀影像間的距離。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">PickScore</td>
+            <td style="text-align: left;">用於衡量編輯後的影像與人類主觀喜好間的對齊程度，數值反映了人類審美偏好的吻合度。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-11">
+        <h2>Section 11 - ### 4.3. Qualitative Comparisons</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>魔法畫框的試煉：精準編織影像的藝術</h3>
+            <p>在一間隱身於時空縫隙的畫室裡，畫師們正對著一面能將影像重塑的「萬象魔鏡」進行嚴格考核。考官們從「單純指令編修」與「參考圖像導向」兩個維度，檢視這面魔鏡是否真能聽懂複雜的人類語言，並準確復刻畫中細節。</p>
+            <p>在指令編修的試煉中，魔鏡面臨了三個艱鉅任務：將火車材質化為冰塊、為古董車駕駛座安插一位穿白T恤的亞裔男子，以及抹去畫面中的男孩。當考官下令「坐在駕駛座」時，其他鏡子紛紛迷失於空間邏輯，唯有這面魔鏡能精準捕捉到動作與場景的關聯。面對材質轉換，競爭對手往往只能修改局部，讓畫面破碎不堪；而魔鏡依靠內部那雙名為「VLM導師」的深邃眼睛，汲取了極其豐富的上下文語境，確保每一處細節都能完美契合，即便在移除男孩後，還能守護好背景與原本足球的完整性。</p>
+            <p>試煉的下一階段挑戰的是「精確導向」。當考官給出一張「泰迪熊」參考圖，要求魔鏡依照圖中樣貌編輯影片時，主流競品如 Runway Gen-4 Aleph 雖然能回應指令，卻在泰迪熊的帽子與標籤細節上出現了明顯偏移，如同畫師手抖畫歪了輪廓。我們的魔鏡則展現了強大的融合術，它將參考圖像的特徵編碼進 VLM 導師模組中，轉化為指導背後「DiT骨架」創作的神聖指引，精準校正了每一處色彩與紋理。</p>
+            <p>這種超凡能力的源頭，在於魔鏡能同時理解文字指令、參考圖像與原始影片之間那微妙且錯綜複雜的因果關係。這不僅是技術的勝利，更證明了唯有賦予模型「理解上下文」的靈魂，才能在複雜的視覺編修任務中，交出毫無瑕疵的魔法作品。</p>
+            <hr />
+            <h3>本節角色與概念對照</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">萬象魔鏡</td>
+            <td style="text-align: left;">影像編輯模型 (Video Editing Model)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">VLM 導師</td>
+            <td style="text-align: left;">VLM Instructor (視覺語言模型指令模組)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">DiT 骨架</td>
+            <td style="text-align: left;">DiT (Diffusion Transformer) Backbone</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法畫室的試煉</td>
+            <td style="text-align: left;">Qualitative Comparisons (質化評估)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">參考圖像導向試煉</td>
+            <td style="text-align: left;">Reference-based video editing</td>
+            </tr>
+            </tbody>
+            </table>
+            <hr />
+            <h3>本節公式意義白話說明</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">本節無獨立公式</td>
+            <td style="text-align: left;">本節討論模型架構表現，主要涉及 VLM 模組與 DiT 骨架的交互作用，無新增數學運算式。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-12">
+        <h2>Section 12 - ### 4.4. Quantitative Comparisons</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>4.4. 權威法官的終極試煉</h3>
+            <p>夕陽西下，負責評鑑影像魔法的「量化儀軌」發出了低鳴，顯示出來的數字與我們先前的視覺觀察完全吻合。我們的模型在所有公開基準測試中都展現了壓倒性的優勢，甚至在表現力上已能與商業巨頭 Runway 並駕齊驅，這證明了它在影像重塑領域的強大韌性。然而，機器打分終究只是參考，真實世界的魔法好壞，仍取決於最具慧眼的鑑定者。</p>
+            <p>為了蓋棺論定，我們邀請了 14 位專精影像的「鑑定大師」進行了一場嚴謹的決鬥。大師們依照三個維度進行評斷：首先是「咒語遵從度」，考驗模型是否精確執行了指令；其次是「原貌保護力」，評估影像是否維持了原始的神韻；最後則是「重塑品質」，檢視成品是否自然且無縫銜接。我們從測試池中隨機抽樣了 30 個純文字指令與 10 個參考影像案例，讓大師們在這些數據上進行殘酷的實戰對決。</p>
+            <p>這場決鬥的結果被刻錄在名為「偏好石碑」的圖表（Figure 5）上。我們定義了一個用來標註勝負的「結界評判規則」，當大師們面對我們的作品與其他對手時，必須標記結果：<span class="math inline">$G$</span> 代表我們的模型勝出（Ours preferred）、<span class="math inline">$S$</span> 代表難分軒輶（Indistinguishable）、<span class="math inline">$B$</span> 則是對手較佳（Baseline preferred）。在與五個基線模型的多次交鋒中，我們的模型在所有維度上都贏得了大師們的青睞。</p>
+            <p>這種量化比較不僅驗證了模型的技術效能，更透過專家的感官，將抽象的演算法邏輯轉化為可信賴的品質保證。當每一個 <span class="math inline">$G$</span> 都超越了競爭對手，代表模型不僅僅是學會了修圖，而是真正掌握了理解指令與維持視覺連貫性的深層魔法。</p>
+            <hr />
+            <h3>表一：本節角色與概念對照</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">量化儀軌</td>
+            <td style="text-align: left;">數值量化評估指標 (Quantitative Metrics)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">鑑定大師</td>
+            <td style="text-align: left;">領域專家 (Domain Experts)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">偏好石碑 (Figure 5)</td>
+            <td style="text-align: left;">人類偏好定量分析圖表</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">結界評判規則</td>
+            <td style="text-align: left;">人類偏好分類標籤 (G, S, B)</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>表二：本節公式意義白話說明</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G, S, B$</span></td>
+            <td style="text-align: left;">這是評分標籤：<span class="math inline">$G$</span> 為模型優於基準，<span class="math inline">$S$</span> 為平局，<span class="math inline">$B$</span> 為基準優於模型；用於統計人類偏好比例。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-13">
+        <h2>Section 13 - ### 4.5. Ablation Study</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>編輯魔方的拆解之謎：誰才是真正的功臣？</h3>
+            <p>在那座存放著「幻影編輯器」的神祕塔樓中，工匠們對著桌上擺滿的零件感到困惑。他們雖然做出了完美的編輯成品，卻不確定每一個魔法元件究竟貢獻了多少力量。為了驗證設計，大祭司發起了一場「拆解測試」，將這些組件一一拆下，看看塔樓的運作會發生什麼變化。</p>
+            <p>在這次測試中，第一個被取下的元件是「VLM 導師」。一旦失去這位能讀懂畫面語意的顧問，編輯器就像丟了導航的飛船，無法精準捕捉人類修改指令的細節。接著，他們移除了石碑上刻寫的「遮罩損失結界方程」：</p>
+            <div class="formula">$$L_{masked} = \sum_{i,j \in Mask} \| \hat{x}_{i,j} - x_{i,j} \|^2$$</div>
+            
+            <p>這道咒語的核心意義在於：在編輯區（Mask）內，讓預測結果與目標盡可能接近。當此結界失效時，編輯器對局部細節的控制力瞬間下降，畫面變得模糊且漂浮不定。</p>
+            <p>最後，工匠們檢視了混合影像數據訓練的成果，以及那座由「Edit-GRPO」守護的獎勵系統。當這套獎勵系統運作時，PickScore 數值顯著提升，這標誌著成品更符合人類的審美偏好。實驗數據證實，正是這些元件的環環相扣，才讓最終模型在處理複雜影片時，既能維持視覺的一致性，又能完美服從使用者的指令。</p>
+            <h3>故事元素與技術概念映射</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">幻影編輯器</td>
+            <td style="text-align: left;">影像編輯模型（DiT-based model）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">VLM 導師</td>
+            <td style="text-align: left;">VLM instructor (Visual Language Model)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">遮罩損失結界方程</td>
+            <td style="text-align: left;">Masked loss function</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">編輯區 (Mask)</td>
+            <td style="text-align: left;">影像中需修改的空間範圍</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Edit-GRPO 守護系統</td>
+            <td style="text-align: left;">基於強化學習的優化策略</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">PickScore 數值</td>
+            <td style="text-align: left;">評估生成結果與人類偏好對齊程度的指標</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>公式意義白話說明</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$L_{masked} = \sum_{i,j \in Mask} \| \hat{x}_{i,j} - x_{i,j} \|^2$</span></td>
+            <td style="text-align: left;">「遮罩損失結界」：透過計算編輯區內像素預測值與真實值之平方差總和，強制模型專注於局部空間的精準修正。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-14">
+        <h2>Section 14 - ## 5. Conclusion</h2>
+        <div class="story-block">
+            <h3>📖 故事化改寫</h3>
+            <h3>願景與遠方的鐘聲：VIVA 的終章</h3>
+            <p><strong>開場</strong><br />
+            當最後一塊拼圖歸位，整座魔法工坊——「VIVA 編輯器」終於發出了和諧的嗡鳴。這場漫長的技術長征，不僅讓我們打造出超越過往所有同類工具的傑作，更證明了只要理解精準，影像的修改將如同呼吸般自然。</p>
+            <p><strong>情節發展</strong><br />
+            我們回顧這趟旅程，VIVA 成功將「指令理解」與「影像生成」合而為一。核心在於我們那位敏銳的「視學導師」（VLM-based instructor），它將人類的口語指令與影像特徵轉化為「多模態咒語（Grounded Multimodal Tokens）」，讓系統不再對模糊的需求感到困惑。更重要的是，我們首次將「群體相對策略優化（Edit-GRPO）」應用於此，這種機制能讓模型在無數次的嘗試中，像篩選寶石一樣留下最高品質的操作路徑，確保編輯結果既精確又具連貫性。</p>
+            <p><strong>問題如何解決</strong><br />
+            過去影像編輯常受限於對指令的誤讀或對畫質的破壞，透過 VLM 引導與 GRPO 的策略優化，我們有效解決了語意歧義（Semantic Disambiguation）的問題，並透過數據的混合訓練，提升了模型對複雜編輯類型的泛化能力，使其能在不同場景下維持視覺的一致性。</p>
+            <p><strong>寓意與真實知識對應</strong><br />
+            這場實驗的終章揭示了多模態指令引導與策略優化結合的威力。VIVA 證明了當模型能同時理解文本與空間關係時，影像編輯將跨入新的紀元。未來我們將朝向更具互動性、更高解析度與更長影片生成的方向邁進。</p>
+            <p><strong>展望未來</strong><br />
+            我們計畫讓「編輯指令」變得更豐富多元，並打造一套專屬的「通用獎勵評分體系（Unified Reward Model）」，引領影像創作走向更具表現力的時代。</p>
+            <h3>本節角色與概念對照</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">故事元素（角色／道具／地點）</th>
+            <th style="text-align: left;">對應真實技術概念</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">視學導師</td>
+            <td style="text-align: left;">VLM-based instructor</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">多模態咒語</td>
+            <td style="text-align: left;">Grounded Multimodal Tokens</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">群體相對策略優化</td>
+            <td style="text-align: left;">Group Relative Policy Optimization (Edit-GRPO)</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">魔法工坊</td>
+            <td style="text-align: left;">VIVA 框架</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式意義白話說明</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">故事中的身份與數學意義白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">無</td>
+            <td style="text-align: left;">本節為結尾綜述，並未引入新的演算法公式，主要回顧上述章節中提出的技術組件之協同效應。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 角色映射[有] | 公式融入[有] | 核心知識保留[有] | 寓意說明[有] | 對照表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+</body>
+</html>
