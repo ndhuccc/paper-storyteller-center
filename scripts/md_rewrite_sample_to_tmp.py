@@ -11,6 +11,7 @@ Environment:
 
 CLI:
   --style STYLE              storyteller, blog, professor, …
+  --fail-fast                Any section with rewrite ok=False → print reason to stderr and exit ≠0 (no HTML).
   --per-section              Also write tmp/{style}_NN_slug.html per === chunk.
 """
 
@@ -43,6 +44,7 @@ from storyteller_pipeline import (  # noqa: E402
     STYLE_PROMPTS,
     _build_story_html_document,
     _post_rewrite_blog_audit,
+    _post_rewrite_professor_audit,
     _post_rewrite_storyteller_audit,
     _rewrite_section,
     _slugify,
@@ -85,6 +87,11 @@ def main() -> int:
         choices=list(STYLE_PROMPTS.keys()),
         default=_default_style_from_env(),
         help="Rewrite style (default: SAMPLE_MD_STYLE or pipeline first style).",
+    )
+    ap.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="Exit immediately if any section returns ok=False (stderr: section index, title, reason).",
     )
     ap.add_argument(
         "--per-section",
@@ -147,6 +154,34 @@ def main() -> int:
                 introduced_concepts=introduced,
             )
         used_models.append(used_model or model)
+        if args.fail_fast and not offline:
+            if not ok:
+                reason = err_note
+                if not reason:
+                    raw_len = len(body.strip())
+                    if raw_len < 80:
+                        reason = (
+                            f"本節正文僅 {raw_len} 字元，低於管線門檻 80，未呼叫 LLM（_rewrite_section 直接視為失敗）"
+                        )
+                    elif not body.strip():
+                        reason = "本節正文為空"
+                    else:
+                        reason = "改寫失敗（無 err_note，請檢查管線與模型回傳）"
+                print(
+                    f"改寫失敗：第 {idx}/{len(sections_raw)} 節\n"
+                    f"標題: {title!r}\n"
+                    f"原因: {reason}",
+                    file=sys.stderr,
+                )
+                return 2
+            if not (story_text or "").strip():
+                print(
+                    f"改寫失敗：第 {idx}/{len(sections_raw)} 節\n"
+                    f"標題: {title!r}\n"
+                    f"原因: ok=True 但改寫輸出為空",
+                    file=sys.stderr,
+                )
+                return 2
         if err_note:
             story_text = (
                 f"{story_text}\n\n<!-- rewrite note: {err_note} -->"
@@ -190,6 +225,26 @@ def main() -> int:
         elif style == "blog":
             print("post_rewrite_blog_audit…", flush=True)
             _post_rewrite_blog_audit(
+                rendered,
+                primary_model=model,
+                fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,
+                ollama_base_url=ollama_base,
+                minimax_base_url=minimax_base,
+                minimax_oauth_token=minimax_token,
+                rewrite_response_format=DEFAULT_REWRITE_RESPONSE_FORMAT,
+                append_missing_formulas=DEFAULT_APPEND_MISSING_FORMULAS,
+                style_params={},
+                concise_level=DEFAULT_CONCISE_LEVEL,
+                anti_repeat_level=DEFAULT_ANTI_REPEAT_LEVEL,
+                gemini_preflight_enabled=DEFAULT_GEMINI_PREFLIGHT_ENABLED,
+                gemini_preflight_timeout_seconds=DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
+                gemini_rewrite_timeout_seconds=DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
+                fallback_timeout_seconds=DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
+                llm_failures=audit_notes,
+            )
+        elif style == "professor":
+            print("post_rewrite_professor_audit…", flush=True)
+            _post_rewrite_professor_audit(
                 rendered,
                 primary_model=model,
                 fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,

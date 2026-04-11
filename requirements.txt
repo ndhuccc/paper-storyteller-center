@@ -1,5 +1,5 @@
-# Gemini: use google-genai (google.generativeai is deprecated)
-google-genai>=1.0.0
+# Gemini legacy mode (modern google.genai path intentionally excluded)
+google-generativeai>=0.8.0
 
 flask
 flask-cors

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import random
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 from dotenv import load_dotenv
 
@@ -21,28 +21,40 @@ def reload_gemini_env() -> None:
 
 def unique_gemini_api_key_candidates() -> List[str]:
     """Collect GOOGLE_API_KEY, GEMINI_API_KEY, GEMINI_API_KEY_1..6; dedupe by key string."""
+    return [key for _name, key in named_gemini_api_candidates()]
+
+
+def named_gemini_api_candidates() -> List[Tuple[str, str]]:
+    """(env_var_name, api_key) for each distinct key; first declared name wins per key string."""
     names = ["GOOGLE_API_KEY", "GEMINI_API_KEY"] + [f"GEMINI_API_KEY_{i}" for i in range(1, 7)]
     seen: set[str] = set()
-    out: List[str] = []
+    out: List[Tuple[str, str]] = []
     for name in names:
         v = str(os.getenv(name) or "").strip()
-        if v and v not in seen:
-            seen.add(v)
-            out.append(v)
+        if not v or v in seen:
+            continue
+        seen.add(v)
+        out.append((name, v))
     return out
 
 
-def probe_gemini_key(api_key: str) -> bool:
+def probe_gemini_key_detail(api_key: str) -> Tuple[bool, str]:
+    """Return (True, \"\") if list_models ping succeeds; else (False, error text). Never include the raw key."""
     key = str(api_key or "").strip()
     if not key:
-        return False
+        return False, "empty api_key"
     try:
         from gemini_client import ping_api_key
 
         ping_api_key(key, timeout=30)
-        return True
-    except Exception:
-        return False
+        return True, ""
+    except Exception as exc:
+        return False, f"{type(exc).__name__}: {exc}"
+
+
+def probe_gemini_key(api_key: str) -> bool:
+    ok, _err = probe_gemini_key_detail(api_key)
+    return ok
 
 
 def pick_working_gemini_api_key() -> str:

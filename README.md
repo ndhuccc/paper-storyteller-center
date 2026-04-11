@@ -148,7 +148,7 @@ source .venv/bin/activate
 請改用 **Conda 環境裡的 Python** 安裝，不要用到 Homebrew 的 `python3`：
 
 ```bash
-conda install -n base -c conda-forge google-genai
+conda install -n base -c conda-forge google-generativeai
 # 其餘套件仍可用 pip，但請指定 conda 的解譯器，例如：
 "$(conda info --base)/bin/python" -m pip install flask flask-cors markdown lancedb pymupdf python-dotenv
 ```
@@ -156,8 +156,10 @@ conda install -n base -c conda-forge google-genai
 或先 `which python3`，若顯示在 `anaconda3` 底下，再執行：
 
 ```bash
-python3 -m pip install flask flask-cors markdown lancedb pymupdf python-dotenv google-genai
+python3 -m pip install flask flask-cors markdown lancedb pymupdf python-dotenv google-generativeai
 ```
+
+目前專案的 Gemini 路徑已**固定只使用舊版** `google.generativeai`，以回復先前正常可用的狀態；**不再使用** `google.genai`。
 
 **做法 C：手動建立 venv（與 A 相同效果）**
 

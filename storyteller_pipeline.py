@@ -215,7 +215,7 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 依教學邏輯重組內容：先基礎，再進階；先直觀，再正式；先概念，再細節。
 - 每個重要術語第一次出現時，要先給清楚定義與白話解釋。
 - 說明「這是什麼、為什麼需要、怎麼運作、有何限制」。
-- 可加入分點、比較、常見誤解、注意事項與重點整理。
+- 為強化學習效果，可依本節內容**補充**（擇要、勿空泛堆砌）：**數值範例之逐步計算演示**、**分點**、**比較**、**常見誤解**、**注意事項**、**重點整理**、**助憶金句**（短句口訣，便於考前回想）。
 - 風格要像正式但易懂的課堂講義，而不是故事文或部落格文。
 
 【輸出格式】
@@ -223,9 +223,15 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 使用小節標題與分層條列，讓讀者容易掃描與複習。
 - 重要概念首次出現時加 **粗體**。
 
-【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
+【本節專業術語白話解釋表與公式意義白話解釋表（必附，不可省略）】
+- **位置**：兩表皆須在**本節改寫輸出**的末尾、且於**本節**自評 EVAL 行**之前**（**每一節各自**附兩表；**不是**整篇 HTML 合併後的全文末尾）。
+- **表一「本節專業術語白話解釋」**：Markdown 表，建議欄位「術語｜白話說明」；僅列本節須獨立對照之術語／縮寫；單格不宜過長；**禁止**整表留空或僅「無」敷衍。跨節勿無意義重複前序節長篇定義（可極短註「見前節」）。
+- **表二「本節公式意義白話解釋」**：Markdown 表，建議欄位「公式（LaTeX 原文）｜意義與變數白話說明」；針對本節**首次出現或須獨立交代**之 LaTeX 式；若本節無須展開之新公式，表中須註明並簡述本節與式子之銜接關係，**不可**省略此表。
+- **輸出順序**：講義正文（含上述八段結構）→ **表一** → **表二** → 最末一行 `<!-- EVAL: ... -->`。
+
+【自評機制】本節改寫完成後，必須在**本節輸出之最末一行**加上自評標記（**緊接兩表之後**），格式如下：
 <!-- EVAL: 條理分層[有/無] | 預先定義[有/無] -->
-若任一項為「無」，必須重新修改教材結構後再輸出。
+若任一項為「無」，或未於**本節末尾**完成兩表，必須重新修改後再輸出。
 
 【風格參數】
 - 正式度 {formality}／10、條理化程度 {structure}／10、初學者友善度 {beginner_friendly}／10、數學密度 {math_density}／10、考點導向 {exam_focus}／10。
@@ -435,8 +441,9 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
 
     Payload (optional):
         post_rewrite_audit_enabled: bool, default True. When True and style is
-            ``storyteller`` or ``blog``, runs one LLM batch audit after all sections
-            and replaces or rewrites sections that fail that style's audit checklist.
+            ``storyteller``, ``blog``, or ``professor`` (including ``podcast`` alias),
+            runs one LLM batch audit after all sections and replaces or rewrites
+            sections that fail that style's audit checklist.
     """
     payload = job.get("payload", {}) if isinstance(job, dict) else {}
     if not isinstance(payload, dict):
@@ -713,6 +720,28 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
                 llm_failures=llm_failures,
             )
+        elif style == "professor":
+            post_rewrite_audit_executed = True
+            if phase_reporter:
+                phase_reporter("講義體改寫總稽核與修正…")
+            _post_rewrite_professor_audit(
+                rendered_sections,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                llm_failures=llm_failures,
+            )
 
     rewrite_model = primary_model
     fallback_models_used = rewrite_models_used - {primary_model}
@@ -795,6 +824,14 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                     }
                 ]
                 if post_rewrite_audit_executed and style == "blog"
+                else [
+                    {
+                        "name": "post_rewrite_professor_audit",
+                        "status": "done",
+                        "note": "LLM audit and targeted fixes for professor-style sections",
+                    }
+                ]
+                if post_rewrite_audit_executed and style == "professor"
                 else []
             ),
             {
@@ -2043,6 +2080,163 @@ def _post_rewrite_blog_audit(
             elif err:
                 llm_failures.append(
                     f"post_rewrite_blog_audit: section {idx} re-rewrite failed: {err}"
+                )
+
+
+def _post_rewrite_professor_audit(
+    rendered_sections: List[Dict[str, Any]],
+    *,
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    llm_failures: List[str],
+) -> None:
+    """One LLM audit pass after all sections: fix or rewrite sections that fail audit (professor only)."""
+    if not rendered_sections:
+        return
+
+    openings_block, batches = _post_rewrite_audit_openings_and_batches(rendered_sections)
+
+    audit_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+
+    for bi, batch in enumerate(batches, start=1):
+        payload = [
+            {
+                "index": int(row.get("index", 0)),
+                "title": str(row.get("title", "")),
+                "source_text": str(row.get("source_text", "")),
+                "story_text": str(row.get("story_text", "")),
+            }
+            for row in batch
+        ]
+        batch_json = json.dumps(payload, ensure_ascii=False)
+        prompt = f"""你是論文「大教授／講義體」改稿的總編輯稽核員。以下 JSON 陣列是本批 {len(batch)} 節的原文 source_text 與改稿 story_text（Markdown）。
+
+【全篇各節開頭摘錄（供比對套語是否與他節過度重複）】
+{openings_block}
+
+【稽核標準（逐節檢查）】
+1. 忠於原文：無捏造數據／實驗／引用；無與原文明顯矛盾。
+2. 公式完整性：原文中的 LaTeX 公式（$...$、$$...$$、\\(...\\)、\\[...\\] 等）須出現在改稿適當位置，不可無故消失。
+3. **講義結構**：改稿須能對應教學講義脈絡，涵蓋或清楚呼應「主題、學習目標、背景意識、定義、原理、實例、比較限制、重點整理」等區塊（可用小標與分層條列）；**不可**退化成故事化口吻或部落格式聊天。
+4. **學習強化元素（擇要檢核）**：視本節內容應適度出現對學習有幫助之**數值範例逐步演算**、**分點**、**比較**、**常見誤解**、**注意事項**、**重點整理**、**助憶金句**等；若原文有具體數值／實驗而改稿完全未以分步或表格輔助理解，可判未達標（勿要求無中生有）。
+5. **本節專業術語白話解釋表（必核）**：在**該節** `story_text` 之**節末**、且於 EVAL 行之前，須有標題清楚之 Markdown 術語表（建議「術語｜白話說明」）；**禁止**整表留空或僅「無」敷衍。
+6. **本節公式意義白話解釋表（必核）**：同上位置須有第二則 Markdown 表（建議「公式（LaTeX 原文）｜意義與變數白話說明」）；若本節無須獨立展開之新公式，表中須註明並簡述與前序式子之銜接，**不可**省略此表。
+7. 自評行：**該節** `story_text` **最末一行**須為：
+<!-- EVAL: 條理分層[有/無] | 預先定義[有/無] -->
+8. 跨節：開頭套語勿與其他節高度雷同。
+9. 若某節已完全符合，passes 為 true，issues 空陣列，replacement_story_markdown 為 null。
+
+【本批待審 JSON】
+{batch_json}
+
+請只輸出一個 JSON 物件（不要 markdown code fence），格式嚴格如下：
+{{"results":[{{"index":<整數>,"passes":true,"issues":[],"replacement_story_markdown":null}},{{"index":<整數>,"passes":false,"issues":["..."],"replacement_story_markdown":"<若 passes 為 false，請給完整可取代該節的 Markdown 改稿全文；若 passes 為 true 則 null>"}}]}}
+
+規則：passes=false 時，replacement_story_markdown 必須是非空字串，且須為**該單節**完整改稿（含講義結構、**兩表**、**該節**最末一行 EVAL），可直接覆蓋該節之 story_text。"""
+
+        try:
+            raw, _used = _complete_prompt_with_model_fallback(
+                prompt=prompt,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=audit_timeout,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+            )
+        except Exception as exc:
+            llm_failures.append(
+                f"post_rewrite_professor_audit batch {bi}: {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        parsed = _try_parse_rewrite_payload(raw) or {}
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            llm_failures.append(f"post_rewrite_professor_audit batch {bi}: invalid JSON shape")
+            continue
+
+        by_index = {int(row.get("index", 0)): row for row in rendered_sections}
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = int(item.get("index", 0))
+            row = by_index.get(idx)
+            if not row:
+                continue
+            passes = bool(item.get("passes", True))
+            issues = item.get("issues") or []
+            if not isinstance(issues, list):
+                issues = []
+            replacement = item.get("replacement_story_markdown")
+            if passes:
+                continue
+            issues_txt = "; ".join(str(x) for x in issues if str(x).strip())
+            if isinstance(replacement, str) and replacement.strip():
+                row["story_text"] = replacement.strip()
+                row["terms"] = []
+                row["formula_explanations"] = []
+                llm_failures.append(
+                    f"post_rewrite_professor_audit: section {idx} revised in batch {bi} ({issues_txt or 'see replacement'})"
+                )
+                continue
+
+            title = str(row.get("title", ""))
+            source = str(row.get("source_text", ""))
+            extra = (
+                "總編輯稽核未通過，請依下列問題重寫本節（須完整符合大教授／講義體：八段教學結構、學習強化元素擇要、"
+                "**本節末尾兩表**（術語白話＋公式意義白話）、**本節最末一行** EVAL）：\n"
+                + (issues_txt or "未註明具體問題，請自行對照稽核標準全面檢查。")
+            )
+            fixed, terms, fexps, ok, err, _um = _rewrite_section(
+                section_title=title,
+                source_text=source,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style="professor",
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+                section_index=idx,
+                section_count=len(rendered_sections),
+                introduced_concepts=None,
+                extra_instruction=extra,
+            )
+            if ok and fixed.strip():
+                row["story_text"] = fixed.strip()
+                row["terms"] = terms or []
+                row["formula_explanations"] = fexps or []
+                llm_failures.append(
+                    f"post_rewrite_professor_audit: section {idx} re-rewritten after audit batch {bi} "
+                    f"({issues_txt or 'no replacement from audit'})"
+                )
+            elif err:
+                llm_failures.append(
+                    f"post_rewrite_professor_audit: section {idx} re-rewrite failed: {err}"
                 )
 
 
