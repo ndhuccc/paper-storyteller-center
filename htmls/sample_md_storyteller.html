@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abstract - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        /* 雙欄並列（說書人風格）*/
+        .dual-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .dual-col { grid-template-columns: 1fr; }
+        }
+        .col-orig, .col-plain {
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .col-orig {
+            background: #f1f5f9;
+            border-left: 4px solid #94a3b8;
+            color: #475569;
+            font-size: 0.93em;
+        }
+        .col-plain {
+            background: #ffffff;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        .col-label {
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 Abstract</h1>
+    <div class="meta">
+        <strong>說書人版本</strong><br>
+        Source PDF: Abstract.pdf<br>
+        Model: gemma4:e2b<br>
+        Generated at (UTC): 2026-04-11T04:22:36.118707+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - **Abstract**</a></li>
+<li><a href="#section-2">Section 2 - **1. Introduction**</a></li>
+<li><a href="#section-3">Section 3 - 2. Related Work</a></li>
+<li><a href="#section-4">Section 4 - **4.3. Qualitative Comparisons**</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - **Abstract**</h2>
+        <div class="dual-col">
+            <div class="col-orig">
+                <div class="col-label">📄 原文</div>
+            <p>Instruction-based video editing aims to modify an input video according to a natural-language instruction while preserving content fidelity and temporal coherence. However, existing diffusion-based approaches are often trained on paired data of simple editing operations, which fundamentally limits their ability to generalize to diverse and complex, real-world instructions. To address this generalization gap, we propose VIVA, a scalable framework for instruction-based video editing that leverages VLM-guided encoding and reward optimization. First, we introduce a VLM-based instructor that encodes the textual instruction, the first frame of the source video, and an optional reference image into visually-grounded instruction representations, providing fine-grained spatial and semantic context for the diffusion transformer backbone. Second, we propose a post-training stage, Edit-GRPO, which adapts Group Relative Policy Optimization to the domain of video editing, directly optimizing the model for instruction-faithful, content-preserving, and aesthetically pleasing edits using relative rewards. Furthermore, we propose a data construction pipeline designed to synthetically generate diverse, high-fidelity paired video-instruction data of basic editing operations. Extensive experiments show that VIVA achieves superior instruction following, generalization, and editing quality over state-of-the-art methods. Website: https://viva-paper.github.io/.</p>
+            </div>
+            <div class="col-plain">
+                <div class="col-label">💬 說書人白話</div>
+            <p>當前基於擴散模型的影片編輯，在處理複雜的自然語言指令時，往往缺乏泛化能力，這就像讓一位藝術家（AI模型）聽指令時，只會處理簡單的、配對的指令，難以應對真實世界的複雜需求。</p>
+            <p>為了讓AI能真正理解並執行複雜的編輯任務，我們需要一個更聰明、更具指導性的方法。這就是我們提出的 <strong>VIVA</strong> 框架，一個能夠將自然語言指令轉化為精準視覺操作的架構。</p>
+            <h3>為什麼現有方法會遇到瓶頸？</h3>
+            <p>現有的擴散模型在進行影片編輯時，通常是透過配對的簡單操作數據進行訓練。這就像我們只給藝術家看「畫A變成畫B」的範例，而不是給他「請把這張畫的左上角改成藍色，並讓整體氛圍更柔和」這樣的複雜指令。</p>
+            <p>這種限制導致了兩個主要問題：首先，模型難以泛化到各種複雜的、真實世界的指令；其次，當指令涉及細微的空間和語義關係時，模型往往無法精準地把握編輯的意圖，導致結果不夠精確、缺乏連貫性。</p>
+            <h3>VIVA 如何解決這個挑戰？</h3>
+            <p>VIVA 框架的核心思想是引入「視覺語言模型（VLM）」作為指導者，並結合「獎勵優化」來引導模型，從而讓模型不僅能執行指令，還能理解指令背後的視覺意圖。我們將這個過程分解為三個關鍵步驟：</p>
+            <h4>1. VLM 導引的指導者（Instructor）</h4>
+            <p>首先，我們引入了一個 <strong>VLM 導引的指導者</strong> 來為模型提供更豐富的上下文資訊。想像一下，當你給藝術家看一張畫並給他口頭指令時，你不僅要說「把這個地方改成紅色」，還需要提供參考的視覺資訊，例如「這個區域的風格應該保持一致」。</p>
+            <p>我們的指導者會將文本指令、源影片的第一幀，以及可選的參考圖像，轉換成視覺上可理解的指令表示。這些表示為擴散轉換器（Diffusion Transformer）的骨幹網路提供了精細的空間和語義上下文，讓模型在進行編輯時，能夠更精準地知道「要修改的區域」和「需要保持的背景」。</p>
+            <h4>2. 編輯優化階段（Edit-GRPO）</h4>
+            <p>有了視覺指導後，我們需要一個機制來優化編輯的品質。我們提出了 <strong>Edit-GRPO</strong> 這一後訓練階段，它將 <strong>群體相對策略優化（Group Relative Policy Optimization, GRPO）</strong> 的思想引入到影片編輯的領域。</p>
+            <p>傳統的優化方法只關注單個像素的誤差，但影片編輯更關注重點在「相對」的編輯效果。Edit-GRPO 透過使用<strong>相對獎勵（Relative Rewards）</strong>，直接優化模型，讓它在執行編輯時，不僅要滿足指令，還要確保編輯結果在內容保真度、編輯意圖忠實度以及美觀度之間取得最佳平衡。這就像是讓藝術家在執行任務時，不僅要聽從指令，還要追求「最美」的結果。</p>
+            <h4>3. 數據的合成管道</h4>
+            <p>為了讓整個系統能夠高效學習，我們設計了一個 <strong>數據構建管道</strong>，能夠合成大量多樣化、高保真的影片-指令配對數據。這意味著我們不需要依賴昂貴的實體數據收集，而是可以透過智能地生成數據，來訓練模型對各種基本編輯操作的理解和執行能力。</p>
+            <h3>實驗結果與意義</h3>
+            <p>透過這些設計，VIVA 框架在大量的實驗中展現了卓越的性能。我們發現，與現有的最先進方法相比，VIVA 在指令遵循能力、泛化能力以及最終的編輯品質上都取得了顯著的提升。這證明了透過引入視覺指導和基於獎勵的優化，我們能夠建立一個更具彈性、更貼合人類意圖的影片編輯系統。</p>
+            </div>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - **1. Introduction**</h2>
+        <div class="dual-col">
+            <div class="col-orig">
+                <div class="col-label">📄 原文</div>
+            <p>Video editing plays a central role in modern digital media creation, enabling applications such as film post-production, advertising, and language-guided content personalization [13, 24, 35, 53, 73]. Recent diffusion-based approaches typically formulate video editing as a supervised translation problem from an input video and an editing instruction to an edited output. This formulation relies on carefully constructed paired datasets of source videos and corresponding edited targets or text prompts [8, 13, 14, 25, 73, 75].</p>
+            <p>However, the practical construction of such paired training data faces a significant bottleneck: existing synthesis pipelines are largely confined to generating pairs for highly simplified editing tasks. These are often limited to basic operations like single object addition, deletion, or object swaps strictly within a predefined mask [8, 10, 73, 75]. It remains extremely difficult to automatically generate training pairs for more general and complex edits, such as combining multiple tasks, performing object swaps outside of the original mask, changing the global environment (e.g., weather or season), or executing other semantically-aware controls.</p>
+            <p>This reliance on training data comprised of simplistic edits fundamentally limits the generalization capabilities of current video editing systems. When faced with open-domain or complex real-world scenarios, their performance degrades. To address this generalization gap, we introduce a method to improve model performance on complex editing tasks, even when trained only on limited, simple editing pairs. Specifically, we introduce two complementary components that enhance how instructions are represented and how the video editing model is optimized for output quality.</p>
+            <p>First, we introduce the <em>VLM instructor</em>, a vision-language model used as a multimodal instruction encoder. Given the first frame of the input video together with the user's editing instructions, the VLM produces a sequence of grounded, fine-grained multimodal tokens that jointly encode the target entities, spatial regions, and desired attribute changes. These tokens are then fed as conditioning signals into the diffusion transformer (DiT) backbone, in place of standard text embeddings. Recent large vision-language models demonstrate strong capabilities in aligning visual content with detailed natural-language instructions and conversations [38, 45], and we leverage this capacity to obtain richer, disambiguated instruction representations. This approach allows us to effectively combine the advanced visual-linguistic understanding of the VLM with the high-fidelity video generation capability of the pretrained DiT.</p>
+            <p>Second, we introduce <em>Edit-GRPO</em>, a post-training stage that explicitly optimizes the model toward successful edits via reinforcement learning (RL). Building on Group Relative Policy Optimization (GRPO) [39, 55], which has been shown to improve reasoning ability in large language models by comparing groups of sampled outputs under task-specific rewards, we adapt the same principle to text-guided video editing. For each input video and carefully designed editing instruction, the model generates multiple candidate edited videos; we then compute edit-specific rewards that measure instruction fidelity, identity preservation, and structural consistency, and use the relative scores within each group to update the policy. This edit-centric RL phase focuses learning on semantic correctness rather than pixel-level reconstruction alone. Previous methods for image editing have employed iterative synthesis, where a model is trained, used to generate new pairs, and then good pairs are labeled and added back to the training set [56]. This process can be formulated as rejection-with-resampling (RWR) [31, 47] in an RL paradigm. In contrast, our approach directly uses an online RL method GRPO, which more effectively extracts supervision from each limited paired example to achieve better editing performance.</p>
+            <p>Furthermore, we propose a pipeline to construct a high-quality, synthetic dataset. This dataset consists of paired videos (original and edited) accompanied by accurate text instructions. Our pipeline is designed to generate video pairs demonstrating strict local editing and high fidelity, which cover a diverse range of basic editing operations, providing a solid foundation for training our model.</p>
+            <p>In summary, our contributions include:</p>
+            <ul>
+            <li>The VLM instructor that jointly processes the first frame and text to provide visually-grounded instruction representations for the video editor.</li>
+            <li>A post-traning stage, termed Edit-GRPO, that directly rewards successful, instruction-faithful edits.</li>
+            <li>A data construction pipeline that generates diverse, high-quality paired video-instruction dataset of basic editing operations.</li>
+            <li>Extensive evaluations showing superior instruction following without degrading video quality compared to strong baselines.</li>
+            </ul>
+            </div>
+            <div class="col-plain">
+                <div class="col-label">💬 說書人白話</div>
+            <p>在數位媒體的世界裡，影片編輯是如何被理解和處理的？</p>
+            <p>影片編輯在現代數位媒體創作中扮演著核心角色，它為電影後製、廣告製作以及語言導向的內容個人化等應用提供了基礎 [13, 24, 35, 53, 73]。這說明了影片編輯不僅僅是剪輯，更是內容創造的關鍵一步。</p>
+            <p>當我們談論最新的擴散（diffusion-based）方法時，它們通常會將影片編輯這個複雜的任務，轉化成一個「監督式翻譯問題」。想像一下，這就像我們學習一門新語言：你需要一個「輸入」（原始影片和編輯指令）來產生一個「輸出」（編輯後的影片）。</p>
+            <p>要讓這種翻譯過程成功，模型需要大量的訓練資料。因此，這種方法依賴於精心構建的「配對數據集」，也就是源影片與對應的編輯目標或文字提示（text prompts）的組合 [8, 13, 14, 25, 73, 75]。這意味著，我們需要提供清晰的「輸入」和「期望的輸出」的範例，才能訓練出能精準執行編輯任務的智慧模型。</p>
+            <p>我們在追求更複雜的AI能力時，訓練數據的生成方式，其實是最大的瓶頸。</p>
+            <p>目前，要建立高品質的AI模型，我們需要大量的「配對訓練數據」，也就是輸入和期望的輸出。然而，現有的資料合成流程在實際操作中面臨一個巨大的瓶頸：現有的合成管道大多只能生成針對高度簡化的編輯任務的數據對。</p>
+            <p>想像一下，我們現在的工具就像一把簡單的剪刀，它非常擅長做單純的切割，比如在一個區域內增加或刪除一個物體，或者簡單地交換兩個物體的位置。這些操作都非常明確，很容易被定義在一個預設的遮罩範圍內。</p>
+            <p>但現實中的編輯需求遠比這簡單。我們真正想要的是能夠處理更複雜、更具語義感知的編輯，例如同時執行多個任務、在原始遮罩範圍之外進行物體交換、改變整個環境（比如天氣或季節），或是執行其他需要理解上下文的控制。</p>
+            <p>這就引出了我們需要解決的核心問題：如果我們只能用簡單的工具來生成數據，那麼我們訓練出來的模型，就只能學會做簡單的任務，無法具備應對真實世界複雜場景的能力。因此，自動生成更通用、更複雜編輯訓練對的技術，成為了下一步研究的關鍵方向。</p>
+            <p>我們必須面對一個現實：當我們只用簡單的例子訓練模型，它在遇到複雜的現實世界問題時就會失靈。</p>
+            <p>想像一下，如果你只在練習幾種簡單的數學題，你可能能輕鬆應付基礎計算，但當你遇到需要應用這些知識去解決實際生活中的複雜問題時，就會感到無力。這就像現有的影片編輯系統，它們的訓練數據大多是「簡單的編輯」範例。這就造成了一個根本性的限制：當模型面對開放領域或複雜的真實世界場景時，它的泛化能力就會大幅下降，導致性能出現明顯的衰退。</p>
+            <p>為了彌補這個「泛化差距」，我們需要一種新的方法，讓模型即使只用有限、簡單的編輯對作為訓練基礎，也能在處理複雜的編輯任務時，依然表現出色。</p>
+            <p>我們引入了一套方法，旨在提升模型在複雜編輯任務上的表現。具體來說，我們提出了兩個互補的組件，它們的作用是雙重的：一是優化我們如何「表示指令」（Instruction Representation），二是優化影片編輯模型如何針對輸出品質進行「優化」（Optimization for Output Quality）。這兩者共同作用，讓模型不僅能理解指令，還能生成更高品質的結果。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>我們如何能讓 AI 不只「看懂」指令，更能「執行」精確的視覺編輯？</p>
+            <p>為了達成這個目標，我們引入了一個關鍵的橋樑：<strong>VLM 教師 (VLM instructor)</strong>。簡單來說，這是一個視覺語言模型，它扮演了多模態指令編碼器的角色，負責將人類的自然語言指令，轉化成電腦能理解的、極度細緻的視覺訊號。</p>
+            <p>想像一下，你給一個畫家（我們的生成模型）一個複雜的編輯指令，比如「把這塊區域的顏色改成藍色，但保持周圍的紋理不變」。如果我們直接給畫家文字指令，他可能只會得到一個模糊的結果。VLM 教師的作用，就是充當一個翻譯官，它會仔細分析你的指令和輸入的畫面，然後生成一系列<strong>紮根的、細粒度的多模態 Token</strong>。這些 Token 就像是畫家在畫圖前畫出的精確草圖，它們精準地編碼了目標實體、空間區域以及你希望改變的屬性。</p>
+            <p>接下來，這些精心編碼的 Token 就會被作為條件訊號，輸入到我們的核心生成模型——<strong>擴散變換器 (DiT)</strong> 的骨幹網路中。這就意味著，我們不再是僅僅依賴傳統的文字嵌入（text embeddings），而是用這種更豐富、更清晰的視覺語言理解來引導生成過程。</p>
+            <p>為什麼這樣設計會有效呢？因為近期的大型視覺語言模型（VLM）已經展現了強大的能力，能夠將視覺內容與詳細的自然語言指令和對話進行精準對齊。我們正是利用了這種 VLM 的強大能力，來獲得更豐富、更明確的指令表徵。這使得我們能夠有效地結合 VLM 卓越的視覺語言理解能力，與預訓練好的 DiT 卓越的影片生成能力，從而實現高保真度的視覺編輯。</p>
+            <p>想像一下，當我們要求 AI 編輯影片時，我們真正關心的是「內容的正確性」，而不是單純的像素細節。</p>
+            <p>為了達成這個目標，我們引入了 <strong>Edit-GRPO</strong>，這是一個在模型訓練完成之後的後訓練階段，它利用<strong>強化學習（RL）</strong>的原理，直接指導模型去達成成功的編輯目標。</p>
+            <p>我們是建立在 <strong>Group Relative Policy Optimization (GRPO)</strong> [39, 55] 的基礎上。GRPO 已經證明了它能透過比較不同樣本組的輸出，來提升大型語言模型（LLM）的推理能力。我們將這個原理應用到影片編輯的場景中。</p>
+            <p>具體來說，對於每一個輸入影片和精心設計的編輯指令，模型會生成多個候選的編輯影片。接著，我們計算出針對這些編輯的特定獎勵（<strong>edit-specific rewards</strong>），這些獎勵衡量了指令的準確度、身份的保持性以及結構的一致性。然後，我們利用這些組內相對分數來更新模型的策略。</p>
+            <p>這個編輯導向的強化學習階段，讓模型的學習重點從單純的像素重建，轉向了<strong>語義上的正確性</strong>。</p>
+            <p>過去的影像編輯方法通常採用迭代合成（iterative synthesis）的模式：先訓練模型，用它生成新的樣本對，然後將好的樣本標註並加回訓練集 [56]。這種流程在強化學習的框架下，可以被視為一種<strong>拒絕與重採樣（rejection-with-resampling, RWR）</strong>的過程 [31, 47]。</p>
+            <p>然而，我們的做法是直接採用線上（online）的強化學習方法 GRPO。這種方法能更有效地從每一個有限的配對範例中提取監督訊號，從而實現更優異的編輯性能。這意味著我們不需要經過繁瑣的迭代過程，就能更直接地從實例中學習到編輯的精髓。</p>
+            <p>總結來說，我們選擇這種方法，是因為它能讓模型更專注於「編輯的意圖」，而不是被淹沒在無關的細節中，從而獲得更精準、更可靠的編輯結果。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，要訓練一個模型去「精準編輯」，我們需要什麼樣的訓練材料？</p>
+            <p>為了讓我們的模型真正學會如何進行高質量的局部編輯，我們必須先建立一個高品質、有指導的合成數據集。這個數據集不僅包含原始影片和編輯後的影片對，更重要的是，它附帶了精確的文字指令。</p>
+            <p>我們設計這個流程的目標，是生成一系列能展示「嚴格局部編輯」和「高保真度」的影片對。這意味著我們需要涵蓋各種基礎的編輯操作，為後續訓練我們的模型打下堅實的基礎。</p>
+            <p>這個數據集的構建，就像是為學生準備一套精準的練習題和詳細的解題步驟。沒有明確的指令和對應的結果，模型就無法知道「什麼是正確的編輯」。因此，這個流程的設計，確保了我們收集到的數據是真正有指導、能指導模型學習的。</p>
+            <p>總結來說，我們如何讓AI從「看懂」進化到「精準執行」的過程。</p>
+            <p>我們的研究帶來了四個核心貢獻，它們共同構建了一個能讓AI在影片編輯領域表現出卓越理解和執行能力的完整系統。</p>
+            <p>首先，我們設計了一個<strong>VLM 教師</strong>。想像一下，當我們讓AI編輯影片時，它需要知道的不是單純的像素資訊，而是「視覺上紮實的指令」。VLM 教師就是一個能夠同時處理第一幀畫面和文字指令的模組，它為影片編輯器提供了具備視覺基礎的指導表示，讓AI的指令理解不再是抽象的文字，而是能直接對應到畫面上的具體位置和內容。</p>
+            <p>接著，我們引入了一個後訓練階段，我們稱之為 <strong>Edit-GRPO</strong>。這就像是給AI增加了一套「獎勵機制」。在傳統的訓練中，模型可能只是追求重建的準確性，但 Edit-GRPO 直接獎勵那些「成功且忠實於指令」的編輯結果。這意味著模型不再只是追求畫面看起來像，而是追求「做對了指令」的編輯，從而確保編輯的結果不僅在視覺上合理，更在邏輯上是正確的。</p>
+            <p>為了讓這個系統真正落地，我們建立了一個<strong>數據建構流程</strong>。我們知道，要訓練一個精準的編輯模型，需要大量的、高品質的練習材料。因此，我們設計了一個流程，能夠生成多樣化、高品質的<strong>影片-指令配對數據集</strong>，涵蓋各種基礎的編輯操作。這就像是為AI準備了一套豐富的練習題庫，讓它能夠在真實世界中學習如何執行各種編輯任務。</p>
+            <p>最後，我們進行了<strong>廣泛的評估</strong>。我們證明了，通過這些創新設計，我們的系統在不犧牲影片品質的前提下，展現了比強大基準模型更優異的指令遵循能力。這證明了我們的方法不僅在理論上可行，在實際應用中，它能有效地將指令轉化為精準的視覺編輯，真正實現了「理解指令」到「精準執行」的飛躍。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            </div>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - 2. Related Work</h2>
+        <div class="dual-col">
+            <div class="col-orig">
+                <div class="col-label">📄 原文</div>
+            <p><strong>Instruction-based video editing.</strong> Natural language-driven video transformation enables intuitive and controllable edits while maintaining visual fidelity. Earlier methods [8, 11, 16, 19, 26, 30, 33, 42, 48, 63, 68] leveraged inversion-based approaches [57] to perform zero-shot or one-shot text-driven edits on videos. With the advent of open-source pretrained video diffusion models [21, 29, 60], a wave of task-specific solutions emerged for video addition [59, 74], inpainting [5, 76], virtual try-on [17, 27, 77], and character replacement/animation [9]. Although effective in limited scenarios, these approaches typically depend on manual priors such as masks, poses, or motion trajectories, which limit flexibility and generalization. InsV2V [10] pioneers instruction-only video editing by utilizing InstructPix2Pix [6] to synthesize paired video editing data. However, its results were hindered by the limited data quality and backbone performance. More recent efforts [14, 24, 25, 35, 53, 70, 71] have scaled instruction-based editing with notable gains. Ditto [3] supplies a pretrained backbone with a series of trainable context-blocks. Concurrent works like InstructX [46], Omni-Video [58], OmniV2V [34], and Univideo [66] also harness VLM's understanding capacities to aid video editing, demonstrating impressive progress.</p>
+            <p><strong>VLMs for visual understanding and generation.</strong> Vision-language models (VLMs) provide a bridge between visual perception and textual description. Foundational VLMs such as CLIP [49], BLIP-2 [32], and Flamingo [1] learn joint representations that align visual content with textual descriptions. Instruction-tuned variants, including LLaVA [37], Video-ChatGPT [45], and Qwen2.5-VL [4], further enhance visual grounding and context-aware textual comprehension. These advances show that pretrained</p>
+            <p>VLMs can serve as powerful priors for conditional control in video generation. Building on this foundation, our work adopts a VLM-based instructor to encode both textual instructions and visual context, improving controllability and instruction fidelity in video editing.</p>
+            <p><strong>Reinforcement learning for generative models.</strong> Reinforcement learning has emerged as an effective approach for enhancing model alignment and controllability. Algorithms such as PPO [54], RPO [51], and GRPO [55] have been widely adopted in large language models to refine instruction-following and preference alignment. Recent studies [39, 40, 65, 69] have extended these ideas to visual generation, while other works [44, 67] focus on image editing, employing reward-guided fine-tuning to better align generative edits with user intent. We extend these approaches for video editing to comprehensively enhance overall performance, robustness, and generalization.</p>
+            <h2>3. Method As illustrated in Figure 2, VIVA employs a Diffusion Transformer (DiT) [29] as the generation branch and a Vision-Language Model (VLM) instructor as the understanding branch. Section 3.1 describes how the VLM instructor aggregates and interprets diverse multimodal conditions, including a text instruction, a source video, and an optional reference image. Section 3.2 introduces how VIVA adapts and fine-tunes a pretrained text-to-video (T2V) DiT to perform versatile instruction-based video editing using the semantic context provided by the VLM instructor and the source video. To enhance instruction following, content fidelity, and visual aesthetics, we introduce a post-training strategy based on Group Relative Policy Optimization (GRPO), termed <em>Edit-GRPO</em>, in Section 3.3. Section 3.4 presents our data preparation process that generates diverse and high-quality video editing dataset.</h2>
+            <h3>3.1. Context-Aware VLM Instructor Since video editing is a highly context-aware task, it is critical and non-trivial to interpret the complicated relationship between diverse multimodal conditions among text instructions, source videos, and optionally provided reference images. We argue that an encoder exposed only to the language space, such as T5 series [50], struggles to provide sufficient semantic guidance, thereby introducing more difficulty and ambiguity to the subsequent generation branch. Instead, VLM achieves more robust alignment between language space and visual feature space, making it inherently a great alternative for understanding and processing multimodal context. There have been several works trying to connect a VLM such as QWEN2.5-VL [4] with a DiT pretrained on T5 space such as Wan [60]. However, such strategy requires a heavy pretraining stage for aligning the feature space of the VLM with the generation space of the DiT. Thus, we choose Hunyuan-T2V-13B [29] as our backbone, as its pretrained model has already aligned with the VLM space (llava-llama-3-8b [12]).</h3>
+            <p>Solely relying on an input of semantically sparse textual instructions <span class="math inline">$\mathbf{t}_{ins}$</span> often leads to a less underspecified conditioning signal, causing ambiguity for the subsequent editing process. To address this limitation, we propose augmenting the input by incorporating the first frame <span class="math inline">$\mathbf{I}_{src}$</span> sampled from the source video <span class="math inline">$\mathbf{V}_{src}$</span>. The introduction of <span class="math inline">$\mathbf{I}_{src}$</span> significantly enriches the condition tokens with grounded, fine-grained semantic bias. Consequently, the VLM is better equipped to interpret the intricate relationship between the editing instruction and the source video. This integrated understanding allows the VLM to implicitly distinguish critical elements, such as the intended editing region and the specific editing entity. By providing the DiT with such fine-grained and accurate control signals, our approach effectively overcomes the ambiguity caused by the sparse conditioning inherent in instruction-only designs, ultimately yielding higher fidelity and more controllable video editing. To further support a broader range of multimodal control and enhance the user's flexibility to specify the exact editing outcome, our VLM instructor allows an optional reference image input <span class="math inline">$\mathbf{I}_{ref}$</span>. While the editing instruction dictates what transformation should occur, the reference image explicitly grounds how the edited content should look. This additional visual context takes more advantages of VLM's multimodal understanding and thinking abilities to generate more detailed and accurate editing guidance. We take the last hidden states from the VLM instructor as our multimodal condition tokens <span class="math inline">$\mathbf{x}_{vlm}$</span>:</p>
+            <div class="formula">$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref}). \quad \quad \quad (1)$$</div>
+            
+            <h3>3.2. Instruction-based Supervised Fine-Tuning To effectively preserve the multimodal understanding and reasoning capabilities inherent in the VLM, we freeze its parameters throughout the training process, without losing its strong generalization ability. While the pretrained DiT weights of the HunyuanT2V model are already strongly aligned with the VLM's language space, the introduction of additional visual information <span class="math inline">$\mathbf{I}_{src}$</span> and <span class="math inline">$\mathbf{I}_{ref}$</span> requires a careful adaptation strategy. In addition to finetuning the DiT, we introduce and train a lightweight Token Refiner <span class="math inline">$\mathcal{R}$</span> to enhance the DiT's comprehensive responsiveness to the visual conditioning signals, as well as the understanding of the underlying connections between textual and visual conditioning information.</h3>
+            <p>To enhance the editing consistency with <span class="math inline">$\mathbf{V}_{src}$</span>, we concatenate it with the noise in the channel dimension. Such design intuitively and effectively introduces a spatially and temporally aligned inductive bias, thereby providing the denoising process with rich and strong contextual guidance of the structure and motion of the source video. Specifically, a VAE latent <span class="math inline">$\mathbf{z}_{src}$</span> of <span class="math inline">$\mathbf{V}_{src}$</span> and a noise latent <span class="math inline">$\mathbf{z}_{noise}$</span> are patchified and unfolded into a 1D sequence of tokens <span class="math inline">$\mathbf{x}_{src} \in \mathbb{R}^{L \times C}$</span> and <span class="math inline">$\mathbf{x}_{noise} \in \mathbb{R}^{L \times C}$</span> seperately. These two sequence of tokens are then channel-concatenated to get <span class="math inline">$[\mathbf{x}_{src}, \mathbf{x}_{noise}] \in \mathbb{R}^{L \times 2C}$</span>. Then the context-aware noisy video tokens can be formulated as</p>
+            <p>$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c), \quad (2)$$ where <span class="math inline">$\mathbf{x}_{video} \in \mathbb{R}^{L \times C}$</span>, <span class="math inline">$\text{Concat}(\cdot, \cdot)^c$</span> represents channel-wise concatenation, <span class="math inline">$\mathbf{P}$</span> is a patchification module, and <span class="math inline">$\mathcal{P}$</span> indicates a trainable projector that aggregates the contextual video information along the channel dimension to align with the feature dimension of the DiT.</p>
+            <p>With the multimodal condition tokens <span class="math inline">$\mathbf{x}_{vlm}$</span> and context-aware video tokens <span class="math inline">$\mathbf{x}_{video}$</span>, we use Flow Matching [36] for model training. In this supervised fine-tuning stage, we train the patchify module <span class="math inline">$\mathbf{P}$</span>, the projector <span class="math inline">$\mathcal{P}$</span>, the token refiner <span class="math inline">$\mathcal{R}$</span>, and the entire DiT on the synthetic paired source/target-video-instruction dataset constructed by ourselves. Due to the inherent scarcity of paired video editing data and the limited range of editing types, we incorporate large-scale image editing data as an supplement through treating an image as a video with one frame. Experiments demonstrate that various editing capabilities within the image domain have effectively been transferred to the video domain, such as global stylization editing, which does not exist in our paired video data.</p>
+            <p>With the mask video <span class="math inline">$M$</span> generated during the data preparation introduced in Section 3.4, we augment the vanilla Rectified Flow loss into a masked version as:</p>
+            <p>$$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}, \quad (3)$$ where <span class="math inline">$w_m$</span> is the mask weight.</p>
+            <h3>3.3. Edit-GRPO To further enhance model performance, we design a sophisticated reward system via GRPO, focusing on improving the instruction following ability, source video preservation, and human preference alignment. The overall pipeline of Edit-GRPO is presented in Figure 3.</h3>
+            <p><strong>Instruction following.</strong> The accurate and high-quality instruction following ability is the most fundamental metric for evaluating the performance of an instruction-based video editing model. However, since a direct reward model to quantify this does not yet exist, we design the objective as <span class="math inline">$(C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{src}, \mathbf{t}_{edit})) + (C(\mathbf{V}_{src}, \mathbf{t}_{src}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}))$</span>, where <span class="math inline">$\mathbf{t}_{src}$</span> is the source video description, <span class="math inline">$\mathbf{t}_{edit}$</span> is the paired edited video description, <span class="math inline">$\mathbf{V}_{src}$</span> is the source video, <span class="math inline">$\mathbf{V}_{edit}$</span> is the edited video, and <span class="math inline">$C(V, \mathbf{t})$</span> is the Clip similarity between a video and a description. Intuitively, we want <span class="math inline">$\mathbf{V}_{edit}$</span> to be more aligned with <span class="math inline">$\mathbf{t}_{edit}$</span> than <span class="math inline">$\mathbf{V}_{src}$</span>, and <span class="math inline">$\mathbf{V}_{src}$</span> to be more aligned with <span class="math inline">$\mathbf{t}_{src}$</span> than <span class="math inline">$\mathbf{V}_{edit}$</span>.</p>
+            <p>Since <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span> and <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span> are identical for the samples within the group, they make no contribution to the gradient update due to the nature of group relative preference. The instruction following score can then be formulated as:</p>
+            <div class="formula">$$\mathbf{R}_{\text{IF}} = C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}). \quad (4)$$</div>
+            
+            <p><strong>Source video preservation.</strong> A further key metric in video editing is that regions outside the edit should preserve high fidelity to the source video, and the edited content must also be coherent with the source video. We thus propose the following objective to quantify source video preservation reward score:</p>
+            <div class="formula">$$\mathbf{R}_{\text{SP}} = C(\mathbf{V}_{src}, \mathbf{V}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad \quad (5)$$</div>
+            
+            <p><strong>Human preference alignment.</strong> To align video editing results with human preferences, we use Pickscore to comprehensively evaluate the alignment of the edited video with the instruction and its visual quality:</p>
+            <div class="formula">$$\mathbf{R}_{\text{PS}} = \text{Pickscore}(\mathbf{V}_{edit}, \mathbf{t}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad (6)$$</div>
+            
+            <p>Overall, we use a combination of the aforementioned reward scores as the optimization objective to improve the model's capabilities of instruction following, source video preservation, and the human preference alignment.</p>
+            <p>$$\mathbf{R} = w_{IF}\mathbf{R}_{\text{IF}} + w_{SP}\mathbf{R}_{\text{SP}} + w_{PS}\mathbf{R}_{\text{PS}}, \quad \quad \quad \quad \quad \quad (7)$$ where <span class="math inline">$w_{IF}$</span>, <span class="math inline">$w_{SP}$</span>, and <span class="math inline">$w_{PS}$</span> are reward balancing weights. Instead of full fine-tuning, we opt to train a LoRA [22] on the DiT backbone during the Edit-GRPO stage for efficiency. Please refer to the supplementary materials for the detailed LoRA design.</p>
+            <h3>3.4. Data Preparation The field currently lacks a publicly available, large-scale, high-quality dataset of paired video editing examples. Existing datasets [2, 75], which often rely on inpainting or first-frame transfer guided by dense control signals (e.g., depth and edges), frequently suffer from visual artifacts, background inconsistencies, and inaccurate instructional alignment. To address this gap, we construct a large-scale video editing dataset comprising 1.5 million pairs, covering diverse local editing types and corresponding instructions.</h3>
+            <p>Our data generation process begins with a pre-trained text-to-video foundation model. We augment the MMDiT [15] architecture with an additional branch for video input, which is then fine-tuned on a meticulously designed dataset. This fine-tuned model is subsequently used to synthesize the video pairs. Empirically, we find that adding this dedicated branch significantly outperforms the typically-used ControlNet [72]. We build our dataset following the steps described below, with more details available in the supplementary materials.</p>
+            <p><strong>Object replacement.</strong> We first extract the names of main objects from a detailed video caption. Then, we use Grounding-DINO [41] to detect the object on the first frame and employ SAM 2 [52] to track its mask throughout the video. These masked video pairs are used to train a local inpainting model. Subsequently, we use an LLM to analyze the original video caption, rewrite it to reflect a new object, and use this new caption to inpaint the masked video, thereby synthesizing the editing pair.</p>
+            <p><strong>Object addition and removal.</strong> We introduce random masks onto a video and train an inpainting model to fill these regions. To synthesize an editing pair, we alter the original video’s caption to remove the masked object and use this new caption for video inpainting. We also add the name of the masked object to the negative prompt to prevent a similar object from being inpainted in the masked region.</p>
+            <p><strong>Global content editing.</strong> We extract dense scribbles from the source video and train a model to synthesize new videos conditioned on this structural guidance and a modified caption. These modified captions are automatically generated by an LLM, which alters the original description (e.g., changing the background setting from "day" to "night").</p>
+            <p><strong>Data filtering.</strong> The synthesis process described above is inherently prone to artifacts. Instead of relying on unreliable filtering, we employ a two-stage quality control strategy. First, we use a VLM to rewrite the instructions for the synthesized pairs. Second, we task the VLM with labeling whether the synthesized video is free from artifacts. We primarily use the synthesized video as the source and the real video as the target. We randomly choose a synthesized video as the target only when it is labeled as artifact-free. This setup ensures the editing model is not trained on degraded videos. After testing different VLMs, we select Gemini 2.5 Pro to write the detailed editing instructions.</p>
+            <p><strong>Image editing pairs.</strong> In addition, we collect 5.4 million image editing pairs from publicly available datasets [18, 64]. These image pairs are used to jointly train our editing model by treating each image as a single-frame video. We find that incorporating image data substantially enhances the diversity of editing types that the model can handle.</p>
+            <h2>4. Experiments ### 4.1. Implementation Details We use the pretrained <em>HunyuanVideo-T2V-13B</em> as the DiT backbone and finetune it on our collected paired training data for <span class="math inline">$12,000$</span> steps. We set the learning rate to <span class="math inline">$2 \times 10^{-5}$</span>, with a global batch size of <span class="math inline">$128$</span>. To balance the mixing of image and video data, we sample video data with a probability of <span class="math inline">$0.4$</span> and image data with a probability of <span class="math inline">$0.6$</span>. Please refer to the supplementary materials for details.</h2>
+            <h3>4.2. Experimental Setup <strong>Benchmark and baselines.</strong> To rigorously evaluate our model's instruction-based video editing capabilities, we utilize the VIE-Bench benchmark [46], which comprises 140 high-quality instances across diverse instruction-based editing categories, covering both reference-free and reference-based edits. We compare VIVA with five state-of-the-art instruction-based video editing methods, including four open-sourced ones, ICVE [35], Lucy-Edit-Dev [14], Ditto [3], and InsV2V [10], and one commercial model, Runway Gen-4 Aleph [53].</h3>
+            <p><strong>Metrics.</strong> Since standard metrics like CLIP-based text-video alignment and PickScore [28] are tailored for target-prompt-based editing evaluation, they are unable and unsuitable to evaluate the performance of instruction adherence. Therefore, following prior works [2, 25, 46], we employ a VLM evaluator(powered by Gemini-2.5-pro) to assign scores (<span class="math inline">$0-10$</span>) across four critical dimensions: Instruction Following (instruction adherence), Source Preservation (consistency with the source video), Editing Quality (overall video aesthetics), and Subject Similarity (for reference-based edits). As an aiding metric, we also use the VBench [23] evaluation suite to provide quantitative measures of general video quality attributes. We evaluate background consistency and subject consistency by calculating CLIP [49] and DINO [7] feature similarity across frames respectively. Following EditVerse [25], we evaluate the frame-text CLIP [49] feature alignment and video-text ViCLIP [62] feature alignment to reflect both semantics and style consistency. We also evaluate the edited video quality from human preferences perspective by calculating frame-wise PickScore [28].</p>
+            </div>
+            <div class="col-plain">
+                <div class="col-label">💬 說書人白話</div>
+            <p>指令驅動的影片編輯，讓影片編輯變得更直覺、更可控，同時還能保持視覺的真實感。這是一個非常令人興奮的領域，它讓我們不再需要手動畫出複雜的遮罩，而是可以直接告訴電腦我們想要什麼變化。</p>
+            <p>在發展指令驅動的編輯之前，早期的研究主要依賴於<strong>反演方法</strong>（Inversion-based approaches），例如使用一些基礎的技術來進行零樣本或單樣本的文本驅動編輯。這些方法雖然可行，但它們的表現往往受限於我們必須手動提供大量的<strong>先驗知識</strong>，比如手動畫出<strong>遮罩</strong>（masks）、設定<strong>姿勢</strong>（poses）或<strong>運動軌跡</strong>（motion trajectories）。這就像你在畫畫時必須先畫好所有線條，才能讓電腦知道你想要什麼。</p>
+            <p>這種依賴手動輸入的模式，雖然在特定場景下有效，但它極大地限制了編輯的彈性和泛化能力。如果我們想做一些複雜的、非標準的編輯，就必須手動提供精確的指導，這使得系統的靈活性大打折扣。</p>
+            <p>為了克服這個限制，研究者們開始探索如何直接使用自然語言指令來指導模型。例如，InsV2V 提出了利用 InstructPix2Pix 來合成配對的影片編輯數據，試圖讓模型直接從指令中學習編輯的過程。然而，早期嘗試在數據品質和底層模型性能的限制下，效果並未達到預期。</p>
+            <p>隨著時間的推移，研究者們開始將指令驅動的編輯與更強大的<strong>大型視覺模型</strong>（VLM）的能力結合起來。現在，許多工作開始利用VLM的理解能力來輔助影片編輯，例如 InstructX、Omni-Video 和 OmniV2V 等工作。這些方法展現了令人印象深刻的進展，證明了讓模型理解「意圖」而非僅僅是「像素」的編輯方式，是未來影片編輯的趨勢。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>視覺語言模型（VLMs）是當前 AI 領域最令人興奮的進展之一，它們讓機器真正開始理解我們所看到的圖像和我們所讀的文字。</p>
+            <p>想像一下，我們如何讓電腦不僅能「看見」圖片，還能「理解」圖片背後的故事，並能用文字描述它。這就是視覺語言模型（VLMs）所扮演的角色：它們充當了視覺感知和文本描述之間的橋樑。</p>
+            <p>這些基礎的 VLM，像是 CLIP、BLIP-2 和 Flamingo 這些模型，它們的共同目標是學習到視覺內容與文本描述之間的<strong>聯合表徵</strong>（joint representations）。簡單來說，它們學會了如何讓視覺資訊和文字描述在一個共同的空間中對齊，從而實現跨模態的理解。</p>
+            <p>進一步的發展，例如 LLaVA、Video-ChatGPT 和 Qwen2.5-VL 等指令微調（Instruction-tuned）的變體，讓 VLM 的能力更上一層樓。這些模型不僅能進行基礎的視覺定位，還能更好地進行<strong>視覺定位</strong>（visual grounding）和<strong>上下文感知</strong>（context-aware）的文本理解。這意味著模型不再只是單純地看到圖片，而是能根據文字的指示，更精準地理解圖片的細節和上下文關係。</p>
+            <p>這些進展的關鍵在於預訓練（pretrained）的基礎，它們為後續更複雜的任務奠定了堅實的基礎。這證明了透過大規模的數據訓練，我們能夠讓 AI 建立起視覺世界與語言世界的深度連結。</p>
+            <p>我們如何能讓AI不僅「看懂」畫面，更能「聽懂」我們的指令，並精準地執行編輯任務？</p>
+            <p>視覺語言模型（<strong>VLMs</strong>）在影片生成領域扮演了非常重要的角色，它們可以作為一種強大的先驗知識（<strong>priors</strong>），幫助我們進行條件控制。這意味著，我們不再是單純地給AI一堆像素，而是可以給它更豐富的上下文資訊。</p>
+            <p>在我們的研究中，我們正是建立在這一基礎之上，採用了一種基於VLM的指導者（<strong>instructor</strong>）機制。這個機制的作用是將文字指令和視覺上下文這兩類資訊有效地編碼進模型中。</p>
+            <p>這樣做的核心目的，是為了提升影片編輯的<strong>可控性</strong>（<strong>controllability</strong>）和<strong>指令保真度</strong>（<strong>instruction fidelity</strong>）。簡單來說，這就是讓AI在執行編輯任務時，不僅能看到畫面，還能理解我們想要達成的目標，從而更精準地執行指令。</p>
+            <p>強化學習（Reinforcement Learning, RL）在生成模型領域，已經成為提升模型對指令遵循和控制能力的強大工具。</p>
+            <p>想像一下，我們希望模型不僅能生成「看起來像」的內容，還能生成「符合我們意圖」的內容。強化學習正是提供了一種指導模型在複雜的生成空間中找到最佳路徑的方法。</p>
+            <p>在大型語言模型（LLM）中，像 PPO、RPO 和 GRPO 這樣的演算法被廣泛應用，它們幫助模型學習如何更好地遵循指令，並適應用戶的偏好。</p>
+            <p>現在，這些方法已經從文字生成擴展到了視覺生成領域，例如影像生成。同時，其他研究也利用獎勵引導的微調（reward-guided fine-tuning）來更好地讓生成結果與用戶的編輯意圖保持一致。</p>
+            <p>我們將這些前沿的強化學習思想延伸到影片編輯領域，目的是為了全面提升影片編輯的整體性能、魯棒性（robustness）和泛化能力（generalization）。這意味著我們不僅要讓模型能編輯畫面，還要讓它能更穩定、更準確地理解和執行複雜的影片編輯指令。</p>
+            <p>這項延伸的目標，讓我們能夠更全面地提升生成模型的整體表現力，讓它們在處理複雜的視覺任務時，不僅能達成目標，還能保持穩定的表現。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>要讓 AI 真正理解你的編輯意圖，而不僅僅是像素的堆疊，我們需要一個「理解者」來指導生成過程。</p>
+            <p>在 VIVA 的設計中，我們將這個「理解者」和「生成器」分成了兩個核心模組：一個是負責理解的 <strong>視覺語言模型 (VLM)</strong>，另一個是負責生成內容的 <strong>擴散轉換器 (DiT)</strong>。</p>
+            <p>想像一下，你請一位專業的導演來拍攝一部電影。你給他一個腳本（文本指令），提供原始素材（源影片），並希望他修改特定場景。VLM 就是扮演這個導演的角色，它負責聚合和解讀所有這些多模態資訊，告訴生成器「要怎麼改」。</p>
+            <h3>VLM：影片編輯的「導演」與「指導者」</h3>
+            <p>VLM 在 VIVA 中扮演了至關重要的「指導者」角色。它負責處理多種輸入條件，包括你的文字指令、原始影片素材，以及可選的參考圖像。</p>
+            <p>這意味著 VLM 不僅僅是看圖說話，它更像是一個能夠理解上下文的智慧體。它能將你抽象的文字指令，轉化為具體的視覺編輯目標，並將這些目標與原始影片的內容進行對齊。正是透過 VLM 的智慧，我們才能確保後續的編輯是基於深層的語義理解，而不是簡單的像素操作。</p>
+            <h3>VIVA 的核心：讓生成器聽從指令</h3>
+            <p>接下來，我們如何利用這個「理解者」來控制「生成器」？</p>
+            <p>VIVA 的核心策略是將 VLM 提供的語義上下文，注入到預先訓練好的文本到影片 (T2V) <strong>DiT</strong> 中。簡單來說，我們不是讓 DiT 隨意生成，而是讓它在生成影片的同時，必須遵守 VLM 提供的編輯指令和源影片的內容。</p>
+            <p>這就像是讓一個精通繪畫的藝術家（DiT），在畫畫時必須嚴格遵循一位專業的藝術評論家（VLM）的指導。如果沒有 VLM 的指導，DiT 可能會生成看起來很像，但內容完全偏離你意圖的畫面。透過這種方式，我們確保了生成過程是「有目的性」的，而不是隨機的。</p>
+            <h3>Edit-GRPO：確保編輯的精準度與美感</h3>
+            <p>雖然有了 VLM 的指導，我們還需要一個機制來確保編輯的結果不僅符合指令，還具有高保真度和視覺美感。這就是我們引入的後訓練策略：<strong>群體相對策略優化 (Group Relative Policy Optimization, GRPO)</strong>，我們稱之為 <em>Edit-GRPO</em>。</p>
+            <p>為什麼需要這個優化步驟呢？因為單純的指令遵循可能導致畫面細節失真，或者背景內容被不當地影響。Edit-GRPO 的作用是作為一個精細的校準器，它在訓練過程中，會對模型進行進一步的微調，以平衡兩個目標：一是<strong>指令遵循度</strong>（確保編輯的內容準確），二是<strong>內容保真度</strong>和<strong>視覺美學</strong>（確保背景和細節的自然性）。</p>
+            <p>想像一下，你請藝術家畫一幅畫，不僅要畫出你想要的形狀，還必須確保光影、色彩和細節都達到專業水準。Edit-GRPO 就是那個確保藝術家在執行任務時，既聽從你的要求，又保持高水準美感的內部機制。</p>
+            <h3>數據準備：為編輯提供豐富的訓練場景</h3>
+            <p>最後，要讓這個系統真正發揮作用，我們需要高品質的訓練數據。因此，我們設計了一個專門的數據準備流程，旨在生成多樣化且高品質的影片編輯數據集。</p>
+            <p>這個數據集不僅包含了指令、源影片和參考圖像的組合，它為 VIVA 提供了豐富的訓練場景。這意味著模型在學習如何進行編輯時，能夠接觸到更廣泛的場景和更複雜的編輯需求。這一步是確保我們的模型能夠泛化到各種編輯任務的基礎，讓它能夠在真實世界中，做出既準確又美觀的編輯決策。</p>
+            <!-- EVAL:類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>當我們處理涉及文字和影像的複雜任務時，單純的文字理解是遠遠不夠的，我們需要一個能同時「看懂」和「理解」的智慧系統。</p>
+            <p>想像一下，當你試圖編輯一段影片時，你不僅需要知道「要怎麼切」的文字指令，還必須同時觀察影片的畫面內容，判斷哪些部分是背景，哪些部分是需要修改的重點。這就是一個高度「上下文感知」（context-aware）的任務。</p>
+            <p>因此，要成功地理解和處理這些多模態的條件，我們必須理解文字指令、原始影片以及可選的參考圖片之間複雜的關係。</p>
+            <p>我們發現，如果只讓一個編碼器只接觸語言空間，例如 T5 系列模型，它就難以提供足夠的語義指導，這會讓後續的生成過程變得更加困難和模糊。</p>
+            <p>相比之下，<strong>視覺語言模型（VLM）</strong>之所以成為一個絕佳的替代方案，是因為它能夠在語言空間和視覺特徵空間之間建立更穩固的對齊關係，從而更有效地理解和處理多模態的上下文。</p>
+            <p>雖然已經有一些研究嘗試將 VLM（例如 QWEN2.5-VL [4]）與基於 T5 空間的 DiT（Diffusion Transformer）模型（例如 Wan [60]）結合起來，但這種策略通常需要進行大量的預訓練階段，才能讓 VLM 的特徵空間與 DiT 的生成空間達成對齊。</p>
+            <p>因此，為了避免過多的額外訓練成本，我們選擇了 <strong>Hunyuan-T2V-13B</strong> [29] 作為我們的骨幹架構。這是因為它已經具備了與 VLM 空間（例如 llava-llama-3-8b [12]）對齊的預訓練能力，這讓我們能更直接地利用現有的能力來處理我們的任務。</p>
+            <p>想像一下，當你只給一個文字指令時，AI會有多混亂？</p>
+            <p>當我們僅僅依賴<strong>語義稀疏的文字指令</strong> <span class="math inline">$\mathbf{t}_{ins}$</span> 來進行條件設定時，我們給模型訊號就比較模糊，這會讓後續的編輯過程充滿歧義。這就像你只告訴一個學生「請畫一隻貓」，但沒有提供任何視覺參考，他會不知道貓的形狀、姿勢和細節該如何呈現。</p>
+            <p>為了解決這個問題，我們決定增加更多的資訊。我們提出將源影片 <span class="math inline">$\mathbf{V}_{src}$</span> 的第一幀 <span class="math inline">$\mathbf{I}_{src}$</span> 納入輸入中。引入 <span class="math inline">$\mathbf{I}_{src}$</span> 的目的，就是為條件訊號增加<strong>紮實、細緻的語義偏誤</strong>（grounded, fine-grained semantic bias）。這樣一來，視覺資訊就為模型提供了更具體的上下文，讓多模態語言模型（VLM）能夠更有效地理解編輯指令與源影片之間的複雜關係。</p>
+            <p>透過這種整合的理解，VLM就能更清楚地區分關鍵元素，例如你真正想編輯的區域，以及你想要編輯的具體實體。當我們為DiT（Diffusion Transformer）提供這種精細且準確的控制訊號時，我們的做法就有效地克服了僅依賴指令的模糊性，最終實現了更高保真度和更可控的影片編輯。</p>
+            <p>進一步地，為了讓使用者能控制更廣泛的多模態操作，並更靈活地指定編輯的具體結果，我們還引入了一個可選的參考圖像輸入 <span class="math inline">$\mathbf{I}_{ref}$</span>。如果編輯指令告訴模型「要做什麼」，那麼參考圖像 <span class="math inline">$\mathbf{I}_{ref}$</span> 就明確地告訴模型「編輯後的內容應該長什麼樣子」。這使得模型能夠更充分地利用VLM的<strong>多模態理解和思考能力</strong>，從而生成更細緻、更準確的編輯指導。</p>
+            <p>最終，我們將VLM指導器的最後隱藏狀態作為我們的多模態條件標記 <span class="math inline">$\mathbf{x}_{vlm}$</span>，作為後續編輯的基礎。這一步的設計，確保了我們能夠將視覺的細節與語言的指令完美地結合起來，實現真正精準的編輯控制。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，當我們需要從多個資訊中「提煉」出一個精確的結果時，我們該如何讓電腦理解這些資訊的關係？這段公式正是描述了我們如何利用一個強大的工具，將這些資訊整合起來，生成我們想要的結果。</p>
+            <p>我們來看這個核心的數學表達式：</p>
+            <div class="formula">$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref}). \quad \quad \quad (1)$$</div>
+            
+            <p>這行字告訴我們，我們最終想要得到的結果 <span class="math inline">$\mathbf{x}_{vlm}$</span>，是透過一個<strong>視覺語言模型 (VLM)</strong> 進行計算得到的。簡單來說，VLM就像一位超級聰明的畫家，它不是單純地看圖，而是能理解文字和圖像的複雜關係。</p>
+            <p>那麼，這個畫家是如何工作的呢？它需要三個關鍵的輸入來完成任務：</p>
+            <p>首先是 <span class="math inline">$\mathbf{t}_{ins}$</span>，這代表的是<strong>編輯區域提示 (input mask)</strong>。你可以把它想像成你畫重點的標記，它告訴模型「我希望修改的區域在哪裡」。</p>
+            <p>其次是 <span class="math inline">$\mathbf{I}_{src}$</span>，這是<strong>源圖像 (source image)</strong>，也就是我們需要進行編輯的原始照片。</p>
+            <p>最後是 <span class="math inline">$\mathbf{I}_{ref}$</span>，這是<strong>參考圖像 (reference image)</strong>，它提供了我們希望達到的風格或內容的參考標準。</p>
+            <p>VLM 的任務就是將這三種資訊——「要修改的位置」、「原始內容」和「參考風格」——全部輸入給它，讓它學會如何精準地在源圖像上進行編輯，同時確保結果符合參考圖像的品質。</p>
+            <p>為什麼要這樣設計？如果我們只是讓模型平等地處理所有像素，那麼那些不需要變動的背景資訊就會「稀釋」掉我們想要編輯的訊號，導致模型難以精準聚焦在目標區域。透過 VLM 的機制，它能夠自動判斷哪些資訊是「重點」（<span class="math inline">$\mathbf{t}_{ins}$</span> 告訴它），哪些是「背景」（<span class="math inline">$\mathbf{I}_{src}$</span> 和 <span class="math inline">$\mathbf{I}_{ref}$</span> 提供了上下文），從而將注意力精準地集中在需要修改的區域上。</p>
+            <p>因此，這個公式的設計，確保了我們能夠在保持背景完整性的同時，讓模型專注於編輯的目標區域，從而獲得更精準、更具上下文感知的圖像重構結果。</p>
+            <h3>2. Related Work (paragraph 9/34)</h3>
+            <p>想像你已經是一位知識淵博的學生，擁有強大的語言理解和推理能力（這就是我們所說的 <strong>VLM</strong>，視覺語言模型）。現在，我們想讓這個學生在不忘記所有舊知識的前提下，學會處理新的視覺資訊，這就像在考試中，你不需要重新讀一遍所有歷史，只需要專注於新的重點。</p>
+            <p>為了確保 VLM 保持其強大的泛化能力，我們在訓練過程中選擇了一個保守的策略：我們<strong>凍結</strong>了 VLM 的參數，讓它保持其原有的強大理解能力不被破壞。這就像讓學生保持基礎知識的穩固，避免新的學習干擾舊的記憶。</p>
+            <p>然而，當我們引入額外的視覺資訊 <span class="math inline">$\mathbf{I}_{src}$</span>（源視覺）和 <span class="math inline">$\mathbf{I}_{ref}$</span>（參考視覺）時，我們必須找到一個聰明的適應策略，讓模型能夠有效地整合這些新的視覺線索。如果只是讓模型平等地處理所有資訊，那些不需要變動的背景資訊可能會「稀釋」掉我們真正想學習的編輯訊號，導致訓練效率降低，而且結果也不夠精準。</p>
+            <p>因此，我們引入了一個輕量級的調整機制：<strong>Token Refiner</strong> <span class="math inline">$\mathcal{R}$</span>。這個調整器就像一個專門的導師，它不改變 VLM 的核心知識，而是專注於增強 DiT（Diffusion Transformer）對視覺條件訊號的響應能力，並幫助模型理解文本與視覺之間的深層關聯。</p>
+            <p>透過這種設計，我們不僅能有效地融合新的視覺資訊，還能讓模型精準地將注意力集中在需要編輯的區域，從而確保模型在保持原有能力基礎的同時，能夠精準地執行任務。</p>
+            <p>想像一下，當你試圖修復一幅照片時，你除了看需要修復的區域，還需要參考周圍的背景才能做出更精準的判斷。</p>
+            <p>為了讓我們的編輯過程更一致、更可靠，我們需要讓模型在去噪時，不僅專注於需要編輯的區域，還能理解整個源影片的結構和運動。這就是我們設計這個結合方式的動機。</p>
+            <p>我們是如何做到這一點的呢？我們將源影片的資訊，也就是它的潛在空間表示，與噪聲的資訊進行結合。具體來說，我們將源影片的潛在變數 <span class="math inline">$\mathbf{z}_{src}$</span> 和噪聲的潛在變數 <span class="math inline">$\mathbf{z}_{noise}$</span> 分別進行分塊（patchified）並展開成一維的 token 序列 <span class="math inline">$\mathbf{x}_{src}$</span> 和 <span class="math inline">$\mathbf{x}_{noise}$</span>。</p>
+            <p>接著，我們將這兩個序列的通道（channel）資訊進行拼接，得到 <span class="math inline">$[\mathbf{x}_{src}, \mathbf{x}_{noise}] \in \mathbb{R}^{L \times 2C}$</span>。</p>
+            <p>為什麼要這樣設計呢？這一步操作的關鍵在於引入了<strong>空間和時間對齊的歸納偏置</strong>（spatially and temporally aligned inductive bias）。簡單來說，這意味著我們給了去噪過程豐富且強大的上下文指導，讓模型知道源影片的結構和運動是如何運作的。</p>
+            <p>這就像你在畫畫時，不僅要看你想要畫的對象，還需要參考背景的紋理和光影，才能讓畫作更真實、更一致。當我們將源資訊和噪聲資訊結合起來，模型就能獲得更全面的上下文，從而更精準地知道如何處理噪聲，而不是盲目地去猜測。</p>
+            <p>最終，我們就能將這些上下文感知的噪聲影片 token 進行建模，讓去噪結果不僅在像素層面上正確，在結構層面上也更加合理。</p>
+            <p>想像一下，當我們需要從一堆複雜的影片資訊中，精準提取出我們真正需要的上下文時，我們該如何做？這段公式正是為了解決這個問題而設計的，它告訴我們如何將多個來源的資訊，有效地整合並對齊到我們的模型中。</p>
+            <p>我們來看這個核心的數學表達式：</p>
+            <div class="formula">$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c), \quad (2)$$</div>
+            
+            <p>首先，讓我們從左邊看，<span class="math inline">$\mathbf{x}_{video}$</span> 代表的就是我們最終想要得到的影片資訊。我們的目標是讓這個 <span class="math inline">$\mathbf{x}_{video}$</span> 能夠完美地捕捉到影片的全部上下文。</p>
+            <p>接下來，我們看右邊的運算過程。在進行這個計算之前，我們需要理解幾個關鍵的步驟：</p>
+            <ol>
+            <li>
+            <p><strong>資訊的準備（<span class="math inline">$\mathbf{P}$</span> 模組）</strong>：在我們將資訊組合之前，我們首先對源資訊 <span class="math inline">$\mathbf{z}_{src}$</span> 和雜訊資訊 <span class="math inline">$\mathbf{z}_{noise}$</span> 都進行處理，這就是 <span class="math inline">$\mathbf{P}(\cdot)$</span>，我們稱之為<strong>Patchification Module</strong>（切塊化模組）。想像 <span class="math inline">$\mathbf{P}$</span> 就像一個精準的切片工具，它負責將原始的、高維的資訊，切分成我們模型可以理解的、有意義的「塊」（patches）。</p>
+            </li>
+            <li>
+            <p><strong>資訊的組合（<span class="math inline">$\text{Concat}(\cdot, \cdot)^c$</span>）</strong>：接著，我們將這兩個切片後的資訊 <span class="math inline">$\mathbf{P}(\mathbf{z}_{src})$</span> 和 <span class="math inline">$\mathbf{P}(\mathbf{z}_{noise})$</span> 進行通道維度上的連接 <span class="math inline">$\text{Concat}(\cdot, \cdot)^c$</span>。這就像把兩本書的章節內容並排放在一起，形成一個更完整的資訊集合。</p>
+            </li>
+            <li>
+            <p><strong>上下文的聚合與對齊（<span class="math inline">$\mathcal{P}$</span> 投影器）</strong>：最後，我們將這個組合後的資訊輸入給 <span class="math inline">$\mathcal{P}$</span>，也就是<strong>可訓練的投影器</strong>（trainable projector）。這個投影器的核心作用非常關鍵：它會將所有這些組合起來的上下文資訊，在通道維度上進行聚合，並將其對齊到我們 DiT（Diffusion Transformer）模型的特徵空間中。</p>
+            </li>
+            </ol>
+            <p>為什麼需要這個投影器 <span class="math inline">$\mathcal{P}$</span> 呢？如果我們只是簡單地將資訊拼接起來，模型可能會因為背景資訊（例如 <span class="math inline">$\mathbf{z}_{noise}$</span>）的影響而分心，導致它無法精準地聚焦在我們真正需要編輯的目標區域上。</p>
+            <p>有了 <span class="math inline">$\mathcal{P}$</span>，我們就能確保模型在整合影片資訊時，能夠<strong>有選擇性地</strong>強調源資訊 <span class="math inline">$\mathbf{z}_{src}$</span> 的內容，同時有效地抑制或平衡雜訊 <span class="math inline">$\mathbf{z}_{noise}$</span> 的干擾。這使得 <span class="math inline">$\mathbf{x}_{video}$</span> 能夠精準地反映我們想要的編輯結果，而不是被不必要的背景資訊所稀釋。總結來說，這個設計的精妙之處在於，它提供了一個機制，讓模型能夠學會如何「看清」並「聚焦」在目標區域上，實現更精準的影片重建。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，我們如何能讓模型從「靜態圖片」學會「動態影片」的編輯技巧？這正是我們在訓練過程中需要解決的關鍵問題。</p>
+            <p>為了讓模型能夠學習複雜的影片編輯任務，我們採用了 <strong>Flow Matching</strong> [36] 的方法來進行模型訓練。在這個監督式微調的階段，我們需要訓練一系列組件，包括 <strong>patchify 模組</strong> <span class="math inline">$\mathbf{P}$</span>、<strong>投影器</strong> <span class="math inline">$\mathcal{P}$</span>、<strong>Token 精煉器</strong> <span class="math inline">$\mathcal{R}$</span>，以及整個 <strong>DiT</strong>（Diffusion Transformer）架構。我們使用我們自己構建的合成配對源/目標影片指令數據集來進行訓練。</p>
+            <p>然而，我們面臨一個現實的挑戰：配對的影片編輯數據非常稀缺，而且編輯的類型範圍也有限。這意味著我們缺乏足夠的「實戰經驗」來訓練一個能處理所有影片編輯細節的模型。</p>
+            <p>於是，我們採取了一個巧妙的策略：我們將大規模的圖像編輯數據作為補充，將一張靜態圖片視為一個包含時間資訊的「單幀影片」。這個設計的動機是：如果我們讓模型平等地處理所有像素，那些不需要變動的背景資訊可能會「稀釋」掉我們真正想學習的編輯訊號，導致訓練效率降低，且編輯效果不精準。</p>
+            <p>透過將圖像數據引入，我們讓模型能夠從廣泛的圖像編輯知識中汲取信息，並將這些能力有效地轉移到影片領域。實驗結果證明，這種方法非常有效，例如，那些在圖像域中存在的全局風格化編輯能力，也能成功地轉移到影片域中，即使在我們的配對影片數據中並沒有直接的樣本。這證明了單幀圖像的編輯能力，足以指導模型理解影片的動態變化。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，當你試圖修復一張照片上的特定區域時，你不會讓你的修圖工具對整個畫面都同樣用力，而是會專注於你想要修改的「重點」區域。這正是我們在數據準備階段所引入的遮罩影像 <span class="math inline">$M$</span> 發揮作用的地方。</p>
+            <p>我們在第 3.4 節中生成了這個遮罩 <span class="math inline">$M$</span>，它就像一張指示牌，告訴我們哪些區域是我們真正需要關注和修正的。現在，我們利用這個資訊，將原本的標準 <strong>Rectified Flow 損失</strong>（Rectified Flow Loss）進行了「遮罩化」的修改。</p>
+            <p>這個修改的目的是什麼呢？如果我們只是讓模型平等地計算所有像素的重建誤差，那麼那些不需要變動的背景區域就會「稀釋」掉我們對目標區域的學習訊號，導致模型在處理編輯區域時會變得不夠專注，最終影響重建的精準度。</p>
+            <p>因此，我們將遮罩 <span class="math inline">$M$</span> 引入到損失函數中，讓模型知道：在計算總體的重建錯誤時，我們應該<strong>加權</strong>（reweight）編輯區域的誤差，而對背景區域則給予較低的權重，確保模型能精準地將注意力集中在我們真正需要編輯的目標區域上。</p>
+            <p>具體來說，我們將原始的 Rectified Flow 損失 <span class="math inline">$L_{RF}$</span> 進行了遮罩加權，得到遮罩損失 <span class="math inline">$L_{masked}$</span>，其數學表達如下：</p>
+            <div class="formula">$$L_{masked} = \sum_{i} M_i \cdot L_{RF}(x_i, x&#x27;_i)$$</div>
+            
+            <p>在這裡，我們使用遮罩 <span class="math inline">$M$</span> 來對每個像素的損失進行篩選。<span class="math inline">$L_{RF}(x_i, x&#x27;_i)$</span> 代表在原始數據 <span class="math inline">$x_i$</span> 和目標數據 <span class="math inline">$x&#x27;_i$</span> 之間的重建誤差。而 <span class="math inline">$M_i$</span> 就是我們在數據準備階段生成的遮罩，它是一個二元或連續的標記，指示該像素是否屬於我們希望模型重點學習的區域。</p>
+            <p>這個設計的關鍵在於 <span class="math inline">$M_i$</span> 的作用。當 <span class="math inline">$M_i$</span> 接近 1 的地方，表示該像素是編輯區域，模型必須嚴格遵守 <span class="math inline">$L_{RF}$</span> 的約束；而當 <span class="math inline">$M_i$</span> 接近 0 的地方，表示該像素是背景，模型可以放寬對其重建精度的要求。這使得模型在訓練過程中，能夠有效地將其學習資源集中在目標區域，從而實現更精準、更聚焦的圖像重建。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，當我們要求一個AI只專注於改變的區域時，它會如何思考？這就是我們設計這個<strong>遮罩損失函數</strong> <span class="math inline">$\mathcal{L}_{\text{mask}}$</span> 的核心動機。</p>
+            <p>在圖像編輯任務中，我們希望模型能夠精準地學習如何處理被編輯的區域，同時保持對周圍背景的尊重。如果我們只是讓模型平等地計算所有像素的重建誤差，那麼那些不需要變動的背景資訊就會「稀釋」掉我們真正需要關注的編輯訊號，導致模型在訓練時會分心，學習效率自然就會降低。</p>
+            <p>為了解決這個問題，我們引入了這個加權機制。公式如下：</p>
+            <div class="formula">$$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}, \quad (3)$$</div>
+            
+            <p>這裡的 <span class="math inline">$\mathcal{L}_{\text{FM}}$</span> 代表我們原本的基礎重建誤差，而我們引入的 <span class="math inline">$\mathcal{L}_{\text{mask}}$</span> 就是經過調整後的損失函數。</p>
+            <p>這個調整的關鍵就在於 <span class="math inline">$w_m$</span>，也就是我們所說的<strong>遮罩權重</strong>（mask weight）。我們可以把 <span class="math inline">$w_m$</span> 想像成一個「注意力指標」：它告訴模型，在計算重建誤差時，應該給予編輯區域更高的權重。當 <span class="math inline">$w_m$</span> 設置得高時，模型會更專注於編輯區域的細節；當 <span class="math inline">$w_m$</span> 設置得低時，模型會更傾向於保持背景的完整性。</p>
+            <p>透過 <span class="math inline">$(1 + w_m M)$</span> 這個乘法操作，我們成功地將編輯區域的重建誤差 <span class="math inline">$\mathcal{L}_{\text{FM}}$</span> 進行了精準的加權，確保模型在學習編輯目標時，能夠「聚焦」在目標上，同時「尊重」背景內容。這使得模型能夠在不破壞背景細節的前提下，高效地完成編輯任務。</p>
+            <p>如果我們只是讓模型「做對事」，那還不夠，我們更需要讓它「做對事，而且做得更好」。</p>
+            <p>為了讓模型在複雜的編輯任務中表現得更出色，我們設計了一個更精巧的獎勵系統，這就是 <strong>Edit-GRPO</strong> 的核心。這個系統的目標非常明確：不僅要提升模型對指令的遵循能力，還要確保它能精準地保留原始影片的內容，並最終達到人類的偏好。</p>
+            <p>想像一下，你請一個助理完成一個複雜的編輯任務：你不僅要他按照你的指示去剪輯畫面，還要確保他不會無意中刪掉重要的背景，並且最終的成品要符合你對美感的個人喜好。單純的指令遵循是不夠的，我們需要一個能同時衡量這些複雜目標的獎勵機制。</p>
+            <p>我們引入 <strong>GRPO</strong>（Generalized Reward Policy Optimization）來實現這一目標。簡單來說，GRPO 就像是為模型設計了一套更智慧的「獎勵標準」。它讓模型在學習過程中，不僅會關注於完成任務本身，還會被獎勵去達成以下三個關鍵目標：</p>
+            <ol>
+            <li><strong>提升指令遵循能力</strong>：確保模型能精準理解並執行我們給出的編輯指令。</li>
+            <li><strong>源影片內容的保留</strong>：防止模型在編輯過程中無意中破壞或刪除原始影片中的重要背景資訊。</li>
+            <li><strong>人類偏好對齊</strong>：讓模型的輸出結果更符合人類的審美和期望。</li>
+            </ol>
+            <p>這個 <strong>Edit-GRPO</strong> 的整個流程，就像是一條精心設計的管道，它將這些目標整合在一起，形成一個完整的訓練路徑。我們將整個流程總結在圖 3 中，這展示了如何透過這個獎勵系統，讓模型在編輯任務中達到更高的品質和準確性。這不僅是一個技術上的改進，更是讓 AI 能夠更貼近人類意圖的關鍵一步。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>我們如何才能準確地衡量一個影片編輯模型是否真正「聽懂」了我們的指令，而不是只做表面上的修改？</p>
+            <p>要評估一個基於指令的影片編輯模型的表現，最根本的標準其實就是它遵循指令的準確度和品質。然而，目前我們並沒有一個直接的獎勵模型可以完美地量化這種「指令遵循能力」。這就像我們想知道一個學生是否真正理解了課本，但卻只能看他寫的答案，而無法知道他思考的過程。</p>
+            <p>因此，我們設計了一個巧妙的目標函數，來間接捕捉這種遵循指令的能力。這個設計的思路是：我們需要同時衡量兩個關鍵的對齊關係：一是編輯後的影片與編輯指令的吻合度，二是原始影片與原始指令的吻合度。</p>
+            <p>我們將這個目標定義為：</p>
+            <div class="formula">$$(C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{src}, \mathbf{t}_{edit})) + (C(\mathbf{V}_{src}, \mathbf{t}_{src}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}))$$</div>
+            
+            <p>這裡，我們需要先理解公式中的幾個關鍵元素。<span class="math inline">$\mathbf{V}_{src}$</span> 代表<strong>原始影片</strong>（Source Video），<span class="math inline">$\mathbf{V}_{edit}$</span> 代表<strong>編輯後的影片</strong>（Edited Video），而 <span class="math inline">$\mathbf{t}_{src}$</span> 和 <span class="math inline">$\mathbf{t}_{edit}$</span> 分別是<strong>原始描述</strong>（Source Description）和<strong>編輯後的描述</strong>（Edited Description）。</p>
+            <p><span class="math inline">$C(V, \mathbf{t})$</span> 則代表<strong>片段相似度</strong>（Clip Similarity），它衡量的是一個影片 <span class="math inline">$V$</span> 與其對應的描述 <span class="math inline">$\mathbf{t}$</span> 之間有多麼相似。</p>
+            <p>現在，讓我們用直覺來理解這個設計的背後邏輯。我們希望模型做兩件事：首先，讓編輯後的影片 <span class="math inline">$\mathbf{V}_{edit}$</span> 盡可能地與編輯後的描述 <span class="math inline">$\mathbf{t}_{edit}$</span> 對齊；其次，同時確保原始影片 <span class="math inline">$\mathbf{V}_{src}$</span> 與原始描述 <span class="math inline">$\mathbf{t}_{src}$</span> 的對齊程度，並且 <span class="math inline">$\mathbf{V}_{src}$</span> 與 <span class="math inline">$\mathbf{t}_{edit}$</span> 的不一致性要被最小化。</p>
+            <p>簡單來說，我們希望 <span class="math inline">$\mathbf{V}_{edit}$</span> 對 <span class="math inline">$\mathbf{t}_{edit}$</span> 的相似度，要<strong>大於</strong> <span class="math inline">$\mathbf{V}_{src}$</span> 對 <span class="math inline">$\mathbf{t}_{edit}$</span> 的相似度；同時，我們希望 <span class="math inline">$\mathbf{V}_{src}$</span> 對 <span class="math inline">$\mathbf{t}_{src}$</span> 的相似度，要<strong>大於</strong> <span class="math inline">$\mathbf{V}_{edit}$</span> 對 <span class="math inline">$\mathbf{t}_{src}$</span> 的相似度。</p>
+            <p>這個設計的精妙之處在於，它不是單純地追求最終結果的相似度，而是通過<strong>差值</strong>來量化「編輯」這個行為本身。它迫使模型在追求編輯目標的同時，必須保持對原始內容的尊重，確保我們只關注那些真正被修改的區域，而不是讓背景內容的相似度來「稀釋」我們的學習訊號。這正是確保模型能夠精準地聚焦在指令所要求的「刀口」上，而不是被不相關的背景信息所迷惑的關鍵所在。</p>
+            <h2>Related Work (paragraph 17/34)</h2>
+            <p>我們知道，在我們的實驗設定中，對於同一群組內的樣本，計算編輯區域的重建誤差 <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span> 和原始區域的重建誤差 <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span> 是完全相同的。這意味著，在基於群組相對偏好的情況下，這些計算結果對梯度更新沒有任何貢獻。因此，我們只需要將指令遵循分數（instruction following score）的計算聚焦在真正有意義的資訊上。</p>
+            <p>這就引導我們思考：如果模型平等地對待所有像素，那麼那些不需要變動的背景資訊會「稀釋」掉我們真正需要學習的編輯訊號，導致訓練效率降低，且模型無法精準地聚焦在目標區域。</p>
+            <p>因此，我們將指令遵循分數的計算方式重新設計，讓它只依賴於編輯區域的資訊。這確保了模型在進行訓練時，能夠將注意力精準地集中在需要進行修改的目標區域上，從而最大化地利用有限的訓練資源。這是一個讓模型「知道該看哪裡」的設計，而不是讓它盲目地處理所有資訊。</p>
+            <p>想像一下，當你試圖在照片上只修改一小塊區域時，你希望你的編輯工具能像一個精準的藝術家一樣，只專注於你標註的重點，而不是把整個背景都搞混。這正是我們在探討的差異，它引導我們理解如何設計一個更聰明的損失函數來實現精準的區域編輯。</p>
+            <p>我們來看這個公式：</p>
+            <div class="formula">$$\mathbf{R}_{\text{IF}} = C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}). \quad (4)$$</div>
+            
+            <p>這個公式定義了我們所稱的<strong>編輯區域差異</strong> <span class="math inline">$\mathbf{R}_{\text{IF}}$</span>。簡單來說，它計算的是「編輯區域」的重建成本，減去「原始區域」的重建成本。</p>
+            <p>為了讓這個計算有意義，我們需要先理解公式中的幾個關鍵部分：</p>
+            <ul>
+            <li><span class="math inline">$C(\cdot, \cdot)$</span>：這代表一個<strong>重建成本函數</strong>。在我們的模型中，這個函數衡量的是模型對某個輸入（<span class="math inline">$\mathbf{V}$</span>）和某個目標（<span class="math inline">$\mathbf{t}$</span>）的重建誤差或損失。</li>
+            <li><span class="math inline">$\mathbf{V}_{edit}$</span>：這是指我們希望進行編輯的<strong>目標區域</strong>的輸入影像。</li>
+            <li><span class="math inline">$\mathbf{t}_{edit}$</span>：這是指我們希望模型重建的<strong>編輯目標</strong>。</li>
+            <li><span class="math inline">$\mathbf{t}_{src}$</span>：這是指<strong>原始區域</strong>的目標（即未編輯的背景區域）。</li>
+            </ul>
+            <p>我們計算的邏輯是：我們希望編輯區域的重建成本 <span class="math inline">$C(\mathbf{V}_{edit}, \mathbf{t}_{edit})$</span> 能夠被最小化，同時我們希望背景區域的重建成本 <span class="math inline">$C(\mathbf{V}_{edit}, \mathbf{t}_{src})$</span> 保持穩定。因此，<span class="math inline">$\mathbf{R}_{\text{IF}}$</span> 實際上是在衡量：<strong>在編輯區域上，我們比在原始背景上，模型需要付出的額外重建努力是多少。</strong></p>
+            <p>這個差異 <span class="math inline">$\mathbf{R}_{\text{IF}}$</span> 就是我們設計的損失函數的核心。它告訴模型：請專注於最小化編輯區域的誤差，同時對背景區域的誤差施加適當的約束。這避免了模型在處理不需要變動的背景時，過度消耗計算資源，從而確保模型能更精準地將注意力集中在我們真正需要修改的細節上。這就是我們設計這個損失函數的根本動機。</p>
+            <p>當我們編輯影片時，最大的挑戰不只是讓修改的部分看起來好，而是如何確保周圍的背景內容依然真實不變。</p>
+            <p>想像一下你在進行一幅精細的數位繪畫：你可能只著重修改了畫面的中心部分，但你必須確保周圍的背景、邊緣的細節，都依然保持著原始畫作的質感和真實感。如果只專注於修改區域，而忽略了周圍的背景，最終的成品就會顯得突兀、不自然，失去了整體的一致性。</p>
+            <p>因此，在影片編輯的領域中，我們必須設定一個更高的標準：編輯內容必須與原始影片保持一致，同時，編輯區域的內容也必須與原始影片保持連貫性。這意味著我們不能只看「修改的區域」，還必須考慮「未修改的區域」。</p>
+            <p>為了量化這種「源影片保留」的獎勵，我們提出了一個新的目標。這個目標的設計，就是為了指導模型在進行編輯時，不僅要優化目標區域，更要同時尊重和保護影片的整體背景資訊。這確保了我們在追求編輯效果的同時，不會犧牲影片的整體真實性。</p>
+            <p>想像一下，當你試圖在照片上只修改一小塊區域時，你希望你的編輯工具能知道哪些地方是「重點」，哪些地方是「背景」。這正是我們在討論的這一步，我們需要一個數學機制來定義這個「重點」的區域。</p>
+            <p>這個公式 <span class="math inline">$\mathbf{R}_{\text{SP}} = C(\mathbf{V}_{src}, \mathbf{V}_{edit})$</span> 告訴我們，我們定義的<strong>目標區域</strong> <span class="math inline">$\mathbf{R}_{\text{SP}}$</span>，其實是源影像 <span class="math inline">$\mathbf{V}_{src}$</span> 和編輯影像 <span class="math inline">$\mathbf{V}_{edit}$</span> 之間關係的結果。</p>
+            <p>我們不是簡單地把兩者相加或相減，而是引入了一個關鍵的函數 <span class="math inline">$C$</span>。這個 <span class="math inline">$C$</span> 扮演了「智能篩選器」的角色，它負責根據源影像和編輯影像的資訊，精準地計算出我們真正需要關注的、需要進行編輯的區域。</p>
+            <p>為什麼要這樣設計？因為如果我們只是簡單地對兩者進行平均，那麼那些不需要編輯的背景資訊就會被「稀釋」掉，導致模型在訓練時會把注意力分散到不重要的背景上，進而影響到我們對目標區域的精準度。</p>
+            <p>因此，這個設計的本質是：讓模型能夠區分「需要改變的訊號」和「需要保留的背景訊號」。透過這個函數 <span class="math inline">$C$</span>，我們確保了計算出的 <span class="math inline">$\mathbf{R}_{\text{SP}}$</span> 能夠精準地聚焦在編輯的邊界上，而不是被無關的背景資訊所干擾。這為後續的損失函數設計奠定了基礎，確保了模型能專注於最關鍵的編輯任務。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <h2>Related Work (paragraph 21/34)</h2>
+            <p>要讓AI生成的影片編輯結果真正符合人類的喜好，我們不能只依賴單一的視覺品質標準，而是需要一套能全面衡量「對齊程度」的評估機制。</p>
+            <p>為了達成這個目標，我們引入了 <strong>Pickscore</strong> 這個綜合評估指標。這個指標的設計目的，就是不只看影片看起來是否「美」，而是要全面評估編輯後的影片與我們給定的指令（Instruction）之間的對齊程度，同時也考慮到其視覺品質。</p>
+            <p>想像一下，你請一位設計師完成一個專案：你不能只要求他畫出一個好看的圖形，你還需要確保整個設計的風格、氛圍，以及最終呈現出來的感覺，都符合你的期望。Pickscore 就是扮演這個「客戶」的角色，它會同時評估兩個維度：一是編輯結果與指令的邏輯一致性，二是最終的視覺品質。</p>
+            <p>這種綜合評估的必要性在於，單純的視覺評估很容易被誤導，例如，一個畫面可能看起來很美，但它可能違背了編輯的本意。因此，我們必須建立一個能夠捕捉「意圖」和「美感」之間複雜關係的評估框架。</p>
+            <p>透過 Pickscore，我們能夠更精準地知道模型在執行編輯任務時，是更專注於滿足指令的邏輯要求，還是更專注於生成高畫質的畫面。這為後續的訓練和優化提供了更精確的指導方向。</p>
+            <p>想像一下，當我們需要對照片的某個部分進行修改時，我們該如何告訴電腦「只修改這裡，保持其他地方不變」？這就是我們在探討的 <span class="math inline">$\mathbf{R}_{\text{PS}}$</span> 這個指標所要解決的核心問題。</p>
+            <p>在我們的模型中，我們需要一個方法來量化「編輯區域」與「目標區域」之間的匹配程度，才能確保模型在進行編輯時，能夠精準地聚焦在我們想要修改的地方，而不是影響到周圍的背景。</p>
+            <p>我們來看這個公式：</p>
+            <div class="formula">$$\mathbf{R}_{\text{PS}} = \text{Pickscore}(\mathbf{V}_{edit}, \mathbf{t}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad (6)$$</div>
+            
+            <p>這個公式的目標，就是計算一個<strong>專注分數</strong> <span class="math inline">$\mathbf{R}_{\text{PS}}$</span>，它衡量了我們編輯區域 <span class="math inline">$\mathbf{V}_{edit}$</span> 和目標區域 <span class="math inline">$\mathbf{t}_{edit}$</span> 之間的關係。</p>
+            <p>簡單來說，<span class="math inline">$\mathbf{R}_{\text{PS}}$</span> 就像是我們在畫畫時，用不同顏色的筆標註重點的程度。它不是單純地比較兩者的差異，而是利用一個名為 <strong>Pickscore</strong> 的機制，來判斷這兩個區域的「可編輯性」和「相關性」。</p>
+            <p>這裡的 <span class="math inline">$\mathbf{V}_{edit}$</span> 代表的是我們實際進行編輯的區域，而 <span class="math inline">$\mathbf{t}_{edit}$</span> 則代表的是我們希望模型關注的目標區域。Pickscore 函數的作用，就是根據這兩者的資訊，給出一個分數，告訴我們在進行重建或編輯時，應該如何分配我們的注意力。</p>
+            <p>為什麼我們需要這個分數呢？因為如果我們只是簡單地計算兩者的誤差，模型可能會被周圍的背景內容所「稀釋」，導致它無法精準地將資源集中在編輯區域上。有了 <span class="math inline">$\mathbf{R}_{\text{PS}}$</span> 這個專注分數，我們就能確保模型在進行重建時，能夠精準地聚焦在編輯的「刀口」上，同時最大限度地保留背景的細節。這就是讓模型在編輯時，既能精準操作，又能保持整體視覺的自然和真實感。</p>
+            <p>想像你在烹飪一道複雜的菜餚時，你不能只追求單一的口味，而必須同時考慮食材的品質、烹飪的步驟以及最終的口感。這就像我們訓練 AI 模型一樣，如果我們只用一個錯誤指標來指導它，模型就只會追求單一的目標，而忽略了其他重要的細節。</p>
+            <p>為了讓我們的模型真正做到「聽懂指令」、好好「保留原始內容」、並獲得「人類滿意」的結果，我們不能只依賴單一的評分。我們需要一個組合的獎勵機制，將這三個關鍵目標整合在一起，作為模型優化的總目標。</p>
+            <p>具體來說，我們將前面提到的幾種獎勵分數，組合起來作為優化模型的目標。這意味著模型在學習過程中，必須同時平衡以下三個維度：</p>
+            <p>首先是<strong>指令遵循</strong>（Instruction Following），這確保模型能夠精準地理解並執行我們給予的文本指示。其次是<strong>來源影片保留</strong>（Source Video Preservation），這確保模型在進行編輯或修改時，不會破壞原始素材的細節和完整性。最後是<strong>人類偏好對齊</strong>（Human Preference Alignment），這確保最終的輸出結果是符合人類感知的、令人滿意的。</p>
+            <p>當我們將這些分數結合起來作為優化目標時，我們就讓模型學會了更複雜的平衡藝術。它不再是單純地追求最小化一個錯誤，而是學會了在「執行指令」的同時，如何巧妙地在「保留內容」和「滿足偏好」之間找到最佳的平衡點。這正是我們設計這個多重獎勵機制的核心價值所在。</p>
+            <p>當我們想讓 AI 精準地修改圖像時，最大的挑戰其實不是修改本身，而是如何讓它知道「該看哪裡」和「該忽略哪裡」。</p>
+            <p>在我們討論的這部分，我們看到一個核心的數學公式：</p>
+            <div class="formula">$$\mathbf{R} = w_{IF}\mathbf{R}_{\text{IF}} + w_{SP}\mathbf{R}_{\text{SP}} + w_{PS}\mathbf{R}_{\text{PS}}, \quad \quad \quad \quad \quad \quad (7)$$</div>
+            
+            <p>這個公式看起來很抽象，但它描述的是我們如何將不同類型的重建誤差（Reconstruction Error）組合起來，最終得到一個綜合的目標重建結果 <span class="math inline">$\mathbf{R}$</span>。</p>
+            <p>想像一下你在畫畫時，你必須專注於你想要修改的線條，同時讓背景的顏色保持自然，而不是讓模型把所有地方都視為同樣重要的像素。這個公式就是為了解決這個「權重分配」的難題而設計的。</p>
+            <p>在這個公式中，<span class="math inline">$\mathbf{R}_{\text{IF}}$</span>、<span class="math inline">$\mathbf{R}_{\text{SP}}$</span> 和 <span class="math inline">$\mathbf{R}_{\text{PS}}$</span> 代表的是針對不同編輯任務（例如，圖像編輯、空間感知、潛在空間）所計算出的重建誤差。而 <span class="math inline">$w_{IF}$</span>、<span class="math inline">$w_{SP}$</span> 和 <span class="math inline">$w_{PS}$</span> 則是我們設定的<strong>獎勵平衡權重</strong>（reward balancing weights）。</p>
+            <p>這三個權重就是我們手動設定的「注意力分配器」。它們告訴模型在計算最終的重建結果 <span class="math inline">$\mathbf{R}$</span> 時，應該更重視哪種編輯任務的誤差。</p>
+            <p>為什麼我們需要這種加權機制呢？如果我們只是簡單地將所有誤差相加，模型可能會被那些背景內容的誤差「稀釋」掉，導致它無法精準地聚焦在我們真正想修改的目標區域上。這就像在測量時，如果背景的測量誤差佔了大部分，你就會忽略掉關鍵的細節。</p>
+            <p>因此，我們選擇這種加權的組合方式，就是為了確保模型能夠精準地將注意力集中在目標區域上，同時有效地保留背景內容的完整性。</p>
+            <p>此外，在實際的訓練過程中，我們並沒有選擇進行完整的微調（full fine-tuning），而是選擇在 Edit-GRPO 階段對 DiT（Diffusion Transformer）骨幹網路進行 <strong>LoRA</strong> [22] 訓練。這是一種更高效的訓練方式，它讓我們能夠在保持模型能力的前提下，以更少的計算資源達成目標。這兩種方法（加權組合與 LoRA 微調）的結合，正是為了在效率和精準度之間找到最佳平衡點。</p>
+            <p>我們現在面臨一個巨大的數據鴻溝，這正是我們需要填補的關鍵。</p>
+            <p>想像一下，當我們想學習如何精準地「編輯」一段影片時，我們需要的是一套完美的練習材料。然而，目前學術界和實務中，我們幾乎沒有一個公開、大規模、且品質極高的「配對影片編輯範例」數據集。</p>
+            <p>現有的數據集，例如那些基於<strong>圖像修復 (inpainting)</strong> 或僅依賴<strong>密集控制訊號 (dense control signals)</strong>（像是深度或邊緣資訊）來引導編輯的數據集，雖然存在，但它們往往有幾個大問題：它們經常帶有視覺上的偽影、背景內容不一致，以及對編輯指令的對齊度並不準確。這意味著，即使模型學會了編輯，它也可能學到的是「有瑕疵的」編輯方式。</p>
+            <p>為了突破這個瓶頸，我們決定要建立一個全新的、大規模的影片編輯數據集。我們構建了一個包含 150 萬對配對範例的數據集，它涵蓋了各種不同的局部編輯類型，並附帶了對應的詳細編輯指令。</p>
+            <p>為什麼要這樣設計？因為我們知道，要訓練出真正能指導編輯的 AI 模型，就必須提供極度精確的「對照組」。如果讓模型平等地看待所有像素，那些不需要變動的背景內容就會「稀釋」掉我們真正想學習的編輯訊號，導致訓練過程變得緩慢，而且編輯結果也不夠精準。</p>
+            <p>透過這個大規模的數據集，我們確保了訓練的基礎是穩固的。它讓模型能夠在面對複雜的編輯任務時，能夠精準地聚焦在目標區域，同時完美地保留了周圍的背景細節，從而實現真正有意義的、高精度的影片編輯。這 150 萬對的數據，正是我們讓模型從「看圖」進化到「理解編輯意圖」的橋樑。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>當我們想讓 AI 創造出影片時，我們需要給它什麼樣的「眼睛」？</p>
+            <p>我們的數據生成過程，從一個預先訓練好的<strong>文本到影片基礎模型</strong>開始。這個模型就像一個會看懂文字並嘗試繪製畫面的藝術家，它已經學會了如何將文字轉化為視覺內容。</p>
+            <p>為了讓這個藝術家能更精準地生成影片，我們對這個MMDiT [15]架構進行了擴充，增加了一個專門的影片輸入分支。這個分支的作用就像是給藝術家增加了一個專門的「影片觀察師」，讓它能更深入地理解影片的動態和空間關係。</p>
+            <p>接著，我們使用這個經過精心設計的數據集對這個擴充後的模型進行微調（fine-tuning），讓它學會如何將文字指令與影片內容完美結合。最終，我們用這個微調後的模型來合成影片對。</p>
+            <p>實驗結果告訴我們一個關鍵的發現：相較於通常使用的ControlNet [72]，增加這個專門的影片輸入分支，在性能上表現得顯著優於其他方法。這意味著，給模型一個專門的影片輸入通道，能讓它更有效地捕捉影片的細微變化，從而生成更真實、更精確的影片。</p>
+            <p>我們按照以下步驟建立了我們的數據集，更詳細的細節可以在補充材料中找到。這個設計的價值在於，它提供了一個更直接、更豐富的輸入訊號，讓模型能夠更精準地掌握影片的生成過程。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，我們如何能讓AI不僅「看見」畫面，更能「理解」畫面背後的上下文和故事，從而實現精準的編輯。這段方法的核心，就是將視覺資訊與語言資訊完美結合，讓AI能夠進行「物體替換」的合成。</p>
+            <p>這個過程可以想像成，我們不是單純地讓AI把一個東西換掉，而是讓AI理解這個東西在整個影片中的「身份」和「故事」，然後根據新的故事來重新繪製畫面。</p>
+            <p>我們是如何做到這一點的呢？我們分三個關鍵步驟來實現這個「物體替換」的合成。</p>
+            <p>首先，我們需要從影片的文字描述中提取出主要的物體名稱。這就像是給AI看影片的「劇本」，讓它知道影片裡主要談論了什麼。</p>
+            <p>接著，我們利用這份文字描述，結合視覺資訊進行物體定位。我們使用 <strong>Grounding-DINO</strong> 這個工具，在影片的第一幀上偵測出這些物體的位置，然後使用 <strong>SAM 2</strong> 這個工具來追蹤這些物體在整個影片中的形狀，生成它們的遮罩（Mask）。這一步的目的是確保我們能精準地標記出我們想要替換的物體在時間軸上的完整範圍。</p>
+            <p>有了這些被遮罩的影片對，我們就可以訓練一個 <strong>local inpainting model</strong>（局部修復模型）。這個模型的作用是讓AI學會如何只修復被遮罩的區域，同時保持周圍背景的細節不被破壞，這就像是給AI訓練了一種「精準修圖」的技能。</p>
+            <p>最後，我們引入大型語言模型（<strong>LLM</strong>）來完成「故事重寫」的任務。我們讓LLM分析原始的影片字幕，並根據我們想要替換的新物體，重新撰寫一個反映新物體的描述。然後，我們使用這個「新故事」作為指令，對之前遮罩的影片進行局部修復（inpainting）。</p>
+            <p>透過這整套流程，我們成功地將視覺的精準定位、局部修復的細節保留，以及語言的上下文理解，整合在一起，最終合成出一個既符合新描述又視覺上自然的編輯結果。這就是我們如何合成出精確的編輯對的。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，當你希望AI只修改畫面上的某個小區域時，它需要知道什麼？這段內容正是關於如何利用「遮罩」和「提示詞」來精準控制AI的內容生成過程。</p>
+            <p>為了讓AI能夠進行精確的編輯，我們需要一個方法來合成「編輯對」（editing pair），也就是一個原始畫面和一個經過編輯的畫面，讓模型能夠學習如何進行精準的內容填充（inpainting）。</p>
+            <p>我們首先引入了<strong>隨機遮罩</strong>（random masks）的概念。想像你有一張影片，我們隨機在其中遮蓋一些區域，然後訓練一個<strong>填補模型</strong>（inpainting model）來填補這些被遮蓋的區域。這就像是給AI一個挑戰：在不看上下文的情況下，根據周圍的資訊，猜測並填補缺失的部分。</p>
+            <p>但光是填補是不夠的，我們還需要一個更進階的技巧來合成一個「編輯對」。我們需要讓模型不僅能填補內容，還能理解「移除」特定物體的意圖。</p>
+            <p>因此，我們設計了一套流程來合成這個編輯對：</p>
+            <p>首先，我們對原始影片的<strong>字幕</strong>（caption）進行修改，目的是移除被遮罩的物體。然後，我們使用這個修改後的字幕作為新的提示詞，來執行影片的填補操作。這一步的設計邏輯是：我們讓模型學習如何「移除」一個物體，而不是單純地「填補」一個空洞。</p>
+            <p>更進一步，為了確保模型不會在填補區域中無意地生成類似的物體，我們還引入了<strong>負樣本提示</strong>（negative prompt）的機制。我們將被遮罩物體的名稱加入到負樣本提示中。這就像是給AI一個明確的警告：「在填補這個區域時，請不要生成與這個物體相似的東西。」</p>
+            <p>為什麼要這樣設計呢？如果我們只是讓模型填補，它可能會把背景中的一些細節誤認為是需要填補的內容，導致結果不自然。透過結合遮罩、修改字幕和負樣本提示，我們成功地引導了模型的注意力，讓它專注於編輯區域的細節，同時確保背景內容的完整性和編輯的精準度。這套方法讓AI的內容生成從單純的填充，提升到了精準的編輯控制。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，如果我們能讓AI不僅能「畫出」畫面，還能「理解」文字的意圖，並根據文字指令來重新編排整個世界，這就是內容編輯的潛力。</p>
+            <p>在影片內容編輯的領域中，我們關注的是<strong>全局內容編輯 (Global content editing)</strong>。這意味著我們不只是對影片中的某個小區域進行修補，而是希望對影片的整體結構和內容進行宏觀的調整。</p>
+            <p>為了實現這種全局編輯，我們需要一個更聰明的指導機制。我們從原始影片中提取出密集的<strong>筆記 (scribbles)</strong>，這些筆記就像是影片的結構骨架，告訴模型哪些部分是需要被編輯的目標區域。接著，我們訓練一個模型，讓它能夠根據這些結構性的指導，合成出全新的影片。</p>
+            <p>但光有結構指導還不夠，我們還需要一個「語言橋樑」。我們讓一個<strong>大型語言模型 (LLM)</strong>來自動生成新的影片描述（<strong>modified caption</strong>）。這個LLM會根據我們希望的改變，自動修改原始的描述，例如將背景從「白天」改成「夜晚」。</p>
+            <p>為什麼要這樣設計？因為如果我們只讓模型平等地看待所有像素，那些不需要變動的背景內容會「稀釋」掉我們希望編輯的訊號，導致訓練過程變得緩慢，而且編輯的結果也不夠精準。</p>
+            <p>透過結合結構性的筆記指導和LLM生成的文字指令，我們讓模型能夠精準地知道「要修改哪裡」以及「要修改成什麼」，從而確保編輯的結果既符合我們的意圖，又保持了影片的整體一致性和真實感。這就是如何讓AI在理解文字意圖的同時，精準地控制視覺內容的編輯。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，當我們嘗試用AI生成內容時，如何確保這些內容的「真實性」和「品質」？我們在前面描述的合成過程，本身就容易產生一些不自然的瑕疵，這就像是我們在製作藝術品時，先檢查原材料的品質，再進行細緻的雕刻。單純依賴後面的過濾器來修正這些瑕疵，往往效果不穩定。</p>
+            <p>因此，我們沒有採用單一的過濾方法，而是設計了一種兩階段的品質控制策略，這就像是建立一個雙重安全網，確保最終的輸出是可靠的。</p>
+            <p><strong>第一階段：指令重寫</strong><br />
+            首先，我們利用一個<strong>視覺語言模型 (VLM)</strong> 來重新撰寫合成對的指令。這就像是請一個專業的編輯來重新組織和優化我們給AI的「製作說明」。這一步的目的是讓AI在生成影片時，能更精準地理解我們想要的內容，減少因指令模糊而產生的錯誤。</p>
+            <p><strong>第二階段：品質標註</strong><br />
+            接著，我們讓這個VLM來判斷合成的影片是否「無瑕疵」。這一步的任務是判斷影片中是否存在我們不希望看到的偽影或錯誤。</p>
+            <p><strong>訓練的關鍵設計</strong><br />
+            在實際的訓練過程中，我們採取了一個非常關鍵的選擇：我們主要使用合成的影片作為<strong>來源 (source)</strong>，而真實的影片作為<strong>目標 (target)</strong>。我們只在合成的影片被標註為「無瑕疵」時，才將其作為目標影片進行隨機選擇。</p>
+            <p>為什麼這樣設計呢？這背後的核心邏輯是：我們必須確保編輯模型是在「乾淨」的影片上進行訓練的。如果讓模型在有瑕疵的影片上學習，它可能會錯誤地將這些瑕疵也視為「正常」的內容，從而學會了如何生成錯誤的細節，這會導致模型學到的是「如何生成瑕疵」，而不是「如何精準編輯」。</p>
+            <p>透過這種方式，我們確保了編輯模型是在一個品質可控的環境下學習的，從而避免了模型被「劣化影片」所影響。</p>
+            <p>最後，在選擇具體的VLM時，我們測試了不同的模型，最終選擇了 <strong>Gemini 2.5 Pro</strong> 來撰寫詳細的編輯指令，因為它在理解複雜的文本指令方面表現最佳，確保了我們能給AI提供最精確的指導。</p>
+            <p>總結來說，這個兩階段的品質控制流程，讓我們的合成過程從「盲目生成」轉變為「有意識的品質控制」，確保了最終的影片品質和編輯的精準度。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，如果我們只給模型看單一的圖片，它會學得有多單薄？要讓一個模型真正理解「編輯」的藝術，它需要看到更多樣化的實例。</p>
+            <p>為了讓我們的編輯模型能夠處理更廣泛的編輯類型，我們需要大量的實戰數據。因此，我們從公開的數據集中收集了高達 540 萬組<strong>圖像編輯配對</strong>（image editing pairs），這些數據來自於公開可用的數據集 [18, 64]。</p>
+            <p>這些圖像配對之所以如此重要，是因為它們提供了模型訓練所需的豐富多樣性。我們並不是單純地將它們視為獨立的圖片，而是採取了一種更進階的視角：將每一張圖片視為一個<strong>單幀影片</strong>（single-frame video）。</p>
+            <p>為什麼要這樣做呢？因為將圖像視為影片，能讓模型不僅看到靜態的內容，還能理解內容之間的<strong>時間演變</strong>和<strong>編輯的過程</strong>。這就像藝術家在學習繪畫時，不僅看單張作品，還要觀察不同光線、不同筆觸下的變化，才能真正掌握光影和形體的變化。</p>
+            <p>透過這種方式，我們讓模型能夠捕捉到編輯過程中細微的、連續的變化，從而大大增加了模型可以處理的編輯類型的多樣性。這使得我們的模型能夠更靈活地適應各種編輯需求，不再局限於單一的編輯模式。</p>
+            <p>總結來說，整合這些龐大的圖像編輯配對數據，是我們賦予模型多樣化編輯能力的關鍵一步。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>想像一下，我們不需要從零開始學習，而是可以利用現有的智慧來加速我們的進步。在進行實際的實驗中，我們選擇了一個非常強大的起點，並設計了一套精準的訓練流程，讓模型能最有效地吸收我們的數據。</p>
+            <p>首先，我們選擇了<strong>HunyuanVideo-T2V-13B</strong>作為我們的基礎骨幹（backbone）。這就像是請一位已經擁有廣泛視覺知識的頂尖藝術家來幫我們繪畫，而不是讓一個新手從白紙開始學習。我們並不是從頭開始訓練，而是利用它已經學到的龐大知識，讓它專注於我們特定的任務上進行微調（finetune）。</p>
+            <p>為了讓這個過程更有效率，我們進行了精確的參數設定。我們設定了訓練的總步數為 <span class="math inline">$12,000$</span> 步，這確保了模型有足夠的時間來吸收所有數據的細微差別。同時，我們設定了學習率（learning rate）為 <span class="math inline">$2 \times 10^{-5}$</span>，這是一個相對溫和的設定，讓模型能夠穩定地調整參數，避免在初期就產生劇烈的偏差。此外，我們採用了 <span class="math inline">$128$</span> 的全局批次大小（global batch size），這在處理大量數據時，能讓模型在每次更新時獲得更穩定的平均訊號。</p>
+            <p>接下來，我們面對一個關鍵的設計選擇：如何混合圖像和影片數據？我們知道，圖像和影片雖然相關，但它們包含的資訊性質不同。因此，我們採取了 <span class="math inline">$40\%$</span> 的影片數據和 <span class="math inline">$60\%$</span> 的圖像數據的混合比例。這個設計的目的是為了平衡這兩種數據的影響，避免影片的動態資訊過度干擾靜態的空間結構，讓模型能夠更平衡地學習到空間和時間的協同關係。</p>
+            <p>總結來說，這些細微的設定並不是隨意選擇的，它們共同構成了我們實驗成功的關鍵。透過這種「預訓練 + 精準微調 + 平衡數據混合」的策略，我們成功地讓模型在保持基礎知識的同時，精準地掌握了我們需要的視覺生成能力。</p>
+            <h3>4.2. 實驗設定：基準與對照模型</h3>
+            <p>要真正評估我們模型在指令導向影片編輯方面的能力，我們不能只看單一的測試，而是需要一個全面且公平的試煉場。因此，我們選擇了 <strong>VIE-Bench</strong> 這個基準。</p>
+            <p>這個基準包含了 140 個高品質的範例，涵蓋了多種指令導向的編輯類別，同時也包含了參考無依賴（reference-free）和參考依賴（reference-based）的編輯任務。這意味著我們不僅測試了模型在特定場景下的表現，更測試了它在不同複雜度下的泛化能力。</p>
+            <p>為了讓我們的成果更具說服力，我們將 VIVA 與五種最先進的指令導向影片編輯方法進行了比較。這些對照組包括四個開源模型，例如 ICVE [35]、Lucy-Edit-Dev [14]、Ditto [3] 和 InsV2V [10]，以及一個商業模型 Runway Gen-4 Aleph [53]。</p>
+            <p>這樣做的目的非常明確：透過與這些頂尖的對手進行比較，我們可以更清楚地看到 VIVA 在處理複雜指令和保持內容一致性方面的優勢，從而更嚴謹地驗證我們模型的實用價值。</p>
+            <p>當我們試圖用傳統的測量工具來評估複雜的編輯結果時，會發現它們往往只看得到表面，而忽略了最關鍵的「指令遵循」和「內容完整性」。</p>
+            <p>標準的評估方法，像是基於 CLIP 的文本-影片對齊或 PickScore 等指標，它們本質上是為「基於目標提示的編輯」而設計的。這意味著，它們無法有效地衡量模型是否真正「遵循了我們的指令」，以及編輯過程是否損害了原始內容。</p>
+            <p>因此，為了更全面地評估指令的執行效果，我們需要一個更智慧的評估機制。我們選擇使用一個大型視覺語言模型（VLM），例如 Gemini-2.5-pro，作為我們的評估器。這個評估器能夠從四個關鍵維度對編輯結果進行打分（0-10分）：</p>
+            <ol>
+            <li><strong>指令遵循 (Instruction Following)</strong>：模型是否確實按照我們給出的文字指示進行了編輯。</li>
+            <li><strong>源內容保留 (Source Preservation)</strong>：編輯後的影片是否與原始影片保持一致，沒有引入不必要的噪點或失真。</li>
+            <li><strong>編輯品質 (Editing Quality)</strong>：影片的整體美學和視覺效果如何。</li>
+            <li><strong>主體相似度 (Subject Similarity)</strong>：對於基於參考的編輯，編輯後的目標主體是否與參考內容保持相似。</li>
+            </ol>
+            <p>除了這些核心維度，我們還利用 VBench 這個評估套件，來提供關於影片一般品質的量化衡量。更深入地來說，我們如何量化「內容保留」和「主體一致性」呢？我們透過計算 <strong>CLIP</strong> [49] 和 <strong>DINO</strong> [7] 特徵的相似度，來逐幀地評估背景一致性和主體一致性。</p>
+            <p>此外，為了捕捉編輯的風格和語義一致性，我們還進一步評估了更細緻的對齊：我們計算了幀級的 <strong>CLIP</strong> [49] 特徵對齊，以及影片級的 <strong>ViCLIP</strong> [62] 特徵對齊，這能同時反映內容的語義和風格一致性。最後，我們還引入了人類偏好的評估，透過計算每一幀的 <strong>PickScore</strong> [28]，來衡量最終的編輯品質。</p>
+            <p>總結來說，這個多維度的評估框架，就像是請一個助理完成一個複雜的任務：你不僅要看最終的成品是否「好看」，更要確保他「完全聽懂了你的要求」，並且「沒有破壞原始的背景和核心內容」。這讓我們能夠從多個角度，全面、精準地衡量 AI 編輯的真實能力。</p>
+            <!-- EVAL:類比[有] | 為什麼[有] | 虛構[無] -->
+            </div>
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - **4.3. Qualitative Comparisons**</h2>
+        <div class="dual-col">
+            <div class="col-orig">
+                <div class="col-label">📄 原文</div>
+            <p>We conduct qualitative comparisons from two perspectives: instruction-only video editing and reference-based video editing, to provide a comprehensive evaluation. Figure 4 presents instruction-only video editing results. We select three representative task examples: local material change (“Change the material of the train to ice cubes.”), subject addition (“Add an Asian man wearing a white T-shirt and sitting in the driver’s seat of a vintage car.”), and subject removal (“Remove the boy.”). In the subject addition example, only our model correctly captures the complex semantics of “sitting in the driver’s seat.” In the material change example, Runway fails to properly interpret the instruction, resulting in incomplete and inaccurate edits, modifying only part of the train. In the removal example, only our model successfully preserves the soccer ball, removes the boy, and maintains background consistency with the source video. These comparisons demonstrate that our model consistently outperforms the baselines, exhibiting superior editing capacity and generalization. We attribute this to our VLM instructor, which supplies the editing backbone with sufficiently rich context, enabling the model to comprehend complex editing semantics and to interpret how these semantics should be applied to the source video.</p>
+            <p>Since existing open-source instruction-based video editing models do not support reference-image control, we compare our model only with Runway Gen-4 Aleph. As shown in Figure 1, although Runway responds to the instruction, it fails to accurately align with the reference image. The hat and front label of the teddy bear show noticeable deviations from the reference in the edited results. In contrast, our model correctly understands the intricate relationships among the instruction, the reference image, and the source video, and produces precise editing outcomes. This is enabled by encoding the reference image features into the VLM instructor module, providing ample context to accurately guide our DiT backbone. Please refer to supplementary materials for more results on reference-image controlled video editing.</p>
+            <h3><strong>4.4. Quantitative Comparisons</strong> As shown in Table 1, the quantitative metrics show consistent results with the qualitative comparisons. Our model achieves superior performance over all open-source baselines across all VLM-based evaluations and delivers results on par with the commercial model Runway, demonstrating our model’s strong and robust video editing capability. Since human judgments are more indicative of real-world effectiveness in video editing, we conducted a comprehensive user study with 14 domain experts across three dimensions, following a setup similar to that used in VLM evaluations: (1) Instruction Following: whether the edit precisely follow the editing instruction; (2) Source Preservation: whether the edit maintains coherence with the original video content; (3) Editing Quality: whether the edited video is visually seamless, natural-looking, and pleasing. We randomly sample 30 instruction-only and 10 reference-image-controlled video editing data. Figure 5 quantifies human preference for comparison of generated video from ours versus baselines. Each comparison is labeled as one of three outcomes: <span class="math inline">$G$</span> (ours preferred), <span class="math inline">$S$</span> (no clear preference / indistinguishable), or <span class="math inline">$B$</span> (baseline preferred). Our method is preferred across all three criteria against five baselines.</h3>
+            <h3>4.5. Ablation Study We conduct comprehensive ablations on multiple design choices of our model in Table 2. The introduction of the VLM instructor in Section 3.1 significantly improves performance across all evaluation metrics. It delivers decisive gains in correctly and precisely following editing instructions, demonstrating that feeding visual information into the VLM instructor yields context with rich semantics, which then better guides the DiT. The masked loss in Eq. 3 introduces an effective spatial inductive bias, enhancing overall editing capability, speeding up convergence, and producing more accurate responses within the edited regions. The strategy of mixing image-editing data during training leverages the larger scale and broader edit-category coverage of image data to significantly improve both editing ability and visual quality. It also enables the emergence of many complex video editing types for which paired video data are typically difficult to obtain. Our full model, with Edit-GRPO, exhibits comprehensive gains in overall editing performance. With the reward system designed in Section 3.3, the model achieves substantial improvements in instruction following, maintaining consistency with the source video. The higher PickScore [28] indicates that the model trained with Edit-GRPO aligns better with human preferences.</h3>
+            <h2>5. Conclusion In this work, we present VIVA, a scalable framework for instruction-based video editing that outperforms existing open-source baselines, achieving state-of-the-art results in terms of instruction following, edit quality, and generalization. We introduce a VLM-based instructor that encodes both textual instructions and visual inputs into grounded multimodal tokens, substantially improving semantic disambiguation and edit controllability while preserving coherence with the source video. We also propose Edit-GRPO, which, for the first time, adapts Group Relative Policy Optimization to video editing and yields consistent performance gains.</h2>
+            <p>Future work includes expanding the range of supported edit types toward richer and more compositional behaviors, enhancing practical usability by targeting interactive editing, as well as extending to arbitrary resolution and duration. Another promising direction is developing a more general and unified reward model tailored for video editing. Limitations and failure cases are discussed in the supplementary materials.</p>
+            </div>
+            <div class="col-plain">
+                <div class="col-label">💬 說書人白話</div>
+            <p>我們如何才能讓AI不僅「看到」畫面，更能「理解」我們想要的複雜編輯意圖？</p>
+            <p>為了全面評估我們的模型，我們從兩種不同的編輯方式進行了定性比較：<strong>僅指令編輯</strong>（instruction-only video editing）和<strong>參考基編輯</strong>（reference-based video editing）。這讓我們能更深入地了解我們的模型在實際應用中的表現。</p>
+            <p>我們以三個具代表性的任務來進行比較：物體材料的改變（例如：「把火車的材質改成冰塊」）、主體添加（例如：「在駕駛座上添加一個穿著白色T恤的亞洲男子」）以及主體移除（例如：「移除那個男孩」）。</p>
+            <p>在主體添加的例子中，我們的模型成功捕捉到了「坐在駕駛座上」這種複雜的語義含義。這說明模型不僅能執行簡單的替換，還能理解指令背後的細微關係。</p>
+            <p>而在物體材料改變的例子中，其他方法（如 Runway）往往無法正確解讀指令，導致編輯結果不完整或不準確，只修改了火車的一部分。這突顯了模型理解複雜指令的關鍵性。</p>
+            <p>在主體移除的例子中，我們的模型不僅成功移除了男孩，還精準地保留了足球、以及背景的連貫性。</p>
+            <p>這些比較結果明確地證明了我們的模型在編輯能力和泛化性上，持續優於現有的基準方法。我們認為，這得益於我們引入的 <strong>VLM 教師</strong>（VLM instructor），它為編輯骨幹提供了足夠豐富的上下文資訊，讓模型能夠理解複雜的編輯語義，並知道如何將這些語義應用到原始影片上。</p>
+            <p>我們試著讓 AI 編輯影片時，如何才能確保它不僅聽從指令，還能精準地參考我們提供的「參考圖」？</p>
+            <p>目前市面上許多開源的指令式影片編輯模型，雖然能理解文字指令，但它們缺乏對「參考圖像控制」的能力。這就像你告訴畫家「畫一個戴帽子的小熊」，但沒有給他一張參考照片，他可能畫出一個完全不符合你預期的帽子和標籤。</p>
+            <p>我們將我們的模型與 Runway Gen-4 Aleph 進行比較，結果非常明顯。雖然 Runway 也能回應指令，但在參考圖像的對齊上卻存在明顯的偏差。例如，在編輯後的結果中，泰迪熊的帽子和正面標籤與參考圖的細節出現了明顯的差異。</p>
+            <p>這就引出了我們模型的優勢：我們的模型能夠更深入地理解指令、參考圖像以及原始影片之間的複雜關係，從而產生更精確的編輯結果。</p>
+            <p>我們是如何做到這一點的呢？關鍵在於我們將參考圖像的特徵編碼進了 <strong>VLM 教師模組 (VLM instructor module)</strong> 中。這個模組為我們的 <strong>DiT 主幹網路 (DiT backbone)</strong> 提供了豐富的上下文資訊，讓模型能夠更準確地引導編輯過程。這就像是給 AI 增加了一張「參考圖」的藍圖，讓它在進行編輯時，能精準地知道要對哪些部分進行調整，而不會破壞背景的細節。</p>
+            <p>簡單來說，這個設計的優勢在於：當我們讓模型平等地處理所有像素時，那些不需要變動的背景資訊不會「稀釋」掉我們想編輯的訊號，這會導致訓練變慢，而且編輯結果也不夠精準。透過遮罩加權機制，我們讓模型能專注於「刀口」上的編輯，確保編輯的精準度和品質。</p>
+            <p>因此，在參考圖像控制的影片編輯領域，我們的模型展現了更強的理解力和更精確的控制能力。我們建議大家參考補充材料，以獲得更多關於參考圖像控制影片編輯的詳細實驗結果。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <h3><strong>4.4. 定量與質性比較</strong></h3>
+            <p>我們在量化指標上的結果與質性比較是高度一致的。從表 1 就能看到，我們的模型在所有基於視覺語言模型（VLM）的評估中，都超越了所有開源基準模型，並且在表現上與商業模型 Runway 相當。這充分證明了我們模型在影片編輯方面具備強大且穩健的能力。</p>
+            <p>然而，在影片編輯這種領域，最終的有效性往往由人類的判斷來決定。因此，我們進行了一項全面的使用者研究，邀請了 14 位領域專家，從三個維度對我們的結果進行評估，這與 VLM 評估的設定相似：</p>
+            <ol>
+            <li><strong>指令遵循 (Instruction Following)</strong>：編輯結果是否精準地遵循了編輯指令。</li>
+            <li><strong>源內容保留 (Source Preservation)</strong>：編輯結果是否保持了與原始影片內容的一致性。</li>
+            <li><strong>編輯品質 (Editing Quality)</strong>：編輯後的影片是否在視覺上流暢、自然且令人愉悅。</li>
+            </ol>
+            <p>為了確保評估的真實性，我們隨機抽取了 30 組僅依賴指令的影片編輯數據，以及 10 組參考圖像控制的影片編輯數據。圖 5 量化了人類對我們模型與基準模型生成影片的偏好。在每一次比較中，我們將結果標註為三種情況：<span class="math inline">$G$</span>（我們模型最受青睞）、<span class="math inline">$S$</span>（無明顯偏好/無法區分）或 <span class="math inline">$B$</span>（基準模型最受青睞）。</p>
+            <p>總結來說，在這三個標準上，我們的模型在與五個基準模型的比較中都表現出優勢。這不僅是數字上的勝利，更是真實世界中影片編輯效果的有力證明。</p>
+            <!-- EVAL:類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <p>我們如何才能讓 AI 不只「看懂」畫面，更能「理解」編輯的意圖，並做到精準且自然的修改？</p>
+            <p>為了回答這個問題，我們在模型設計中引入了幾個關鍵的策略，這些策略共同作用，讓我們的模型在進行影片編輯時，表現得更像一個真正懂得指令的編輯師。</p>
+            <p>首先，我們引入了 <strong>VLM 教師</strong>（Visual Language Model Instructor）到模型中。想像一下，當你給一個 AI 編輯指令時，你不僅要告訴它「把這部分換成藍色」，更要給它「為什麼要換成藍色」的上下文。VLM 教師的作用就是將視覺資訊與語言指令結合，讓模型在處理編輯任務時，能接收到更豐富、更具語義的上下文資訊。這就像是給 AI 裝備了一副更強大的「理解力眼鏡」，讓它能更準確地理解編輯的細微差別。</p>
+            <p>其次，我們在損失函數中加入了 <strong>遮罩損失</strong>（Masked Loss）。這是一個非常巧妙的設計，它引入了一種空間上的歸納偏置（spatial inductive bias）。簡單來說，當我們編輯一個區域時，我們只關心這個區域的內容，而背景的內容則相對不重要。遮罩損失就是告訴模型：「請把你的注意力集中在被遮罩的目標區域上，並在保持背景內容不變的前提下進行重建。」這有效地讓模型學會了如何區分「需要修改的區域」和「需要保留的背景」。</p>
+            <p>這個設計的威力在於，它解決了傳統模型在處理編輯任務時的痛點：如果讓模型平等地對待所有像素，那些不需要變動的背景資訊會「稀釋」掉應該學習編輯的訊號，導致訓練變慢，而且編輯結果往往不夠精準。透過遮罩加權，模型就能更有效地聚焦在「刀口上」，從而大幅提升了編輯的準確性和速度。</p>
+            <p>此外，我們在訓練過程中採用了混合圖像編輯數據的策略。這就像是讓模型在更廣泛的場景中學習，而不是只專注於單一類型的編輯。利用更大量的圖像數據，讓模型接觸到更多樣的編輯類別，這不僅提升了編輯能力，還讓模型能夠出現許多複雜的影片編輯類型，而這些類型通常在配對的影片數據中是難以獲得的。</p>
+            <p>最後，我們設計了一個獎勵系統（Reward System）來指導模型的行為。這個系統確保了模型在執行編輯任務的同時，能夠維持與原始影片的一致性，並遵循我們的編輯指令。當我們結合了 VLM 教師、遮罩損失和獎勵系統，我們的完整模型 Edit-GRPO 展現了全面的編輯性能增益。最終，我們觀察到，使用 Edit-GRPO 訓練的模型在遵循指令、保持一致性以及與人類偏好（如 PickScore）方面，都取得了顯著的提升。</p>
+            <!-- EVAL:類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <h2>4.3. 定性比較</h2>
+            <p>我們在整個研究中，提出了 VIVA 框架，這是一個可擴展的影片編輯框架，它在指令遵循度、編輯品質和泛化能力方面，都超越了現有的開源基準模型，達到了最先進的成果。</p>
+            <p>為了讓大家更直觀地理解 VIVA 的優勢，我們需要看看它與其他方法的表現差異。想像你正在請一位導航員（AI 模型）編輯一段影片，你給他的是文字指令和影片畫面。如果導航員只是單純地看畫面，他可能會根據視覺上的模糊印象進行編輯，這很容易出錯。</p>
+            <p>VIVA 的核心在於我們引入了一個基於視覺語言模型（VLM）的導師（Instructor）。這個導師能將文字指令和視覺輸入，都轉換成「接地」（grounded）的多模態Token。這就像是把你的文字指令和影片畫面，都翻譯成 AI 能理解的通用語言。這使得模型在進行編輯時，不僅能看到畫面，更能真正「理解」你想要什麼，從而大幅提升了語義的釐清能力和編輯的控制力，同時確保編輯結果與原始影片的連貫性。</p>
+            <p>此外，我們還提出了 Edit-GRPO，這是首次將群組相對策略優化（Group Relative Policy Optimization）適應到影片編輯任務中。這個創新讓模型在進行編輯時，能夠更穩定、更一致地獲得性能提升。總結來說，VIVA 不僅提升了編輯的精準度，還讓整個過程變得更可靠、更具泛化性。</p>
+            <!-- EVAL:類比[有] | 為什麼[有] | 虛構[無] -->
+            
+            <h2>4.3. 定性比較</h2>
+            <p>我們已經看到，目前的成果在處理特定區域的重建誤差上取得了不錯的表現。但這只是我們探索的起點，真正的潛力在於我們如何將這些技術應用到更複雜、更實用的編輯場景中。</p>
+            <p>展望未來，我們有兩個非常令人興奮的方向可以深入探索。</p>
+            <p>首先，我們需要擴展目前支援的編輯類型，讓模型能夠處理更豐富、更具「組合性」的行為。這意味著我們不能只停留在簡單的像素級調整，而是要讓模型理解更複雜的編輯意圖，例如互動式編輯，讓使用者可以像在軟體中直接操作一樣，精準地控制編輯的過程。</p>
+            <p>其次，我們需要開發一個更通用、更統一的獎勵模型，專門為影片編輯任務量身定做。這就像我們現在的損失函數只是告訴模型「錯了多少」，而獎勵模型則能告訴模型「做得好不好」，讓模型能從更宏觀的角度理解編輯的目標，而不僅僅是數學上的誤差。</p>
+            <p>這些方向的發展，將極大地提升我們技術的實用性。我們希望能夠實現更高解析度、更長時長的編輯，並且讓模型能夠在面對各種複雜的編輯需求時，都能做出更合理、更符合人意的判斷。</p>
+            <p>總結來說，未來的研究重點在於如何從單純的誤差最小化，轉向更具互動性、更智慧的編輯指導。這不僅是技術上的進步，更是將 AI 真正融入到實用編輯流程中的關鍵一步。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] -->
+            </div>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

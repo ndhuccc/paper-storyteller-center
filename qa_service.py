@@ -10,7 +10,6 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import google.generativeai as genai
 from dotenv import load_dotenv
 
 QAResult = Tuple[str, List[Dict]]
@@ -298,29 +297,24 @@ def _is_gemini_model(model: str) -> bool:
 
 
 def _configure_gemini() -> str:
-    load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
-    load_dotenv(dotenv_path=Path.home() / ".env", override=False)
-    gemini_api_key = str(os.getenv("GEMINI_API_KEY") or "").strip()
-    if gemini_api_key:
-        genai.configure(api_key=gemini_api_key)
-    return gemini_api_key
+    from gemini_keys import pick_working_gemini_api_key
+
+    return pick_working_gemini_api_key()
 
 
 def _generate_answer_with_gemini(*, prompt: str, model: str, timeout: int) -> str:
+    from gemini_client import generate_content_text
+
     gemini_api_key = _configure_gemini()
     if not gemini_api_key:
         raise RuntimeError("GEMINI_API_KEY not found for Gemini answer generation")
 
-    llm = genai.GenerativeModel(model)
-    try:
-        response = llm.generate_content(prompt, request_options={"timeout": timeout})
-    except TypeError:
-        response = llm.generate_content(prompt)
-
-    text = str(getattr(response, "text", "") or "").strip()
-    if not text:
-        raise RuntimeError("Gemini returned empty answer content")
-    return text
+    return generate_content_text(
+        api_key=gemini_api_key,
+        model=model,
+        contents=prompt,
+        timeout=int(timeout),
+    )
 
 
 def answer_with_results(

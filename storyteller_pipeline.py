@@ -15,7 +15,6 @@ from pathlib import Path
 from statistics import median
 from typing import Any, Dict, List, Optional, Tuple
 
-import google.generativeai as genai
 from dotenv import load_dotenv
 
 
@@ -42,6 +41,8 @@ DEFAULT_GEMINI_PREFLIGHT_ENABLED = True
 DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS = 8
 DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS = 75
 DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS = 45
+DEFAULT_POST_REWRITE_AUDIT_ENABLED = True
+POST_REWRITE_AUDIT_BATCH_MAX_CHARS = 72000
 GEMINI_PREFLIGHT_CACHE_TTL_SECONDS = 120
 DEFAULT_STYLE = "storyteller"
 LATEX_PLACEHOLDER = "LATEXPH"
@@ -71,18 +72,12 @@ HEADING_HINTS = (
 )
 
 load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
+load_dotenv(dotenv_path=PROJECT_DIR / ".env", override=False)
 load_dotenv(dotenv_path=Path.home() / ".env", override=False)
 
 _GEMINI_PREFLIGHT_CACHE: Dict[str, Tuple[float, bool, str]] = {}
 
 # ── 工作簿10對齊：共用機制 ─────────────────────────────────────────────────
-_STORYTELLER_COT = """在開始改寫之前，請先在內部思考以下三個問題（不需要輸出這部分）：
-① 本節最重要的一個洞察是什麼？（用一句話說）
-② 最貼切的生活類比或比喻是什麼？（想一個再動筆）
-③ 用哪一句話當開頭最能抓住讀者？
-
-思考完後，直接輸出改寫結果。
-"""
 
 _STORYTELLER_EXAMPLE = """
 【示範：好的說書人改寫長什麼樣】
@@ -95,7 +90,7 @@ encouraging the model to focus on the target area while preserving background co
 「我們提出一個遮罩損失函數，對編輯區域的重建誤差進行重新加權，讓模型專注在目標區域。」
 
 ✅ 好的改寫（有類比、有「為什麼」、有洞察）：
-「想像你在考試卷上畫重點：標記過的地方，你會反覆讀；沒標記的背景文字，你會快速帶過。
+「譬如你在考試卷上畫重點：標記過的地方，你會反覆讀；沒標記的背景文字，你會快速帶過。
 VIVA 的遮罩損失函數做的正是這件事——它告訴模型「這個區域是重點，要認真學習；其他背景，你只需要不破壞它就好」。
 這個設計解決了一個微妙問題：如果讓模型平等對待所有像素，大片不需要變動的背景會「稀釋」掉應該學習編輯的訊號，導致訓練變慢、改的地方也不精準。
 有了遮罩加權，模型的注意力就能精準聚焦在「刀口上」。」
@@ -103,108 +98,117 @@ VIVA 的遮罩損失函數做的正是這件事——它告訴模型「這個區
 【示範結束——請以上面的好範例為品質標準，改寫你被分配到的節。】
 """
 
-_STORYTELLER_SELF_EVAL = """
-【改寫完成後，必須在輸出結尾加上一行自評標記，格式如下】
-<!-- EVAL: 類比[有/無] | 為什麼[有/無] | 虛構[有/無] | 術語解釋[有/無/不適用] -->
-
-規則：
-- 若「類比=無」或「為什麼=無」，必須重新修改後再輸出（不得直接輸出「無」）
-- 若「虛構=有」，立即刪除虛構內容後重新輸出
-- 輸出內容必須同時具備：① 至少一個生活類比 ② 明確說明「為什麼這樣設計」 ③ 一句核心洞察，三者缺一補一
-"""
-
 _COMMON_RULES = """
 【共通規則 — 不可省略】
-1. 若本節出現數學公式，以文字描述其「作用與直覺」即可，不要列出公式符號；具體數值計算由系統 Stage 6 統一處理。
-2. 改寫內容必須呼應論文原文的核心論點，不得偏離主旨。
-3. 嚴禁虛構任何數值、實驗結果或引用文獻；原文有的才能寫，原文沒有的寫「原文未提及」。
-4. 每個段落改寫後，長度應與原文資訊量相當——複雜節可以較長，簡短節不需強行拉長。
+1. 改寫內容必須呼應論文原文的核心論點，不得偏離主旨。
+2. 嚴禁虛構任何數值、實驗結果或引用文獻；原文有的才能寫，原文沒有的寫「原文未提及」。
 """
 
 STYLE_PROMPTS: Dict[str, str] = {
-    "storyteller": _STORYTELLER_COT + """說書人（故事化解說 + Why-first + 讀者視角）
+    "storyteller": """【思考流程】在開始改寫之前，請先在內部思考以下三個問題（不需要輸出這部分）：
+① 本節最重要的一個洞察是什麼？（用一句話說）
+② 最貼切的生活類比或比喻是什麼？（想一個再動筆）
+③ 用哪一句話當開頭最能抓住讀者？
+思考完後，直接輸出改寫結果。
+
+說書人（故事化解說 + Why-first + 讀者視角）
 
 【角色與口吻】
-- 你是擅長把技術內容講成故事的通俗作家，目標讀者是初學者。
-- 少用「本文討論」「該方法」等論文語氣；多用「我們一起看」「想像一下」「為什麼會這樣？」等引導口吻。
+- 你是擅長把技術內容寫成**通俗、有趣、故事化**敘事的說書人，目標是讓**無相關領域背景的一般讀者**也能輕鬆讀懂。
+- 少用「本文」「該方法」等論文腔；多用「想想看」「我們換個角度說」「為什麼會這樣？」等**引導式口語**，並適度加入趣味與畫面感，但不油滑、不低俗。
+- **開場句勿制式重複**：各節請輪替使用不同開場策略（懸念一句、反問、對照、小場景、時間序、直接拋出矛盾等），**避免**多篇連續都以「想像一下」「想想看」或同一套話起首；若章節定位顯示非第 1 節，尤須避免與前序章節開頭句式雷同。
 
 【逐單元改寫結構】
 - 以 subsection 為改寫單元（若無則以 section 為單元），不可省略原文任一段落。
 - 每單元依序：① 日常情境或懸念引入 → ② 動機與直覺先行 → ③ 解釋「為什麼這樣設計、為何有效」 → ④ 說明此單元的重要性。
 - 類比是橋樑：用類比引入後立刻說清楚技術機制，同一類比全文只展開一次。
-- 遇到設計選擇時，主動說明「為何選這個而非替代方案、犧牲了什麼換來什麼」。
+- 遇到設計取捨時，主動說明「為何選這個而非替代方案、犧牲了什麼換來什麼」。
 
 【文字風格】
-- 長短句交替，每節至少 4 句、最多 12 句（依內容量決定）。
-- 首次出現的術語立刻白話解釋並加 **粗體**。
+- 在不遺漏**關鍵知識概念**、且敘事與論證**文意流暢**的前提下，篇幅可**精煉**，刪減累贅、降低閱讀負擔；避免為拉長而重複同義句。
+- **公式與數值／實驗範例必須完整保留**，維持原本 LaTeX 定界符，並**無縫融入**故事化改寫，不可為求精簡而刪略或口號式帶過。
+- 長短句交替；重要術語首次出現時白話解釋並加 **粗體**。
 - 溫暖度 {warmth}／10、視覺化程度 {visual}／10、數學密度 {math_density}／10、詼諧感 {humor}／1。
 
-【術語表：不在本節輸出，統一收集供全文末尾使用】
-- 正文中遇到新術語時直接白話解釋即可，不需在本節末附術語表。
-- 術語表由系統在全文生成完畢後統一彙整輸出，避免每節重複。
-""" + _STORYTELLER_EXAMPLE + _STORYTELLER_SELF_EVAL + _COMMON_RULES,
-        "blog": """科普部落格（知識轉譯 + 讀者關聯 + 易讀不失真）
+【術語與公式對照（本節必附，置於改寫正文之後、自評段落之前）】
+- 改寫正文結束後，依序附兩個 Markdown 表格（欄位清楚、單格不宜過長）：
+    1. **本節專業術語白話對照表**：僅列本節**新增、新義或本節首次須獨立對照**之術語（含縮寫），建議欄位「術語｜白話說明」。若提示中有【強制禁止重複解釋】所列術語，**禁止**在本表再次完整定義或複製前節長篇解釋（可完全不列，或至多一行註「見前節正文／前節對照表」）；**務必避免與其他節對照表內容重複或換句話說的同義重列**。
+    2. **本節公式白話解釋表**：僅針對本節**首次出現或語境／角色有實質新增**之 LaTeX 式給完整白話欄；若某式與前序章節已解釋過的式子**完全相同**（同形 LaTeX），**不得**再貼一大段重複解釋——表中保留該式一行即可，白話欄寫「同式已於前序章節說明，本節僅承接語境」或類似極短銜接說明；若本節無任何須獨立展開之新公式，表中註明並簡述。
+- 兩表為文末自評之依據：須覆蓋本節**應首次交代**之術語與公式，同時整體閱讀上**與前節對照表不重複累贅**，不得敷衍。
+
+【自評機制】改寫與兩表完成後，於**全文最末**依序輸出：
+1. **與前文重複檢視**（純文字 2-4 句）：若章節定位顯示本節**非**第 1 節，須自查本節是否在**生活類比、故事主線、懸念開場或橋段節奏**上，與前序章節可能之重複或過度近似，並說明是否已於正文中避開；若為第 1 節則寫「（首節無須比對前文情節）」。
+2. **對照表檢核**（純文字 1-3 句）：確認兩表已涵蓋本節**應首次交代**之術語與公式，且**未與前序各節對照表重複冗餘列示**（術語不重複定義、同形公式不重複長解），無重大遺漏。
+3. 最後一行自評標記（務必原樣保留格式）：
+<!-- EVAL: 類比[有/無] | 為什麼[有/無] | 虛構[無/有] | 前文情節或類比重複[無/有] | 術語表檢核[通過/未通過] | 公式白話表檢核[通過/未通過] -->
+- 若「類比=無」或「為什麼=無」或「虛構=有」或「前文情節或類比重複=有」或兩表檢核任一為「未通過」，皆須重新修改後再輸出。
+""" + _STORYTELLER_EXAMPLE + _COMMON_RULES,
+
+    "blog": """【思考流程】在開始改寫之前，請先在內部思考以下三個問題（不需要輸出）：
+① 哪個生活情境或痛點最適合用來引入這個概念？
+② 讀者看了會覺得「這和我什麼關係」？
+③ 要用哪一句話作為結論收束？
+思考完後，直接輸出改寫結果。
+
+科普部落格（知識轉譯 + 讀者關聯 + 易讀不失真）
 
 【角色視角】
 - 你是一位擅長把技術內容寫成大眾知識型文章的專業部落客。
 - 目標是讓一般讀者願意讀完、看懂重點，並知道這和自己有什麼關係。
 
-【改寫單元規則（比照說書人）】
+【改寫單元規則】
 - 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
-- 不可省略原文任一改寫單元。
-- 每個改寫單元依序包含：
+- 若某改寫單元僅包含一個段落，可與前後較合適的單元合併（合併後須完整涵蓋原屬各單元之重點，不得縮減資訊）。
+- 不可省略原文任一改寫單元之實質內容。
+- 以下五段可依單元內容在**不缺漏重要知識與概念**的前提下**彈性**調整篇幅與順序：
     1. 引入：用一般讀者在意的問題、迷思、現象或痛點切入。
     2. 直覺：先用白話說清楚「它在解什麼問題」。
     3. 原理：再講核心方法或機制。
     4. 重要性：說明「這和讀者有什麼關係」。
     5. 收束：一句本節重點或可行動的理解結論。
+- 無論如何編排，整體須具**起、承、轉、合**，並以最適合讀者理解的話語做直白闡釋（可比照說書人風格的口語與說理深度，仍維持部落格文章體例）；**任一公式與範例均不可省略**，須**無縫融入**改寫正文，維持原本 LaTeX 定界符（若有）。
 
 【改寫原則】
-- 先講直覺，再講原理，再講重要性。
+- 先講直覺，再講原理，再講重要性（可依單元彈性交錯，但邏輯須清楚）。
 - 技術術語第一次出現時，立刻用白話解釋；重要概念首次出現請加 **粗體**。
 - 可用類比、比較、情境例子、常見誤解幫助理解。
-- 風格自然、清楚、有吸引力，但不浮誇、不聳動。
+- 風格：輕鬆、詼諧、自然、清楚、有吸引力，但不浮誇、不聳動。
 
 【公式與技術內容處理】
-- 只保留理解核心機制必需的公式。
-- 每個保留公式都要補：
-    - 變數白話解釋。
-    - 這個公式在解什麼問題（1-2 句）。
+- **公式與範例均不可省略**，須無縫融入改寫內容，並以淺顯易懂的話語解釋其意涵。
 - 不可刪除會影響理解結論的關鍵技術內容。
-
-【禁止事項】
-- 不可杜撰原文沒有的數據、結果、引用、案例。
-- 不可扭曲原文因果關係或結論方向。
-- 不可把推測語氣改寫成確定事實。
 
 【輸出格式】
 - 產出一個吸引一般讀者的標題。
 - 前言 2-4 句：說明為何值得讀。
-- 內文每段以 3-5 句為主；涉及公式、推導或多步驟機制時可放寬至 6-7 句，但應維持單段單一主旨。
-- 內文分成數個有小標題的段落。
+- 內文分成數個有小標題的段落，每段以 **3–5 句**為主。
 - 結語：重點整理 + 一個延伸思考問題。
 
-【品質檢查】
-- 標題是否對非專業讀者有吸引力？
-- 是否快速說清楚「為何重要」？
-- 是否把技術內容轉成易讀又不失真的文章？
-- 是否避免只是學術原文換句話說？
+【本節專業術語白話解釋表（必附，不可省略）】
+- **位置**：須在**本節改寫輸出**的末尾（結語之後、自評 EVAL 行之前）；**每一節各自**附一表。**不是**整篇論文合併成 HTML 後的「全文最末」才附表——你現在一次只輸出**單一節**的改寫，該表即為**這一節文字的最後區塊之一**（EVAL 仍為**本節**最末一行）。
+- 必須附上一則 Markdown 表格，標題須清楚點出為**本節**專業術語白話解釋（標題用語可合理同義變體，例如「本節專業術語白話對照」）。
+- 建議欄位「術語｜白話說明」；僅列本節**新增、新義或本節須獨立對照**之術語（含縮寫），單格不宜過長。若本節新術語極少，仍須保留表格並至少對照本節最關鍵的少量術語，**禁止**整表留空或僅寫「無」敷衍。
+- **勿**與前序節對照表做無意義的同義重列；前序節已詳解者可在白話欄極短註「見前節」而非再次長篇定義。
+
+【自評機制】本節改寫完成後，必須在**本節輸出之最末一行**加上自評標記（**緊接在本節術語表之後**；勿推到其他節或全文合併後才寫），格式如下：
+<!-- EVAL: 讀者關聯[有/無] | 直覺解釋[有/無] | 輕鬆詼諧[有/無] -->
+若任一項為「無」，或未於**本節末尾**附術語白話表，必須重新修改後再輸出。
 
 【風格參數】
-- 親和度 {affinity}／10、吸睛度 {hook}／10、技術密度 {tech_density}／10、觀點感 {stance}／10、詼諧感 {humor}／1。""",
-        "professor": """大教授（課堂講義 + 條理清楚 + 可複習）
+- 親和度 {affinity}／10、吸睛度 {hook}／10、技術密度 {tech_density}／10、觀點感 {stance}／10、詼諧感 {humor}／1。
+""" + _COMMON_RULES,
+
+    "professor": """【思考流程】在開始改寫之前，請先在內部思考以下三個問題（不需要輸出）：
+① 這個概念的嚴謹定義是什麼？
+② 哪種講解順序（基礎到進階）最適合教學？
+③ 這個機制能對應到什麼具體的考點或重點？
+思考完後，直接輸出改寫結果。
+
+大教授（課堂講義 + 條理清楚 + 可複習）
 
 【角色視角】
 - 你是一位教學經驗豐富的專業教師，擅長把複雜內容整理成條理清楚、適合教學與複習的講義。
 - 目標不是營造聊天感，而是產出可直接用於上課或考前複習的教材內容。
-
-【改寫單元規則（比照說書人與部落格）】
-- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
-- 不可省略原文任一改寫單元。
-- 每個改寫單元都要保留原文核心邏輯，但可以依教學需求重組順序。
-
-【任務目標】
-- 保留原文核心意思與重要內容，但改寫成更有教學性、條理性、可複習性的講義。
 
 【改寫原則】
 - 以學生理解與複習需求為優先。
@@ -215,40 +219,28 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 風格要像正式但易懂的課堂講義，而不是故事文或部落格文。
 
 【輸出格式】
-- 依序整理為：
-    1. 主題
-    2. 學習目標
-    3. 背景與問題意識
-    4. 核心概念與定義
-    5. 原理或機制
-    6. 例子或直觀理解
-    7. 比較、限制或補充
-    8. 重點整理
+- 依序整理為：主題、學習目標、背景意識、定義、原理、實例、比較限制、重點整理。
 - 使用小節標題與分層條列，讓讀者容易掃描與複習。
 - 重要概念首次出現時加 **粗體**。
-- 若有公式，保留必要者並加上白話解釋。
 
-【品質檢查】
-- 是否像一份可直接用於上課或複習的講義？
-- 是否有清楚的知識結構？
-- 是否每個重要概念都有定義與說明？
-- 是否兼顧初學者理解與內容正確性？
+【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
+<!-- EVAL: 條理分層[有/無] | 預先定義[有/無] -->
+若任一項為「無」，必須重新修改教材結構後再輸出。
 
 【風格參數】
-- 正式度 {formality}／10、條理化程度 {structure}／10、初學者友善度 {beginner_friendly}／10、數學密度 {math_density}／10、考點導向 {exam_focus}／10。""",
-        "fairy": """童話故事（知識童話 + 角色化 + 寓意對應）
+- 正式度 {formality}／10、條理化程度 {structure}／10、初學者友善度 {beginner_friendly}／10、數學密度 {math_density}／10、考點導向 {exam_focus}／10。
+""" + _COMMON_RULES,
 
-【角色視角】
-- 你是一位擅長把複雜知識寫成童話故事的教育作家。
-- 目標不是只營造童話氣氛，而是讓初學者透過角色、場景與事件直覺理解知識內容。
+    "fairy": """【思考流程】在開始改寫之前，請先在內部思考以下三個問題（不需要輸出）：
+① 原文的核心概念應該映射成童話中怎樣的角色或道具？
+② 運作流程如何轉化為主角遭遇的衝突與解決過程？
+③ 故事最後要帶出什麼核心寓意（知識點）？
+思考完後，直接輸出改寫結果。
 
-【改寫單元規則（比照前面風格）】
-- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
-- 不可省略原文任一改寫單元。
-- 每個改寫單元都要保留原文核心概念與邏輯關係，但可為了故事敘事而重組順序。
+童話故事（知識童話 + 角色化 + 寓意對應）
 
 【任務目標】
-- 保留原文最核心的概念與邏輯關係，但改寫成有角色、有場景、有衝突、有解法、有寓意的童話故事，讓初學者能用直覺理解內容。
+- 保留原文最核心的概念與邏輯關係，改寫成有角色、有場景、有衝突、有解法、有寓意的童話故事。
 
 【改寫原則】
 - 將重要概念轉化為角色、道具、地點、力量或規則。
@@ -256,109 +248,109 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 保留核心機制，不可只剩童話氣氛而失去知識內容。
 - 優先用故事事件呈現概念，而不是直接講術語。
 - 可在故事結尾補一小段白話說明，點出這個童話在對應什麼知識。
-- 若有公式，盡量改成故事中的規則或簡單描述；只有必要時才保留公式本體。
-- 風格要溫柔、有畫面感、適合初學者閱讀。
 
 【輸出格式】
-- 請包含：
-    1. 故事標題
-    2. 開場
-    3. 情節發展
-    4. 問題如何解決
-    5. 寓意／知識對應說明
-- 各段請使用清楚的小節標題。
-- 若故事中出現對應原文的重要概念，可在結尾的知識對應段落用白話補充，但不要打斷故事流。
+- 請包含：故事標題、開場、情節發展、問題如何解決、寓意與真實知識對應。
+- 各段請使用清楚的小標題。
 
-【品質檢查】
-- 是否像一篇完整童話？
-- 是否保留核心概念？
-- 是否讓讀者能透過故事建立直覺理解？
-- 是否避免只有故事感卻沒有知識對應？
+【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
+<!-- EVAL: 角色映射[有/無] | 寓意說明[有/無] -->
+若任一項為「無」，必須重新修改故事內容後再輸出。
 
 【風格參數】
-- 童話感 {fairy_tone}／10、知識保真度 {fidelity}／10、年齡定位 {age_level}／10、畫面感 {visual}／10、解說顯性程度 {explicitness}／10。""",
-        "lazy": """懶人包（結論先行 + 條列整理 + 快速吸收）
+- 童話感 {fairy_tone}／10、知識保真度 {fidelity}／10、年齡定位 {age_level}／10、畫面感 {visual}／10、解說顯性程度 {explicitness}／10。
+""" + _COMMON_RULES,
+
+    "lazy": """【思考流程】在開始改寫之前，請先在內部思考以下兩件事（不需要輸出）：
+① 貫穿本節最核心的一句話結論是什麼？
+② 要列出哪幾個最關鍵的 bullet points 才能涵蓋所有重點？
+思考完後，直接輸出改寫結果。
+
+懶人包（結論先行 + 條列整理 + 快速吸收）
 
 【角色視角】
 - 你是一位擅長把複雜內容濃縮成高可讀懶人包的知識編輯。
-- 目標是讓讀者在最短時間內抓到核心問題、方法、結果與限制。
-
-【改寫單元規則（比照前面風格）】
-- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
-- 不可省略原文任一改寫單元。
-- 每個改寫單元都要保留核心結論，但表達上優先追求可快速掃描與快速理解。
-
-【任務目標】
-- 保留原文的重要概念、邏輯與結論，但整理成一份結論先行、條列清楚、能快速讀懂的懶人包。
+- 優先追求可快速掃描與快速理解。
 
 【改寫原則】
 - 先講結論，再補背景與細節。
 - 用條列、短段、對照與重點框架幫助快速吸收。
 - 技術術語第一次出現時，給一句最短可懂的白話解釋。
 - 不可為了精簡而刪掉會影響理解的關鍵限制、前提或結果。
-- 可適度用具象比喻幫助理解，但不得發明不存在的結果。
 
 【輸出格式】
-- 每個改寫單元請依序整理為：
+- 依序整理為：
     1. 一句話結論
     2. 背景／問題
-    3. 重點條列（約 {bullet_count} 點）
+    3. 重點條列（約 {bullet_count} 點，每點 1-2 句）
     4. 限制或注意事項
     5. 一句帶走重點
-- 每個條列點盡量控制在 1-2 句。
-- 使用小標題與條列，不要寫成長篇散文。
+- 不要寫成長篇散文。
 
-【品質檢查】
-- 是否能讓讀者在短時間內抓到重點？
-- 是否保留了必要的因果、方法與限制？
-- 是否結構清楚、方便掃描？
-- 是否不是單純剪短，而是真的整理成懶人包？
+【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
+<!-- EVAL: 結論先行[有/無] | 條列摘要[有/無] -->
+若任一項為「無」，必須重新修改後再輸出。
 
 【風格參數】
-- 條列點數 {bullet_count}、濃縮度 {compression}／10、初學者友善度 {beginner_friendly}／10、圖像化程度 {visual}／10、重點力度 {takeaway_strength}／10。""",
-        "question": """問題驅動（提問引導 + 逐層拆解 + 收束答案）
+- 條列點數 {bullet_count}、濃縮度 {compression}／10、初學者友善度 {beginner_friendly}／10、圖像化程度 {visual}／10、重點力度 {takeaway_strength}／10。
+""" + _COMMON_RULES,
 
-【角色視角】
-- 你是一位擅長用提問來引導理解的知識講解者。
-- 目標是讓讀者不是被動接受資訊，而是沿著問題一步步理解原文的動機、方法與結論。
+    "question": """【思考流程】在開始改寫之前，請先在內部思考以下問題（不需要輸出）：
+① 依照原文邏輯，我應該設計哪幾個由淺入深的循序提問？
+② 如何在回答最後一個問題時，剛好收束本節核心重點？
+思考完後，直接輸出改寫結果。
 
-【改寫單元規則（比照前面風格）】
-- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
-- 不可省略原文任一改寫單元。
-- 每個改寫單元都要先提出問題，再依序帶出背景、困難、解法與收束答案。
+問題驅動（提問引導 + 逐層拆解 + 收束答案）
 
 【任務目標】
-- 保留原文核心內容，但改寫成由問題驅動的說明方式，讓讀者透過提問與回答逐層建立理解。
+- 以提問與回答逐層建立理解。
 
 【改寫原則】
 - 先問讀者真正會在意的問題，再回答。
 - 問題應能對應原文中的關鍵動機、方法、限制或結果。
 - 回答順序以「問題是什麼 → 為什麼困難 → 作者怎麼解 → 有什麼限制或結果」為主。
-- 重要術語第一次出現時，要補一句白話解釋。
-- 可加入追問、對比與常見誤解，但不可扭曲原文。
 
 【輸出格式】
-- 每個改寫單元請依序整理為：
-    1. 核心提問（約 {question_count} 題）
-    2. 問題背景
-    3. 逐題回答
-    4. 方法或機制拆解
-    5. 限制、結果或延伸問題
-    6. 最後總結
-- 使用小節標題，並讓每個問題都得到明確回答。
+- 核心提問（約 {question_count} 題）
+- 逐題回答（包含背景、方法拆解、限制與結果）
+- 最後總結
 
-【品質檢查】
-- 問題是否真的引導理解，而不是裝飾？
-- 是否能讓讀者沿著問題一路看懂？
-- 是否保留原文重要機制與限制？
-- 是否避免只剩問句形式、但沒有深入回答？
+【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
+<!-- EVAL: 提問引導[有/無] | 解惑完整度[高/低] -->
+若為「無」或「低」，必須重新修改後再輸出。
 
 【風格參數】
-- 問題數量 {question_count}、好奇心強度 {curiosity}／10、拆解深度 {depth}／10、初學者友善度 {beginner_friendly}／10、收束力度 {closure_strength}／10。""",
-    "log": """實驗日誌（研究過程記錄、工程師視角）
-- 用工程師觀點描述研究流程與決策取捨。
-- 強調「觀察到什麼問題、做了什麼調整、得到什麼結果」。
-- 語氣客觀，像可追蹤的實驗紀錄。""",
+- 問題數量 {question_count}、好奇心強度 {curiosity}／10、拆解深度 {depth}／10、初學者友善度 {beginner_friendly}／10、收束力度 {closure_strength}／10。
+""" + _COMMON_RULES,
+
+    "log": """【思考流程】在開始改寫之前，請先在內部思考（不需要輸出）：
+① 這裡觀察到了什麼技術問題或工程挑戰？
+② 進行了哪些設計取捨（Trade-offs）？
+③ 調整後的具體結果是什麼？
+思考完後，直接輸出改寫結果。
+
+實驗日誌（研究過程記錄、工程師視角）
+
+【任務目標】
+- 用工程師觀點客觀描述研究流程、觀察與決策取捨，有如一份系統開發除錯紀錄。
+
+【改寫原則】
+- 強調「發現問題 → 方案取捨 → 進行調整 → 得到結果」。
+- 語氣必須客觀、專業、實事求是，像可追蹤的研發紀錄。
+- 主動說明「放棄了哪些次佳方案」以及「為什麼採用目前的設計」。
+- 重視細節與證據，若原文提及數據或特徵，應明確記錄。
+
+【輸出格式】
+- 以 {log_count} 篇日誌或觀察報告的形式產出。
+- 標示如 [Observation] (觀察)、[Decision] (決策取捨)、[Result] (結果) 等明確段落。
+
+【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
+<!-- EVAL: 問題觀察[有/無] | 取捨分析[有/無] | 客觀度[符合/不符合] -->
+若有任何「無」或「不符合」，必須重新修改後再輸出。
+
+【風格參數】
+- 日誌數量 {log_count}、客觀度 {objectivity}／10、細節度 {detail_level}／10、取捨聚焦度 {tradeoff_focus}／10。
+""" + _COMMON_RULES,
 }
 
 # Per-style adjustable parameters with defaults.
@@ -405,6 +397,12 @@ STYLE_PARAMS: Dict[str, List[Dict[str, Any]]] = {
         {"key": "beginner_friendly", "label": "初學者友善度", "min": 0, "max": 10, "step": 1, "default": 8},
         {"key": "closure_strength",  "label": "收束力度",     "min": 0, "max": 10, "step": 1, "default": 7},
     ],
+    "log": [
+        {"key": "log_count",         "label": "日誌數量",     "min": 1, "max": 5,  "step": 1, "default": 3},
+        {"key": "objectivity",       "label": "客觀度",       "min": 0, "max": 10, "step": 1, "default": 8},
+        {"key": "detail_level",      "label": "細節度",       "min": 0, "max": 10, "step": 1, "default": 7},
+        {"key": "tradeoff_focus",    "label": "取捨聚焦度",   "min": 0, "max": 10, "step": 1, "default": 6},
+    ]
 }
 
 
@@ -434,6 +432,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         phase_reporter: Optional callable(label: str) -> None.  Called at each
             major pipeline phase so the caller can persist progress (e.g. write a
             ``phase`` field back to the job store for frontend polling).
+
+    Payload (optional):
+        post_rewrite_audit_enabled: bool, default True. When True and style is
+            ``storyteller`` or ``blog``, runs one LLM batch audit after all sections
+            and replaces or rewrites sections that fail that style's audit checklist.
     """
     payload = job.get("payload", {}) if isinstance(job, dict) else {}
     if not isinstance(payload, dict):
@@ -539,7 +542,12 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     _first_fallback = fallback_chain[0] if fallback_chain else {}
     fallback_model: str = _first_fallback.get("model", "")
     fallback_provider: str = _first_fallback.get("provider", "")
-    ollama_base_url = str(payload.get("ollama_base_url") or DEFAULT_OLLAMA_BASE_URL).rstrip("/")
+    ollama_base_url = str(
+        payload.get("ollama_base_url")
+        or os.getenv("OLLAMA_BASE_URL")
+        or os.getenv("OLLAMA_HOST")
+        or DEFAULT_OLLAMA_BASE_URL
+    ).rstrip("/")
     minimax_base_url = str(
         payload.get("minimax_base_url") or os.getenv("MINIMAX_PORTAL_BASE_URL") or DEFAULT_MINIMAX_PORTAL_BASE_URL
     ).rstrip("/")
@@ -655,6 +663,57 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             }
         )
 
+    post_rewrite_audit_enabled = _normalize_bool(
+        payload.get("post_rewrite_audit_enabled"),
+        DEFAULT_POST_REWRITE_AUDIT_ENABLED,
+    )
+    post_rewrite_audit_executed = False
+    if post_rewrite_audit_enabled and rendered_sections:
+        if style == "storyteller":
+            post_rewrite_audit_executed = True
+            if phase_reporter:
+                phase_reporter("說書改寫總稽核與修正…")
+            _post_rewrite_storyteller_audit(
+                rendered_sections,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                llm_failures=llm_failures,
+            )
+        elif style == "blog":
+            post_rewrite_audit_executed = True
+            if phase_reporter:
+                phase_reporter("部落格改寫總稽核與修正…")
+            _post_rewrite_blog_audit(
+                rendered_sections,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                llm_failures=llm_failures,
+            )
+
     rewrite_model = primary_model
     fallback_models_used = rewrite_models_used - {primary_model}
     if fallback_models_used and primary_model in rewrite_models_used:
@@ -707,6 +766,8 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         "rewrite_fallback_timeout_seconds": rewrite_fallback_timeout_seconds,
         "append_missing_formulas": append_missing_formulas,
         "max_sections": max_sections,
+        "post_rewrite_audit_enabled": post_rewrite_audit_enabled,
+        "post_rewrite_audit_executed": post_rewrite_audit_executed,
         "steps": [
             {"name": "ingest_source", "status": "done", "note": str(pdf_path)},
             {
@@ -717,6 +778,25 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                     f" / {skipped_sections} skipped by max_sections"
                 ),
             },
+            *(
+                [
+                    {
+                        "name": "post_rewrite_storyteller_audit",
+                        "status": "done",
+                        "note": "LLM audit and targeted fixes for storyteller sections",
+                    }
+                ]
+                if post_rewrite_audit_executed and style == "storyteller"
+                else [
+                    {
+                        "name": "post_rewrite_blog_audit",
+                        "status": "done",
+                        "note": "LLM audit and targeted fixes for blog-style sections",
+                    }
+                ]
+                if post_rewrite_audit_executed and style == "blog"
+                else []
+            ),
             {
                 "name": "html_story_render",
                 "status": "done",
@@ -806,27 +886,33 @@ def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str], str]:
             "pymupdf (fallback)",
         )
 
+    from gemini_client import (
+        delete_file_quiet,
+        generate_content_text_from_client,
+        make_client,
+        upload_file,
+        wait_for_uploaded_file_active,
+    )
+
     sample_file = None
     extraction_models = [DEFAULT_PDF_EXTRACTION_MODEL, PDF_EXTRACTION_FALLBACK_MODEL]
     model_errors: List[str] = []
+    client = make_client(gemini_api_key, timeout=600)
     try:
-        sample_file = genai.upload_file(path=str(pdf_path))
-        _wait_for_gemini_file_ready(sample_file.name)
+        sample_file = upload_file(client, pdf_path)
+        wait_for_uploaded_file_active(client, sample_file.name, timeout_seconds=90)
 
         for model_name in extraction_models:
-            model = genai.GenerativeModel(model_name)
             try:
-                response = model.generate_content(
-                    [sample_file, GEMINI_EXTRACTION_PROMPT],
-                    request_options={"timeout": 600},
+                markdown_text = generate_content_text_from_client(
+                    client,
+                    model=model_name,
+                    contents=[sample_file, GEMINI_EXTRACTION_PROMPT],
                 )
-            except TypeError:
-                response = model.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT])
             except Exception as exc:
                 model_errors.append(f"{model_name}: {type(exc).__name__}: {exc}")
                 continue
 
-            markdown_text = str(getattr(response, "text", "") or "").strip()
             if markdown_text:
                 warning = None
                 if model_name != DEFAULT_PDF_EXTRACTION_MODEL:
@@ -840,10 +926,7 @@ def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str], str]:
         model_errors.append(f"upload/process: {type(e).__name__}: {e}")
     finally:
         if sample_file is not None:
-            try:
-                genai.delete_file(sample_file.name)
-            except Exception:
-                pass
+            delete_file_quiet(client, sample_file.name)
 
     detail = "; ".join(model_errors) if model_errors else "unknown reason"
     return (
@@ -854,48 +937,10 @@ def _extract_pdf_text(pdf_path: Path) -> Tuple[str, Optional[str], str]:
 
 
 def _configure_gemini() -> str:
-    # Reload env for long-lived workers that may receive new keys at runtime.
-    load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
-    load_dotenv(dotenv_path=Path.home() / ".env", override=False)
+    # Random order among GOOGLE/GEMINI/GEMINI_* candidates; first passing list_models wins.
+    from gemini_keys import pick_working_gemini_api_key
 
-    candidate_keys = [
-        str(os.getenv("GOOGLE_API_KEY") or "").strip(),
-        str(os.getenv("GEMINI_API_KEY") or "").strip(),
-    ]
-    seen: set[str] = set()
-    for api_key in candidate_keys:
-        if not api_key or api_key in seen:
-            continue
-        seen.add(api_key)
-        if _is_gemini_key_working(api_key):
-            return api_key
-    return ""
-
-
-def _is_gemini_key_working(api_key: str) -> bool:
-    key = str(api_key or "").strip()
-    if not key:
-        return False
-    try:
-        genai.configure(api_key=key)
-        # Probe one model to verify the key is accepted by this endpoint.
-        next(genai.list_models(page_size=1), None)
-        return True
-    except Exception:
-        return False
-
-
-def _wait_for_gemini_file_ready(file_name: str, timeout_seconds: int = 90) -> None:
-    deadline = time.time() + max(timeout_seconds, 1)
-    while time.time() < deadline:
-        uploaded = genai.get_file(file_name)
-        state_name = str(getattr(getattr(uploaded, "state", None), "name", "")).upper()
-        if not state_name or state_name == "ACTIVE":
-            return
-        if state_name == "FAILED":
-            raise RuntimeError(f"Gemini file processing failed for {file_name}")
-        time.sleep(1.5)
-    raise TimeoutError(f"Timed out waiting for Gemini file processing: {file_name}")
+    return pick_working_gemini_api_key()
 
 
 def _extract_pdf_text_with_pymupdf(pdf_path: Path) -> str:
@@ -1459,6 +1504,7 @@ def _rewrite_section(
     section_index: int = 0,
     section_count: int = 0,
     introduced_concepts: List[str] = None,
+    extra_instruction: Optional[str] = None,
 ) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str], str]:
     """Rewrite a section into storyteller style.
     
@@ -1481,6 +1527,7 @@ def _rewrite_section(
         section_index=section_index,
         section_count=section_count,
         introduced_concepts=introduced_concepts,
+        extra_instruction=extra_instruction,
     )
     formulas = _extract_latex_expressions(text)
 
@@ -1589,6 +1636,7 @@ def _build_story_prompt(
     section_index: int = 0,
     section_count: int = 0,
     introduced_concepts: List[str] = None,
+    extra_instruction: Optional[str] = None,
 ) -> str:
     source_text = source_text.strip()
     style_key = _normalize_style(style)
@@ -1626,9 +1674,9 @@ def _build_story_prompt(
    - 提供至少一個具體數值代入例子，並說明結果的實務意義。
 6. 可使用 Markdown 結構強化可讀性（例如 `**重點**`、清單、短小標），但不要過度冗長。
 7. 如果原文太破碎，先做最小整理再說明，但不要脫離原意。
-8. 直接輸出改寫內容，不要任何開場白、對話語氣或像「好的/以下是改寫」這類前綴。
+8. 可視需要加入簡短開場白、懸念或生活化一句話，以吸引讀者並提高閱讀興趣；避免空洞寒暄，亦避免制式套話（例如只說「好的」卻不進入正文）。
 9. 精簡度：{concise_value}/10。優先保留資訊增量，刪除同義重述與口語贅詞；每段最多 {paragraph_sentence_cap} 句，整段小節最多 {max_short_sections} 個主要小段。
-10. 重複抑制度：{anti_repeat_value}/10。若前文已解釋過同一概念，除非補充新資訊，否則不可再次定義；避免重複使用相同句型開頭。
+10. 重複抑制度：{anti_repeat_value}/10。若前文已解釋過同一概念，除非補充新資訊，否則不可再次定義；避免重複使用相同句型開頭；生活類比與故事主線亦應避免與前序章節過度近似（與風格提示中的自評呼應）。
 
 章節標題：
 {section_title}
@@ -1637,6 +1685,9 @@ def _build_story_prompt(
 {source_text}
 
 """
+    extra = (extra_instruction or "").strip()
+    if extra:
+        base_prompt += f"\n\n【稽核／額外指示（必須遵守）】\n{extra}\n"
 
     if response_format == "json":
         return base_prompt + """
@@ -1661,7 +1712,7 @@ def _build_story_prompt(
 請直接輸出 JSON："""
 
     return base_prompt + """
-請直接輸出乾淨的 Markdown 正文。
+請輸出乾淨的 Markdown（依「改寫風格」區塊：可能含改寫正文、對照表、自評文字與最末 EVAL 註解行；說書人風格務必遵守該區塊規定的輸出順序）。
 不要輸出 JSON。
 不要輸出 code fence。
 不要輸出 ```markdown 或 ```json。
@@ -1669,6 +1720,330 @@ def _build_story_prompt(
 若需要整理術語、變數意義、公式對照或數值示例，可直接在正文中使用 Markdown 表格呈現。
 若使用 Markdown 表格，請確保欄位名稱清楚、單格內容不要過長，並避免輸出表格以外的結構化包裝。"""
 
+
+def _post_rewrite_audit_openings_and_batches(
+    rendered_sections: List[Dict[str, Any]],
+) -> Tuple[str, List[List[Dict[str, Any]]]]:
+    """Build per-section opening excerpts and char-capped batches for post-rewrite LLM audit."""
+    openings_block = "\n".join(
+        f"- 第{int(row.get('index', 0))}節《{str(row.get('title', ''))[:80]}》開頭摘錄："
+        f"{repr((str(row.get('story_text', '') or '')[:120]).replace(chr(10), ' '))}"
+        for row in rendered_sections
+    )
+    batches: List[List[Dict[str, Any]]] = []
+    cur: List[Dict[str, Any]] = []
+    cur_chars = 0
+    for row in rendered_sections:
+        chunk = len(str(row.get("source_text", ""))) + len(str(row.get("story_text", "")))
+        if cur and (cur_chars + chunk > POST_REWRITE_AUDIT_BATCH_MAX_CHARS or len(cur) >= 2):
+            batches.append(cur)
+            cur = []
+            cur_chars = 0
+        cur.append(row)
+        cur_chars += chunk
+    if cur:
+        batches.append(cur)
+    return openings_block, batches
+
+
+def _post_rewrite_storyteller_audit(
+    rendered_sections: List[Dict[str, Any]],
+    *,
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    llm_failures: List[str],
+) -> None:
+    """One LLM audit pass after all sections: fix or rewrite sections that fail audit (storyteller only)."""
+    if not rendered_sections:
+        return
+
+    openings_block, batches = _post_rewrite_audit_openings_and_batches(rendered_sections)
+
+    audit_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+
+    for bi, batch in enumerate(batches, start=1):
+        payload = [
+            {
+                "index": int(row.get("index", 0)),
+                "title": str(row.get("title", "")),
+                "source_text": str(row.get("source_text", "")),
+                "story_text": str(row.get("story_text", "")),
+            }
+            for row in batch
+        ]
+        batch_json = json.dumps(payload, ensure_ascii=False)
+        prompt = f"""你是論文「說書人」改稿的總編輯稽核員。以下 JSON 陣列是本批 {len(batch)} 節的原文 source_text 與改稿 story_text（Markdown）。
+
+【全篇各節開頭摘錄（供比對套語／情節是否過度重複）】
+{openings_block}
+
+【稽核標準（逐節檢查）】
+1. 忠於原文：無捏造數據／實驗／引用；無與原文明顯矛盾。
+2. 原文中的 LaTeX 公式（$...$、$$...$$ 等）應出現在改稿適當位置（可出現在表格或正文），不可無故消失。
+3. 說書人規格：改稿須含「本節專業術語白話對照」與「本節公式白話解釋」兩類 Markdown 表（標題用語可同義）；最末須有 <!-- EVAL: 類比[有/無] | 為什麼[有/無] | 虛構[無/有] | 前文情節或類比重複[無/有] | 術語表檢核[通過/未通過] | 公式白話表檢核[通過/未通過] --> 格式的自評行。
+4. 跨節：開頭套語或懸念句型勿與其他節高度雷同；術語／公式對照表勿與前序節無意義重複堆砌。
+5. 若某節已完全符合，passes 為 true，issues 空陣列，replacement_story_markdown 為 null。
+
+【本批待審 JSON】
+{batch_json}
+
+請只輸出一個 JSON 物件（不要 markdown code fence），格式嚴格如下：
+{{"results":[{{"index":<整數>,"passes":true,"issues":[],"replacement_story_markdown":null}},{{"index":<整數>,"passes":false,"issues":["..."],"replacement_story_markdown":"<若 passes 為 false，請給完整可取代該節的 Markdown 改稿全文；若 passes 為 true 則 null>"}}]}}
+
+規則：passes=false 時，replacement_story_markdown 必須是非空字串，且須為該節完整改稿（含表與自評與 EVAL 行），可直接覆蓋原 story_text。"""
+
+        try:
+            raw, _used = _complete_prompt_with_model_fallback(
+                prompt=prompt,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=audit_timeout,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+            )
+        except Exception as exc:
+            llm_failures.append(f"post_rewrite_audit batch {bi}: {type(exc).__name__}: {exc}")
+            continue
+
+        parsed = _try_parse_rewrite_payload(raw) or {}
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            llm_failures.append(f"post_rewrite_audit batch {bi}: invalid JSON shape")
+            continue
+
+        by_index = {int(row.get("index", 0)): row for row in rendered_sections}
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = int(item.get("index", 0))
+            row = by_index.get(idx)
+            if not row:
+                continue
+            passes = bool(item.get("passes", True))
+            issues = item.get("issues") or []
+            if not isinstance(issues, list):
+                issues = []
+            replacement = item.get("replacement_story_markdown")
+            if passes:
+                continue
+            issues_txt = "; ".join(str(x) for x in issues if str(x).strip())
+            if isinstance(replacement, str) and replacement.strip():
+                row["story_text"] = replacement.strip()
+                row["terms"] = []
+                row["formula_explanations"] = []
+                llm_failures.append(f"post_rewrite_audit: section {idx} revised in batch {bi} ({issues_txt or 'see replacement'})")
+                continue
+
+            title = str(row.get("title", ""))
+            source = str(row.get("source_text", ""))
+            extra = (
+                "總編輯稽核未通過，請依下列問題重寫本節（須完整符合說書人風格與兩表＋自評＋EVAL）：\n"
+                + (issues_txt or "未註明具體問題，請自行對照稽核標準全面檢查。")
+            )
+            fixed, terms, fexps, ok, err, _um = _rewrite_section(
+                section_title=title,
+                source_text=source,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style="storyteller",
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+                section_index=idx,
+                section_count=len(rendered_sections),
+                introduced_concepts=None,
+                extra_instruction=extra,
+            )
+            if ok and fixed.strip():
+                row["story_text"] = fixed.strip()
+                row["terms"] = terms or []
+                row["formula_explanations"] = fexps or []
+                llm_failures.append(
+                    f"post_rewrite_audit: section {idx} re-rewritten after audit batch {bi} ({issues_txt or 'no replacement from audit'})"
+                )
+            elif err:
+                llm_failures.append(f"post_rewrite_audit: section {idx} re-rewrite failed: {err}")
+
+
+def _post_rewrite_blog_audit(
+    rendered_sections: List[Dict[str, Any]],
+    *,
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    llm_failures: List[str],
+) -> None:
+    """One LLM audit pass after all sections: fix or rewrite sections that fail audit (blog only)."""
+    if not rendered_sections:
+        return
+
+    openings_block, batches = _post_rewrite_audit_openings_and_batches(rendered_sections)
+
+    audit_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+
+    for bi, batch in enumerate(batches, start=1):
+        payload = [
+            {
+                "index": int(row.get("index", 0)),
+                "title": str(row.get("title", "")),
+                "source_text": str(row.get("source_text", "")),
+                "story_text": str(row.get("story_text", "")),
+            }
+            for row in batch
+        ]
+        batch_json = json.dumps(payload, ensure_ascii=False)
+        prompt = f"""你是論文「科普部落格」改稿的總編輯稽核員。以下 JSON 陣列是本批 {len(batch)} 節的原文 source_text 與改稿 story_text（Markdown）。
+
+【全篇各節開頭摘錄（供比對引入句是否與他節過度重複）】
+{openings_block}
+
+【稽核標準（逐節檢查）】
+1. 忠於原文：無捏造數據／實驗／引用；無與原文明顯矛盾。
+2. 公式與範例完整性：原文中的所有 LaTeX 公式（$...$、$$...$$、\\(...\\)、\\[...\\] 等）以及具體實驗／數值／範例敘述，必須在改稿中完整保留並**無縫融入**正文，不可無故消失或僅口號式帶過；並以淺顯易懂的一句或多句點出式子與範例的意涵。
+3. 結構與節奏：整節應具**起、承、轉、合**；並符合部落格約定：有吸引一般讀者的**標題取向**與**小標分段**；須有**前言層次**（約 2–4 句說明為何值得讀，可與開頭段合併但不可完全缺席）；內文各小段以**每段約 3–5 句**為主；**結語**須含重點整理並附**一個延伸思考問題**。
+4. **本節專業術語白話解釋表（必核）**：在**該節** `story_text` 的**節末**（**本節**結語之後）、且於**該節** EVAL 行之前，必須有一則標題清楚之 Markdown 表格（建議欄位「術語｜白話說明」或同義欄名），涵蓋本節應交代之術語／縮寫；單格不宜過長；**禁止**整表留空或僅「無」敷衍。勿誤解為「整篇 HTML 全文最後一節才附表」——**每一節的改稿字串末端**皆須自帶此表（稽核時逐節檢查 `story_text`）。跨節勿無意義重複前序節已長篇定義之術語。
+5. 風格：輕鬆、詼諧、自然、清楚、有吸引力，但**不浮誇、不聳動**。
+6. 自評行：**該節** `story_text` 的**最末一行**須為 EVAL，且格式必須可機讀如下（括號內僅能有/無）：
+<!-- EVAL: 讀者關聯[有/無] | 直覺解釋[有/無] | 輕鬆詼諧[有/無] -->
+7. 跨節：開頭引入句型勿與其他節高度雷同；避免機械式複製前序節套話。
+8. 若某節已完全符合，passes 為 true，issues 空陣列，replacement_story_markdown 為 null。
+
+【本批待審 JSON】
+{batch_json}
+
+請只輸出一個 JSON 物件（不要 markdown code fence），格式嚴格如下：
+{{"results":[{{"index":<整數>,"passes":true,"issues":[],"replacement_story_markdown":null}},{{"index":<整數>,"passes":false,"issues":["..."],"replacement_story_markdown":"<若 passes 為 false，請給完整可取代該節的 Markdown 改稿全文；若 passes 為 true 則 null>"}}]}}
+
+規則：passes=false 時，replacement_story_markdown 必須是非空字串，且須為**該單節**完整改稿（含結語、**本節末尾術語白話表**、**該節**最末一行 EVAL），可直接覆蓋該節之 story_text。"""
+
+        try:
+            raw, _used = _complete_prompt_with_model_fallback(
+                prompt=prompt,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=audit_timeout,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+            )
+        except Exception as exc:
+            llm_failures.append(
+                f"post_rewrite_blog_audit batch {bi}: {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        parsed = _try_parse_rewrite_payload(raw) or {}
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            llm_failures.append(f"post_rewrite_blog_audit batch {bi}: invalid JSON shape")
+            continue
+
+        by_index = {int(row.get("index", 0)): row for row in rendered_sections}
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = int(item.get("index", 0))
+            row = by_index.get(idx)
+            if not row:
+                continue
+            passes = bool(item.get("passes", True))
+            issues = item.get("issues") or []
+            if not isinstance(issues, list):
+                issues = []
+            replacement = item.get("replacement_story_markdown")
+            if passes:
+                continue
+            issues_txt = "; ".join(str(x) for x in issues if str(x).strip())
+            if isinstance(replacement, str) and replacement.strip():
+                row["story_text"] = replacement.strip()
+                row["terms"] = []
+                row["formula_explanations"] = []
+                llm_failures.append(
+                    f"post_rewrite_blog_audit: section {idx} revised in batch {bi} ({issues_txt or 'see replacement'})"
+                )
+                continue
+
+            title = str(row.get("title", ""))
+            source = str(row.get("source_text", ""))
+            extra = (
+                "總編輯稽核未通過，請依下列問題重寫本節（須完整符合科普部落格風格：起承轉合、公式與範例不漏、"
+                "標題／小標／前言／結語與延伸問題、**本節末尾（結語後）術語白話表**、**本節最末一行** EVAL 三欄）：\n"
+                + (issues_txt or "未註明具體問題，請自行對照稽核標準全面檢查。")
+            )
+            fixed, terms, fexps, ok, err, _um = _rewrite_section(
+                section_title=title,
+                source_text=source,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style="blog",
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+                section_index=idx,
+                section_count=len(rendered_sections),
+                introduced_concepts=None,
+                extra_instruction=extra,
+            )
+            if ok and fixed.strip():
+                row["story_text"] = fixed.strip()
+                row["terms"] = terms or []
+                row["formula_explanations"] = fexps or []
+                llm_failures.append(
+                    f"post_rewrite_blog_audit: section {idx} re-rewritten after audit batch {bi} "
+                    f"({issues_txt or 'no replacement from audit'})"
+                )
+            elif err:
+                llm_failures.append(
+                    f"post_rewrite_blog_audit: section {idx} re-rewrite failed: {err}"
+                )
 
 
 def _normalize_style(style: Any) -> str:
@@ -1678,6 +2053,73 @@ def _normalize_style(style: Any) -> str:
     if normalized in STYLE_PROMPTS:
         return normalized
     return DEFAULT_STYLE
+
+
+def _complete_prompt_with_model_fallback(
+    *,
+    prompt: str,
+    model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+) -> Tuple[str, str]:
+    """Run a one-off text prompt on primary model with the same fallback chain as section rewrite."""
+    used_model = model
+    try:
+        if model.startswith("models/"):
+            if gemini_preflight_enabled:
+                preflight_ok, preflight_reason = _gemini_rewrite_preflight(
+                    model=model,
+                    timeout=int(gemini_preflight_timeout_seconds),
+                )
+                if not preflight_ok:
+                    raise RuntimeError(f"Gemini preflight failed: {preflight_reason}")
+            rewritten = _call_gemini_llm(
+                prompt=prompt,
+                model=model,
+                timeout=int(gemini_rewrite_timeout_seconds),
+            )
+        else:
+            rewritten = _call_local_llm(
+                prompt=prompt,
+                model=model,
+                ollama_base_url=ollama_base_url,
+                timeout=int(fallback_timeout_seconds),
+            )
+        return rewritten, used_model
+    except Exception as exc:
+        primary_failure = f"{type(exc).__name__}: {exc}"
+        for spec in (fallback_chain or []):
+            fb_model = spec.get("model", "")
+            fb_provider = (spec.get("provider") or "").strip().lower()
+            fb_ollama_url = spec.get("ollama_base_url") or ollama_base_url
+            fb_minimax_base = spec.get("minimax_base_url") or minimax_base_url
+            fb_minimax_token = spec.get("minimax_oauth_token") or minimax_oauth_token
+            try:
+                if fb_provider in {"minimax.io", "minimax", "minimax-portal"}:
+                    rewritten = _call_minimax_portal_llm(
+                        prompt=prompt,
+                        model=fb_model,
+                        oauth_token=fb_minimax_token,
+                        base_url=fb_minimax_base,
+                        timeout=int(fallback_timeout_seconds),
+                    )
+                else:
+                    rewritten = _call_local_llm(
+                        prompt=prompt,
+                        model=fb_model,
+                        ollama_base_url=fb_ollama_url,
+                        timeout=int(fallback_timeout_seconds),
+                    )
+                return rewritten, fb_model
+            except Exception:
+                continue
+        raise RuntimeError(f"post-rewrite audit LLM failed ({primary_failure})") from exc
 
 
 def _call_local_llm(*, prompt: str, model: str, ollama_base_url: str, timeout: int = 240) -> str:
@@ -1699,19 +2141,18 @@ def _call_local_llm(*, prompt: str, model: str, ollama_base_url: str, timeout: i
 
 
 def _call_gemini_llm(*, prompt: str, model: str, timeout: int = 240) -> str:
+    from gemini_client import generate_content_text
+
     gemini_api_key = _configure_gemini()
     if not gemini_api_key:
         raise RuntimeError("missing GOOGLE_API_KEY/GEMINI_API_KEY")
 
-    gm = genai.GenerativeModel(model)
-    try:
-        response = gm.generate_content(prompt, request_options={"timeout": timeout})
-    except TypeError:
-        response = gm.generate_content(prompt)
-    text = str(getattr(response, "text", "") or "").strip()
-    if not text:
-        raise RuntimeError("Gemini returned empty rewrite content")
-    return text
+    return generate_content_text(
+        api_key=gemini_api_key,
+        model=model,
+        contents=prompt,
+        timeout=int(timeout),
+    )
 
 
 def _gemini_rewrite_preflight(*, model: str, timeout: int) -> Tuple[bool, str]:
@@ -1727,19 +2168,15 @@ def _gemini_rewrite_preflight(*, model: str, timeout: int) -> Tuple[bool, str]:
         return result
 
     try:
-        gm = genai.GenerativeModel(model)
-        try:
-            response = gm.generate_content(
-                "回覆 OK",
-                request_options={"timeout": int(timeout)},
-            )
-        except TypeError:
-            response = gm.generate_content("回覆 OK")
-        text = str(getattr(response, "text", "") or "").strip()
-        if not text:
-            result = (False, "empty preflight response")
-        else:
-            result = (True, "ok")
+        from gemini_client import generate_content_text
+
+        generate_content_text(
+            api_key=gemini_api_key,
+            model=model,
+            contents="回覆 OK",
+            timeout=int(timeout),
+        )
+        result = (True, "ok")
     except Exception as exc:
         result = (False, f"{type(exc).__name__}: {exc}")
 

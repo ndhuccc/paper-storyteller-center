@@ -17,9 +17,16 @@ import time
 from pathlib import Path
 from typing import List, Optional
 
-import google.generativeai as genai
 from dotenv import load_dotenv
 
+from gemini_client import (
+    delete_file_quiet,
+    generate_content_text_from_client,
+    list_models_supporting_generate_content,
+    make_client,
+    upload_file,
+    wait_for_uploaded_file_active,
+)
 from storyteller_pipeline import GEMINI_EXTRACTION_PROMPT
 from storyteller_pipeline import _split_into_sections
 
@@ -32,34 +39,10 @@ PROJECT_DIR = Path(__file__).resolve().parent
 STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 
 
-def _is_key_working(api_key: str) -> bool:
-    key = str(api_key or "").strip()
-    if not key:
-        return False
-    try:
-        genai.configure(api_key=key)
-        # Quick probe to validate the key against the active API endpoint.
-        next(genai.list_models(page_size=1), None)
-        return True
-    except Exception:
-        return False
-
-
 def load_env() -> str:
-    load_dotenv(dotenv_path=STORYTELLERS_DIR / ".env", override=False)
-    load_dotenv(dotenv_path=Path.home() / ".env", override=False)
-    candidates = [
-        str(os.getenv("GOOGLE_API_KEY") or "").strip(),
-        str(os.getenv("GEMINI_API_KEY") or "").strip(),
-    ]
-    seen = set()
-    for key in candidates:
-        if not key or key in seen:
-            continue
-        seen.add(key)
-        if _is_key_working(key):
-            return key
-    return ""
+    from gemini_keys import pick_working_gemini_api_key
+
+    return pick_working_gemini_api_key()
 
 
 def create_sample_pdf(path: Path) -> Path:
@@ -80,29 +63,9 @@ def create_sample_pdf(path: Path) -> Path:
     return path
 
 
-def wait_for_file_active(file_name: str, timeout_sec: int) -> None:
-    deadline = time.time() + max(timeout_sec, 1)
-    while time.time() < deadline:
-        uploaded = genai.get_file(file_name)
-        state_name = str(getattr(getattr(uploaded, "state", None), "name", "")).upper()
-        if not state_name or state_name == "ACTIVE":
-            return
-        if state_name == "FAILED":
-            raise RuntimeError(f"Gemini file processing failed: {file_name}")
-        time.sleep(1.5)
-    raise TimeoutError(f"Timed out waiting Gemini file active: {file_name}")
-
-
-def pick_available_model(preferred: str) -> str:
+def pick_available_model(api_key: str, preferred: str) -> str:
     preferred_name = str(preferred or "").strip()
-    available: List[str] = []
-
-    for m in genai.list_models():
-        name = str(getattr(m, "name", "") or "").strip()
-        methods = list(getattr(m, "supported_generation_methods", []) or [])
-        if not name or "generateContent" not in methods:
-            continue
-        available.append(name)
+    available: List[str] = list_models_supporting_generate_content(api_key, timeout=60)
 
     if preferred_name and preferred_name in available:
         return preferred_name
@@ -210,22 +173,22 @@ def count_sections(extracted_text: str) -> int:
         return len(blocks)
 
 
-def run_test(pdf_path: Path, model: str, timeout_sec: int, retries: int) -> str:
-    sample_file = genai.upload_file(path=str(pdf_path))
+def run_test(
+    pdf_path: Path, model: str, timeout_sec: int, retries: int, *, api_key: str
+) -> str:
+    client = make_client(api_key, timeout=max(180, int(timeout_sec)))
+    sample_file = upload_file(client, pdf_path)
     try:
-        wait_for_file_active(sample_file.name, timeout_sec=timeout_sec)
-        llm = genai.GenerativeModel(model)
+        wait_for_uploaded_file_active(client, sample_file.name, timeout_seconds=timeout_sec)
         attempts = max(1, retries + 1)
         last_exc: Optional[Exception] = None
         for attempt in range(1, attempts + 1):
             try:
-                try:
-                    resp = llm.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT], request_options={"timeout": 180})
-                except TypeError:
-                    resp = llm.generate_content([sample_file, GEMINI_EXTRACTION_PROMPT])
-                text = str(getattr(resp, "text", "") or "").strip()
-                if not text:
-                    raise RuntimeError("Gemini returned empty extraction text")
+                text = generate_content_text_from_client(
+                    client,
+                    model=model,
+                    contents=[sample_file, GEMINI_EXTRACTION_PROMPT],
+                )
                 return text
             except Exception as exc:
                 last_exc = exc
@@ -242,10 +205,7 @@ def run_test(pdf_path: Path, model: str, timeout_sec: int, retries: int) -> str:
 
         raise RuntimeError(f"Gemini extraction failed after retries: {last_exc}")
     finally:
-        try:
-            genai.delete_file(sample_file.name)
-        except Exception:
-            pass
+        delete_file_quiet(client, sample_file.name)
 
 
 def parse_args() -> argparse.Namespace:
@@ -319,7 +279,7 @@ def main() -> int:
         return 2
 
     try:
-        selected_model = pick_available_model(args.model)
+        selected_model = pick_available_model(api_key, args.model)
     except Exception as exc:
         print(f"[FAIL] Could not select Gemini model: {exc}")
         return 4
@@ -333,6 +293,7 @@ def main() -> int:
             model=selected_model,
             timeout_sec=args.timeout,
             retries=max(0, int(args.retries)),
+            api_key=api_key,
         )
     except Exception as exc:
         print(f"[FAIL] Gemini extraction failed: {type(exc).__name__}: {exc}")

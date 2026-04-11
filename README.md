@@ -57,15 +57,18 @@
 ## 核心規則
 
 ### 公式規則
+
 - 保留真正 LaTeX 分隔符：`$...$`、`$$...$$`、`\(...\)`、`\[...\]`
 - **不可**改成 Unicode 偽公式
 
 ### 生成規則
+
 - 預設順序式處理
 - 支援 storyteller / blog / professor / fairy / lazy / question / log 風格
 - 各風格可在 Web UI 以 slider 調整參數
 
 ### Runtime 規則
+
 - 背景 job 與 auto-index 會自動偵測正確的 Python runtime
 - 優先順序：環境變數 override → 目前 interpreter → linuxbrew fallback
 - 環境變數：`PAPER_STORYTELLER_PYTHON` 或 `STORYTELLER_PYTHON`
@@ -74,16 +77,18 @@
 
 ## 技術架構
 
-| 元件 | 說明 |
-|------|------|
-| **Frontend** | Flask + Alpine.js 單頁介面 |
-| **Backend API** | Flask Blueprint（/api） |
-| **Embedding** | Ollama / `qwen3-embedding:8b`（本地） |
-| **Q&A LLM** | Gemini（主）+ Ollama/MiniMax（fallback） |
+
+| 元件              | 說明                                  |
+| --------------- | ----------------------------------- |
+| **Frontend**    | Flask + Alpine.js 單頁介面              |
+| **Backend API** | Flask Blueprint（/api）               |
+| **Embedding**   | Ollama / `qwen3-embedding:8b`（本地）   |
+| **Q&A LLM**     | Gemini（主）+ Ollama/MiniMax（fallback） |
 | **Rewrite LLM** | Gemini（主）+ Ollama/MiniMax（fallback） |
-| **Vector DB** | LanceDB（本地） |
-| **PDF 抽字** | `PyMuPDF` (fitz) |
-| **HTML 公式** | 全面統一使用 KaTeX auto-render |
+| **Vector DB**   | LanceDB（本地）                         |
+| **PDF 抽字**      | `PyMuPDF` (fitz)                    |
+| **HTML 公式**     | 全面統一使用 KaTeX auto-render            |
+
 
 ---
 
@@ -126,22 +131,71 @@ ollama pull deepseek-r1:8b
 
 ### 3. Python 套件
 
+若出現 `**externally-managed-environment`（PEP 668）**，代表目前的 `python3` 是 **Homebrew** 等系統管理環境，**不要**對它直接 `pip install`。請擇一：
+
+**做法 A（建議）：專案虛擬環境**
+
 ```bash
-python3 -m pip install flask flask-cors markdown lancedb pymupdf python-dotenv google-generativeai
+cd /path/to/paper-storyteller-center
+bash scripts/bootstrap_venv.sh
+source .venv/bin/activate
+```
+
+之後在同一終端機請一律用已啟用的 `python3`／`pip`（會指向 `.venv`）。
+
+**做法 B：已使用 Conda（你的提示字為 `(base)` 時）**
+
+請改用 **Conda 環境裡的 Python** 安裝，不要用到 Homebrew 的 `python3`：
+
+```bash
+conda install -n base -c conda-forge google-genai
+# 其餘套件仍可用 pip，但請指定 conda 的解譯器，例如：
+"$(conda info --base)/bin/python" -m pip install flask flask-cors markdown lancedb pymupdf python-dotenv
+```
+
+或先 `which python3`，若顯示在 `anaconda3` 底下，再執行：
+
+```bash
+python3 -m pip install flask flask-cors markdown lancedb pymupdf python-dotenv google-genai
+```
+
+**做法 C：手動建立 venv（與 A 相同效果）**
+
+```bash
+cd /path/to/paper-storyteller-center
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
 ### 4. 啟動 Web 服務
+
+請先完成 **§3**（專案內建議有 `.venv` 並已 `pip install -r requirements.txt`）。
 
 ```bash
 cd /path/to/paper-storyteller-center
 ./start.sh
 ```
 
-或
+- `**start.sh` 行為**：若專案根目錄存在 `**.venv/bin/python3`**，會**自動**用它啟動 `server.py`，**不必**先手動 `source .venv/bin/activate`。
+- **手動啟動**：若不用 `start.sh`，請先啟用 venv，再執行 `server.py`：
 
 ```bash
 cd /path/to/paper-storyteller-center
+source .venv/bin/activate
 python3 server.py
+```
+
+或直接指定解譯器（未 `activate` 時）：
+
+```bash
+.venv/bin/python3 server.py
+```
+
+**其他腳本**（例如 `scripts/md_rewrite_sample_to_tmp.py`）：請在**已啟用**的 venv 終端機內執行，或一律使用：
+
+```bash
+.venv/bin/python3 scripts/md_rewrite_sample_to_tmp.py --style blog
 ```
 
 ---
@@ -149,6 +203,7 @@ python3 server.py
 ## 使用方式
 
 ### A. 從 Web UI 生成
+
 1. 在 `🛠️ 說書改寫` 面板上傳 PDF（或改用手動輸入單元）
 2. 選風格（storyteller / blog / professor / fairy / lazy / question / log）
 3. 選是否 `auto_index`
@@ -156,10 +211,11 @@ python3 server.py
 5. 在 recent jobs 追蹤狀態（前端會定期刷新）
 6. 成功後可直接：
   - `📖 開啟改寫結果`
-   - `🔍 搜尋這篇`
-   - `💬 詢問這篇`
+  - `🔍 搜尋這篇`
+  - `💬 詢問這篇`
 
 ### B. 用外部工作流產生 HTML
+
 1. 把 HTML 放進 `~/Documents/Storytellers/`
 2. GUI 側欄 `🔄 重建索引`
 
@@ -211,13 +267,15 @@ print(select_preferred_python(required_modules=('lancedb',)))
 
 ## 版本歷史
 
-| 版本 | 主題 | 重點 |
-|------|------|------|
-| v0.6 | Hybrid MVP | 架構分層 + 最小 generation pipeline + GUI 入口 |
-| v0.7 | Generation UX | 非同步 job + 狀態顯示 + 回流入口 + repository 純化 |
-| v0.8 | Index 聯動 | Merged manifest + canonical status + handoff 穩定化 + auto-index 細化 + runtime fallback |
-| v0.9 | 風格與品質 | 7 種改寫風格 + section parsing 改良 + Q&A citation 強化 |
-| v1.0 | Product Polish | retry/cancel job + 論文刪除管理 + GUI 使用說明 + 文件收斂 |
+
+| 版本   | 主題             | 重點                                                                                  |
+| ---- | -------------- | ----------------------------------------------------------------------------------- |
+| v0.6 | Hybrid MVP     | 架構分層 + 最小 generation pipeline + GUI 入口                                              |
+| v0.7 | Generation UX  | 非同步 job + 狀態顯示 + 回流入口 + repository 純化                                               |
+| v0.8 | Index 聯動       | Merged manifest + canonical status + handoff 穩定化 + auto-index 細化 + runtime fallback |
+| v0.9 | 風格與品質          | 7 種改寫風格 + section parsing 改良 + Q&A citation 強化                                      |
+| v1.0 | Product Polish | retry/cancel job + 論文刪除管理 + GUI 使用說明 + 文件收斂                                         |
+
 
 ---
 
@@ -238,3 +296,4 @@ print(select_preferred_python(required_modules=('lancedb',)))
 - `pymupdf` 必須已安裝
 - HTML 說書人頁面皆已統一內嵌 KaTeX 渲染引擎
 - LanceDB 需透過正確 Python runtime 執行（已有 `runtime_support.py` 處理）
+

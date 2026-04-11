@@ -1,0 +1,9 @@
+# Gemini: use google-genai (google.generativeai is deprecated)
+google-genai>=1.0.0
+
+flask
+flask-cors
+markdown
+lancedb
+pymupdf
+python-dotenv
