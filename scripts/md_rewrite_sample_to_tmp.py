@@ -48,6 +48,8 @@ from storyteller_pipeline import (  # noqa: E402
     _post_rewrite_fairy_audit,
     _post_rewrite_lazy_audit,
     _post_rewrite_professor_audit,
+    _post_rewrite_log_audit,
+    _post_rewrite_question_audit,
     _post_rewrite_storyteller_audit,
     _rewrite_section,
     _slugify,
@@ -312,6 +314,46 @@ def main() -> int:
         elif style == "lazy":
             print("post_rewrite_lazy_audit…", flush=True)
             _post_rewrite_lazy_audit(
+                rendered,
+                primary_model=model,
+                fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,
+                ollama_base_url=ollama_base,
+                minimax_base_url=minimax_base,
+                minimax_oauth_token=minimax_token,
+                rewrite_response_format=DEFAULT_REWRITE_RESPONSE_FORMAT,
+                append_missing_formulas=DEFAULT_APPEND_MISSING_FORMULAS,
+                style_params={},
+                concise_level=DEFAULT_CONCISE_LEVEL,
+                anti_repeat_level=DEFAULT_ANTI_REPEAT_LEVEL,
+                gemini_preflight_enabled=DEFAULT_GEMINI_PREFLIGHT_ENABLED,
+                gemini_preflight_timeout_seconds=DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
+                gemini_rewrite_timeout_seconds=DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
+                fallback_timeout_seconds=DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
+                llm_failures=audit_notes,
+            )
+        elif style == "question":
+            print("post_rewrite_question_audit…", flush=True)
+            _post_rewrite_question_audit(
+                rendered,
+                primary_model=model,
+                fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,
+                ollama_base_url=ollama_base,
+                minimax_base_url=minimax_base,
+                minimax_oauth_token=minimax_token,
+                rewrite_response_format=DEFAULT_REWRITE_RESPONSE_FORMAT,
+                append_missing_formulas=DEFAULT_APPEND_MISSING_FORMULAS,
+                style_params={},
+                concise_level=DEFAULT_CONCISE_LEVEL,
+                anti_repeat_level=DEFAULT_ANTI_REPEAT_LEVEL,
+                gemini_preflight_enabled=DEFAULT_GEMINI_PREFLIGHT_ENABLED,
+                gemini_preflight_timeout_seconds=DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
+                gemini_rewrite_timeout_seconds=DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
+                fallback_timeout_seconds=DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
+                llm_failures=audit_notes,
+            )
+        elif style == "log":
+            print("post_rewrite_log_audit…", flush=True)
+            _post_rewrite_log_audit(
                 rendered,
                 primary_model=model,
                 fallback_chain=DEFAULT_REWRITE_FALLBACK_CHAIN,

@@ -48,10 +48,83 @@ def protect_latex(answer: str) -> tuple[str, List[Tuple[str, str]]]:
     return protected, latex_blocks
 
 
+def _split_inline_list_markers(text: str) -> str:
+    """Split list items compressed onto one line by LLMs into separate lines.
+
+    Handles both unordered (- item1 * item2) and ordered (1. step1 2. step2).
+    """
+    import re as _re
+    lines = text.split("\n")
+    result = []
+    list_start_re = _re.compile(r"^([ \t]*)([-*+]|\d+\.)[ \t]+")
+    unordered_sep_re = _re.compile(r" (?<!\*)\*(?!\*) ")
+    ordered_sep_re = _re.compile(r" \d+\.(?!\d) ")
+    for line in lines:
+        m = list_start_re.match(line)
+        if m:
+            indent = m.group(1)
+            is_ordered = bool(_re.match(r"^[ \t]*\d+\.", line))
+            if is_ordered:
+                parts = ordered_sep_re.split(line)
+                if len(parts) > 1:
+                    for i, part in enumerate(parts):
+                        result.append(f"{indent}{i + 1}. {part.lstrip()}" if i > 0 else part)
+                    continue
+            else:
+                parts = unordered_sep_re.split(line)
+                if len(parts) > 1:
+                    result.append(parts[0])
+                    for part in parts[1:]:
+                        result.append(f"{indent}* {part}")
+                    continue
+        result.append(line)
+    return "\n".join(result)
+
+
+def _ensure_list_blank_lines(text: str) -> str:
+    """Insert blank lines before list/table blocks so the markdown parser renders them correctly.
+
+    Also inserts a blank line when the list type switches between unordered and
+    ordered, preventing the Python markdown library from absorbing ordered items
+    into a preceding unordered block (and vice-versa).
+    """
+    import re as _re
+    lines = text.split("\n")
+    result = []
+    ul_re = _re.compile(r"^[ \t]*[-*+][ \t]+")
+    ol_re = _re.compile(r"^[ \t]*\d+\.[ \t]+")
+    table_re = _re.compile(r"^[ \t]*\|")
+    for line in lines:
+        prev = result[-1] if result else ""
+        is_ul = bool(ul_re.match(line))
+        is_ol = bool(ol_re.match(line))
+        is_list = is_ul or is_ol
+        is_table = bool(table_re.match(line))
+        prev_is_ul = bool(ul_re.match(prev))
+        prev_is_ol = bool(ol_re.match(prev))
+        prev_is_list = prev_is_ul or prev_is_ol
+        prev_is_table = bool(table_re.match(prev))
+        if is_list or is_table:
+            if prev.strip() and not prev_is_list and not prev_is_table:
+                result.append("")
+            elif prev_is_list and ((is_ul and prev_is_ol) or (is_ol and prev_is_ul)):
+                # Python markdown merges adjacent different-type lists even with a
+                # blank line.  An invisible HTML comment forces a hard list boundary.
+                result.append("")
+                result.append("<!-- -->")
+                result.append("")
+        elif line.strip() and prev_is_table:
+            result.append("")
+        result.append(line)
+    return "\n".join(result)
+
+
 def markdown_to_html(text: str) -> str:
     """把 Markdown 轉成 HTML；缺套件時退回簡易段落模式。"""
     if _markdown is not None:
-        return _markdown.markdown(text, extensions=["tables", "fenced_code"])
+        prepared = _split_inline_list_markers(text)
+        prepared = _ensure_list_blank_lines(prepared)
+        return _markdown.markdown(prepared, extensions=["tables", "fenced_code"])
 
     paragraphs = text.split("\n\n")
     return "\n".join(f'<p>{p.replace(chr(10), "<br>")}</p>' for p in paragraphs)
@@ -109,9 +182,17 @@ body { font-family: "Noto Sans TC", sans-serif; line-height: 1.8; padding: 8px 1
 p { margin: 6px 0; }
 .math-block { text-align: center; margin: 16px 0; overflow-x: auto; }
 .math-inline { white-space: normal; }
+ul, ol { padding-left: 1.6em; margin: 8px 0; }
+ul { list-style-type: disc; }
+ol { list-style-type: decimal; }
+ul ul, ul ol { list-style-type: circle; }
+ol ol, ol ul { list-style-type: lower-alpha; }
+li { margin: 3px 0; }
 table { border-collapse: collapse; width: 100%; margin: 12px 0; }
 th, td { border: 1px solid #e2e8f0; padding: 8px 12px; }
 th { background: #f1f5f9; }
+thead tr { font-weight: 700; }
+tbody tr:nth-child(even) { background: #fafafa; }
 code { background: #f1f5f9; padding: 2px 5px; border-radius: 3px; font-size: 12px; }
 blockquote { border-left: 3px solid #3b82f6; padding-left: 12px; color: #475569; }
 </style>

@@ -459,7 +459,8 @@ function App() {
 
     renderAnswer(text) {
       if (!text) return '';
-      const prepared = this._ensureListBlankLines(text);
+      let prepared = this._splitInlineListMarkers(text);
+      prepared = this._ensureListBlankLines(prepared);
       if (window.marked) {
         return marked.parse(prepared);
       }
@@ -468,29 +469,80 @@ function App() {
         text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</pre>';
     },
 
+    // Split list items compressed onto one line by LLMs into separate lines.
+    // Handles: '- item1 * item2'  and  '1. step1 2. step2 3. step3'
+    _splitInlineListMarkers(text) {
+      const listStartRe = /^([ \t]*)([-*+]|\d+\.)[ \t]+/;
+      const unorderedSepRe = / (?<!\*)\*(?!\*) /g;
+      // ' N. ' where period is NOT followed by a digit (avoids decimals like 2.5)
+      const orderedSepRe = / \d+\.(?!\d) /g;
+      const lines = text.split('\n');
+      const out = [];
+      for (const line of lines) {
+        const m = listStartRe.exec(line);
+        if (m) {
+          const indent = m[1];
+          const isOrdered = /^[ \t]*\d+\./.test(line);
+          if (isOrdered) {
+            const parts = line.split(orderedSepRe);
+            if (parts.length > 1) {
+              parts.forEach((part, i) => {
+                out.push(i === 0 ? part : `${indent}${i + 1}. ${part.trimStart()}`);
+              });
+              continue;
+            }
+          } else {
+            const parts = line.split(unorderedSepRe);
+            if (parts.length > 1) {
+              out.push(parts[0]);
+              for (let i = 1; i < parts.length; i++) {
+                out.push(`${indent}* ${parts[i]}`);
+              }
+              continue;
+            }
+          }
+        }
+        out.push(line);
+      }
+      return out.join('\n');
+    },
+
     // marked.js (CommonMark) requires a blank line before a list block or GFM
     // table when it follows paragraph text; without it they are absorbed into
     // the paragraph and rendered as literal text with <br> separators.
-    // This preprocessor inserts the missing blank line.
+    // Also inserts an HTML comment between adjacent ul/ol blocks to prevent
+    // marked.js from merging them into a single list.
     _ensureListBlankLines(text) {
-      const listRe = /^[ \t]*(?:[-*+]|\d+\.)[ \t]+/;
+      const ulRe   = /^[ \t]*[-*+][ \t]+/;
+      const olRe   = /^[ \t]*\d+\.[ \t]+/;
       const tableRe = /^[ \t]*\|/;
       const lines = text.split('\n');
       const out = [];
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const prev = out.length ? out[out.length - 1] : '';
-        const isList = listRe.test(line);
+        const isUl   = ulRe.test(line);
+        const isOl   = olRe.test(line);
+        const isList  = isUl || isOl;
         const isTable = tableRe.test(line);
-        const prevIsList = listRe.test(prev);
+        const prevIsUl   = ulRe.test(prev);
+        const prevIsOl   = olRe.test(prev);
+        const prevIsList  = prevIsUl || prevIsOl;
         const prevIsTable = tableRe.test(prev);
         if (isList || isTable) {
           if (prev.trim() && !prevIsList && !prevIsTable) {
+            // Blank line before list/table when preceded by prose
+            out.push('');
+          } else if (prevIsList && ((isUl && prevIsOl) || (isOl && prevIsUl))) {
+            // List type switches (ul↔ol): insert invisible HTML comment so
+            // marked.js treats them as separate list blocks
+            out.push('');
+            out.push('<!-- -->');
             out.push('');
           }
         } else if (line.trim() && prevIsTable) {
-          // Table blocks need a closing blank line to prevent the next
-          // paragraph from being absorbed as an extra table row.
+          // Closing blank line after table to prevent next paragraph being
+          // absorbed as an extra table row
           out.push('');
         }
         out.push(line);

@@ -331,58 +331,130 @@ STYLE_PROMPTS: Dict[str, str] = {
 - 條列點數 {bullet_count}、濃縮度 {compression}／10、初學者友善度 {beginner_friendly}／10、圖像化程度 {visual}／10、重點力度 {takeaway_strength}／10。
 """ + _COMMON_RULES,
 
-    "question": """【思考流程】在開始改寫之前，請先在內部思考以下問題（不需要輸出）：
-① 依照原文邏輯，我應該設計哪幾個由淺入深的循序提問？
-② 如何在回答最後一個問題時，剛好收束本節核心重點？
+    "question": """【思考流程】在開始改寫之前，請先在內部思考以下四件事（不需要輸出）：
+① 本節讀者真正最想問的核心問題是什麼？（關鍵動機、方法、限制各有幾題？）
+② 問題的最佳排序：由「為什麼需要」→「怎麼做到」→「效果如何／有何限制」，遞進層次清晰嗎？
+③ 原文中哪些公式或數值是理解某問題答案不可或缺的？準備以 `> 公式：$...$` + 意涵說明嵌入對應答案。
+④ 最後一問的答案如何完美收束本節重點，讓讀者有「原來如此」的感受？
 思考完後，直接輸出改寫結果。
 
-問題驅動（提問引導 + 逐層拆解 + 收束答案）
+問題驅動（提問引導 + 逐層拆解 + 公式嵌入 + 收束答案）
 
 【任務目標】
-- 以提問與回答逐層建立理解。
+- 以 {question_count} 個由淺到深的提問，引導讀者逐層理解本節核心機制、動機與限制。
 
-【改寫原則】
-- 先問讀者真正會在意的問題，再回答。
-- 問題應能對應原文中的關鍵動機、方法、限制或結果。
-- 回答順序以「問題是什麼 → 為什麼困難 → 作者怎麼解 → 有什麼限制或結果」為主。
+【改寫單元規則】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 若某改寫單元僅包含單一段落或內容過少，可與相鄰合適單元合併（合併後須完整涵蓋原屬各單元之知識重點，不得縮減）。
+
+【問題設計原則】
+- 問題類型須多樣化，包含以下至少兩種：
+    - **動機型**（為什麼需要 X？現有方法為何不夠？）
+    - **機制型**（如何實現 X？關鍵設計是什麼？）
+    - **假設型**（如果不用 X，會發生什麼？）
+    - **比較型**（這和 Y 相比有何本質差異？）
+- 第一問須揭示本節的核心張力或動機，最後一問須恰好收束所有答案的核心重點。
+- **各節首問勿格式重複**：問句起頭請輪替（「為什麼…」「假設…」「想像…」「有沒有人嘗試過…」「如果你是工程師…」等），若非第 1 節，尤須與前序節首問句式差異化。
+- 每個問題須簡潔有力（一句話），讓讀者看到問題就有想往下讀的衝動。
+
+【答案撰寫原則】
+- 每題答案依序展開：**背景脈絡** → **核心機制** → **為何有效** → **限制或代價**（若有）。
+- 答案長度適中，不超過原文段落長度；必要時以條列補充細節，但主幹為連貫敘述。
+- 遇到設計取捨，主動說明「為何選這個而非替代方案、犧牲了什麼換來什麼」。
+
+【公式處理規則（必核）】
+- 原文中每個重要 LaTeX 公式，必須在對應問題的答案中出現，禁止僅提名稱而不呈現公式。
+- 格式：在回答中以區塊方式插入：
+    > 公式：$...$
+    （一句白話說明此式代表什麼、各符號意義）
+- 無關緊要的輔助式可略，但核心推導式及數值定義式必須保留。
 
 【輸出格式】
-- 核心提問（約 {question_count} 題）
-- 逐題回答（包含背景、方法拆解、限制與結果）
-- 最後總結
+正文依序如下，每題使用清楚標題：
 
-【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
-<!-- EVAL: 提問引導[有/無] | 解惑完整度[高/低] -->
-若為「無」或「低」，必須重新修改後再輸出。
+**Q1：[問題]**
+[答案 — 依序：背景脈絡 → 核心機制 → 為何有效 → 限制（若有）]
+
+**Q2：[問題]**
+[答案]
+
+…（共 {question_count} 題）
+
+**總結**
+一段話，整合所有問題的答案，收束本節核心重點，讓讀者帶走一個清晰的認識。
+
+【本節術語速查表與公式速查對照表（必附，不可省略）】
+- **位置**：兩表皆須在**本節改寫輸出**的末尾、EVAL 行**之前**；**每一節各自**附兩表。
+- **表一「本節術語速查」**：Markdown 表，欄位「術語｜一句白話」；僅列本節**新增或須獨立對照**之術語（含縮寫）；**禁止**整表留空或僅「無」敷衍；跨節已詳解者可極短註「見前節」。
+- **表二「本節公式速查」**：Markdown 表，欄位「公式（LaTeX 原文）｜意涵一句話」；針對本節**首次出現或語境有新角色**之 LaTeX 式；若本節無新公式，表中須標明並簡述本節與公式的銜接關係，**不可**省略此表。
+- **輸出順序**：正文（Q1…Qn + 總結）→ **表一** → **表二** → 最末一行 `<!-- EVAL: ... -->`。
+
+【自評機制】本節改寫完成後，必須在**本節輸出之最末一行**加上自評標記（**緊接兩表之後**），格式如下：
+<!-- EVAL: 提問引導[有/無] | 問題多樣性[高/低] | 公式保留[有/無] | 速查表檢核[通過/未通過] | 虛構[無/有] -->
+若任一項為「無」或「低」或「有（虛構）」或「未通過」，必須重新修改後再輸出。
+
+【跨節意識】
+- 首問句型不得與其他節高度雷同；術語不得無意義重複定義（跨節已詳解者，可極短引用「見前節」）。
 
 【風格參數】
 - 問題數量 {question_count}、好奇心強度 {curiosity}／10、拆解深度 {depth}／10、初學者友善度 {beginner_friendly}／10、收束力度 {closure_strength}／10。
 """ + _COMMON_RULES,
 
-    "log": """【思考流程】在開始改寫之前，請先在內部思考（不需要輸出）：
-① 這裡觀察到了什麼技術問題或工程挑戰？
-② 進行了哪些設計取捨（Trade-offs）？
-③ 調整後的具體結果是什麼？
+    "log": """【思考流程】在開始改寫之前，請先在內部思考以下四件事（不需要輸出）：
+① 本節的核心工程挑戰或研究問題是什麼？（用一句話定義問題域）
+② 涉及哪些設計取捨？選了什麼方案、放棄了哪些替代方案、理由為何？
+③ 原文中哪些公式、數值或量化指標是這個工程決策的核心依據？準備在對應的 [Decision] 或 [Result] 條目中以 `> 公式：$...$` 格式嵌入。
+④ 最終結果如何驗證或否定先前的設計假設？量化或定性的結論是什麼？
 思考完後，直接輸出改寫結果。
 
-實驗日誌（研究過程記錄、工程師視角）
+實驗日誌（工程師視角 + 決策追蹤 + 公式佐證 + 結果驗證）
 
 【任務目標】
-- 用工程師觀點客觀描述研究流程、觀察與決策取捨，有如一份系統開發除錯紀錄。
+- 以 {log_count} 則日誌條目，用工程師視角客觀記錄本節的技術挑戰、設計決策與結果驗證，如同可追蹤的研發日誌。
+
+【改寫單元規則】
+- 以 subsection 為改寫單元（若無 subsection 則以 section 為單元）。
+- 若某改寫單元僅包含單一段落或內容過少，可與相鄰合適單元合併（合併後須完整涵蓋原屬各單元之知識重點，不得縮減）。
+
+【日誌條目結構】
+每則日誌條目可視原文資訊密度，選用以下 2–4 個標籤，**依序**組合：
+
+- **[Observation]**（觀察）：客觀描述發現的問題、現象或量測到的瓶頸；禁止在此提出解法。
+- **[Hypothesis]**（假設）：基於觀察提出設計假設（選用；若原文明確說明動機則必寫）。
+- **[Decision]**（決策）：說明採用的方案；**必須**列出至少一個放棄的替代方案及理由；若原文有公式佐證此決策，在此嵌入。
+- **[Result]**（結果）：量化或定性的結果；說明此結果**是否驗證**了 [Hypothesis] 的假設；若有改善幅度或指標數值，必須記錄。
+
+格式範例：
+**Log Entry N — [條目標題]**
+[Observation] ...
+[Decision] ...（放棄 X 方案，因為 ...；採用 Y 方案，因為 ...）
+[Result] ...（指標提升 Z%，驗證了假設 ...）
 
 【改寫原則】
-- 強調「發現問題 → 方案取捨 → 進行調整 → 得到結果」。
-- 語氣必須客觀、專業、實事求是，像可追蹤的研發紀錄。
-- 主動說明「放棄了哪些次佳方案」以及「為什麼採用目前的設計」。
-- 重視細節與證據，若原文提及數據或特徵，應明確記錄。
+- 語氣客觀、專業、實事求是；禁用故事化口吻或情緒化評語。
+- 主動說明「放棄了哪些次佳方案」及「為何採用目前設計」；若原文未交代，寫「原文未說明替代方案」。
+- 數值與指標必須忠實呈現，不可省略或模糊化。
+- **各節首則 [Observation] 的開場句式輪替**，避免多節連續以相同語式起頭（如「本節觀察到…」「研究者發現…」「實驗顯示…」「一個關鍵問題是…」等輪替使用）。
 
-【輸出格式】
-- 以 {log_count} 篇日誌或觀察報告的形式產出。
-- 標示如 [Observation] (觀察)、[Decision] (決策取捨)、[Result] (結果) 等明確段落。
+【公式處理規則（必核）】
+- 原文中每個重要 LaTeX 公式，必須在對應的 [Decision] 或 [Result] 條目中出現，禁止僅提名稱而不呈現公式。
+- 格式：在條目中以區塊插入：
+    > 公式：$...$
+    （一句話說明此式在決策或結果中扮演的角色）
+- 輔助式可略，但核心損失函式、獎勵函數、評估指標定義式必須保留。
 
-【自評機制】改寫完成後，必須在輸出結尾加上一行自評標記，格式如下：
-<!-- EVAL: 問題觀察[有/無] | 取捨分析[有/無] | 客觀度[符合/不符合] -->
-若有任何「無」或「不符合」，必須重新修改後再輸出。
+【本節術語速查表與公式速查對照表（必附，不可省略）】
+- **位置**：兩表皆須在**本節改寫輸出**的末尾、EVAL 行**之前**；**每一節各自**附兩表。
+- **表一「本節術語速查」**：Markdown 表，欄位「術語｜一句工程定義」；僅列本節**新增或須獨立對照**之術語（含縮寫）；**禁止**整表留空或僅「無」敷衍；跨節已詳解者可極短「見前節」。
+- **表二「本節公式速查」**：Markdown 表，欄位「公式（LaTeX 原文）｜工程意涵一句話」；針對本節**首次出現或在決策中有實質角色**之 LaTeX 式；若本節無新公式，表中須標明並簡述本節與公式的銜接關係，**不可**省略此表。
+- **輸出順序**：日誌正文（Log Entry 1 … N）→ **表一** → **表二** → 最末一行 `<!-- EVAL: ... -->`。
+
+【自評機制】本節改寫完成後，必須在**本節輸出之最末一行**加上自評標記（**緊接兩表之後**），格式如下：
+<!-- EVAL: 問題觀察[有/無] | 取捨分析[有/無] | 公式保留[有/無] | 速查表檢核[通過/未通過] | 虛構[無/有] -->
+若任一項為「無」或「有（虛構）」或「未通過」，必須重新修改後再輸出。
+
+【跨節意識】
+- 各節首則 [Observation] 的開場句型不得與其他節高度雷同；術語不得無意義重複定義（跨節已詳解者可極短「見前節」）。
 
 【風格參數】
 - 日誌數量 {log_count}、客觀度 {objectivity}／10、細節度 {detail_level}／10、取捨聚焦度 {tradeoff_focus}／10。
@@ -811,6 +883,50 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             if phase_reporter:
                 phase_reporter("懶人包改寫總稽核與修正…")
             _post_rewrite_lazy_audit(
+                rendered_sections,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                llm_failures=llm_failures,
+            )
+        elif style == "question":
+            post_rewrite_audit_executed = True
+            if phase_reporter:
+                phase_reporter("問題驅動改寫總稽核與修正…")
+            _post_rewrite_question_audit(
+                rendered_sections,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                llm_failures=llm_failures,
+            )
+        elif style == "log":
+            post_rewrite_audit_executed = True
+            if phase_reporter:
+                phase_reporter("實驗日誌改寫總稽核與修正…")
+            _post_rewrite_log_audit(
                 rendered_sections,
                 primary_model=primary_model,
                 fallback_chain=fallback_chain,
@@ -2640,6 +2756,319 @@ def _post_rewrite_lazy_audit(
                 )
 
 
+def _post_rewrite_question_audit(
+    rendered_sections: List[Dict[str, Any]],
+    *,
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    llm_failures: List[str],
+) -> None:
+    """One LLM audit pass after all sections: fix or rewrite sections that fail audit (question only)."""
+    if not rendered_sections:
+        return
+
+    openings_block, batches = _post_rewrite_audit_openings_and_batches(rendered_sections)
+    audit_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+
+    for bi, batch in enumerate(batches, start=1):
+        payload = [
+            {
+                "index": int(row.get("index", 0)),
+                "title": str(row.get("title", "")),
+                "source_text": str(row.get("source_text", "")),
+                "story_text": str(row.get("story_text", "")),
+            }
+            for row in batch
+        ]
+        batch_json = json.dumps(payload, ensure_ascii=False)
+        prompt = f"""你是論文「問題驅動」改稿的總編輯稽核員。以下 JSON 陣列是本批 {len(batch)} 節的原文 source_text 與改稿 story_text（Markdown）。
+
+【全篇各節首問摘錄（供比對首問句型是否與他節過度重複）】
+{openings_block}
+
+【稽核標準（逐節檢查）】
+1. 忠於原文：無捏造數據／實驗／引用；無與原文明顯矛盾。
+2. 公式保留（必核）：原文中所有 LaTeX 公式（$...$、$$...$$、\\(...\\)、\\[...\\] 等）及具體數值範例，必須出現在對應問題的答案中，以 `> 公式：$...$` 區塊形式呈現並附意涵說明；**不可無故消失**。
+3. Q&A 結構：改稿須包含 **Q1～Qn**（明確標題）→ 各題答案（背景脈絡 → 核心機制 → 為何有效 → 限制）→ **總結** 段落；不得退化成純散文或條列式懶人包。
+4. 問題多樣性：問題類型須涵蓋至少兩種（動機型、機制型、假設型、比較型）；首問句型不得與其他節高度雷同。
+5. **本節術語速查表（必核）**：在**該節** `story_text` 的**節末**（EVAL 行之前），須有標題清楚之 Markdown 表格（欄位「術語｜一句白話」）；涵蓋本節應獨立對照之術語；**禁止**整表留空或僅「無」敷衍；跨節已詳解者可極短「見前節」。
+6. **本節公式速查對照表（必核）**：緊接術語表之後（EVAL 行之前），須有第二則 Markdown 表格（欄位「公式（LaTeX 原文）｜意涵一句話」）；若本節無新公式，表中須標明並簡述銜接關係，**不可**省略此表。
+7. 跨節：首問句型不得與其他節高度雷同；術語不得無意義重複定義。
+8. 自評行：**該節** `story_text` **最末一行**須為（括號內僅能有/無/高/低/通過/未通過）：
+<!-- EVAL: 提問引導[有/無] | 問題多樣性[高/低] | 公式保留[有/無] | 速查表檢核[通過/未通過] | 虛構[無/有] -->
+9. 若某節已完全符合，passes 為 true，issues 空陣列，replacement_story_markdown 為 null。
+
+【本批待審 JSON】
+{batch_json}
+
+請只輸出一個 JSON 物件（不要 markdown code fence），格式嚴格如下：
+{{"results":[{{"index":<整數>,"passes":true,"issues":[],"replacement_story_markdown":null}},{{"index":<整數>,"passes":false,"issues":["..."],"replacement_story_markdown":"<若 passes 為 false，請給完整可取代該節的 Markdown 改稿全文；若 passes 為 true 則 null>"}}]}}
+
+規則：passes=false 時，replacement_story_markdown 必須是非空字串，且須為**該單節**完整改稿（含 Q1～Qn、總結、**兩表**、**該節**最末一行 EVAL），可直接覆蓋該節之 story_text。"""
+
+        try:
+            raw, _used = _complete_prompt_with_model_fallback(
+                prompt=prompt,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=audit_timeout,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+            )
+        except Exception as exc:
+            llm_failures.append(
+                f"post_rewrite_question_audit batch {bi}: {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        parsed = _try_parse_rewrite_payload(raw) or {}
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            llm_failures.append(f"post_rewrite_question_audit batch {bi}: invalid JSON shape")
+            continue
+
+        by_index = {int(row.get("index", 0)): row for row in rendered_sections}
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = int(item.get("index", 0))
+            row = by_index.get(idx)
+            if not row:
+                continue
+            passes = bool(item.get("passes", True))
+            issues = item.get("issues") or []
+            if not isinstance(issues, list):
+                issues = []
+            replacement = item.get("replacement_story_markdown")
+            if passes:
+                continue
+            issues_txt = "; ".join(str(x) for x in issues if str(x).strip())
+            if isinstance(replacement, str) and replacement.strip():
+                row["story_text"] = replacement.strip()
+                row["terms"] = []
+                row["formula_explanations"] = []
+                llm_failures.append(
+                    f"post_rewrite_question_audit: section {idx} revised in batch {bi} ({issues_txt or 'see replacement'})"
+                )
+                continue
+
+            title = str(row.get("title", ""))
+            source = str(row.get("source_text", ""))
+            extra = (
+                "總編輯稽核未通過，請依下列問題重寫本節（須完整符合問題驅動格式：Q1～Qn 標題問答、"
+                "總結段落、**本節末尾兩表**（術語速查＋公式速查）、**本節最末一行** EVAL 五欄）：\n"
+                + (issues_txt or "未註明具體問題，請自行對照稽核標準全面檢查。")
+            )
+            fixed, terms, fexps, ok, err, _um = _rewrite_section(
+                section_title=title,
+                source_text=source,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style="question",
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+                section_index=idx,
+                section_count=len(rendered_sections),
+                introduced_concepts=None,
+                extra_instruction=extra,
+            )
+            if ok and fixed.strip():
+                row["story_text"] = fixed.strip()
+                row["terms"] = terms or []
+                row["formula_explanations"] = fexps or []
+                llm_failures.append(
+                    f"post_rewrite_question_audit: section {idx} re-rewritten after audit batch {bi} "
+                    f"({issues_txt or 'no replacement from audit'})"
+                )
+            elif err:
+                llm_failures.append(
+                    f"post_rewrite_question_audit: section {idx} re-rewrite failed: {err}"
+                )
+
+
+def _post_rewrite_log_audit(
+    rendered_sections: List[Dict[str, Any]],
+    *,
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    llm_failures: List[str],
+) -> None:
+    """One LLM audit pass after all sections: fix or rewrite sections that fail audit (log only)."""
+    if not rendered_sections:
+        return
+
+    openings_block, batches = _post_rewrite_audit_openings_and_batches(rendered_sections)
+    audit_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+
+    for bi, batch in enumerate(batches, start=1):
+        payload = [
+            {
+                "index": int(row.get("index", 0)),
+                "title": str(row.get("title", "")),
+                "source_text": str(row.get("source_text", "")),
+                "story_text": str(row.get("story_text", "")),
+            }
+            for row in batch
+        ]
+        batch_json = json.dumps(payload, ensure_ascii=False)
+        prompt = f"""你是論文「實驗日誌」改稿的總編輯稽核員。以下 JSON 陣列是本批 {len(batch)} 節的原文 source_text 與改稿 story_text（Markdown）。
+
+【全篇各節首 Observation 開場摘錄（供比對是否與他節句型過度雷同）】
+{openings_block}
+
+【稽核標準（逐節檢查）】
+1. 忠於原文：無捏造數據／實驗／引用；無與原文明顯矛盾。
+2. 公式保留（必核）：原文中所有 LaTeX 公式（$...$、$$...$$、\\(...\\)、\\[...\\] 等）及具體數值，必須出現在對應 [Decision] 或 [Result] 條目中，以 `> 公式：$...$` 區塊形式呈現並附工程意涵一句話；**不可無故消失**。
+3. 日誌結構（必核）：每節須包含 **Log Entry N — [標題]** 格式的條目；每條目至少包含 [Observation] 與 [Decision] 標籤；[Decision] **必須**提及至少一個被放棄的替代方案及理由；[Result] 須說明結果是否驗證假設。
+4. 取捨分析（必核）：每條 [Decision] 須明確交代「放棄 X 方案理由」+ 「採用 Y 方案理由」；若原文未交代，須寫「原文未說明替代方案」。
+5. **本節術語速查表（必核）**：在**該節** `story_text` 的**節末**（EVAL 行之前），須有標題清楚之 Markdown 表格（欄位「術語｜一句工程定義」）；涵蓋本節應獨立對照之術語；**禁止**整表留空或僅「無」敷衍；跨節已詳解者可極短「見前節」。
+6. **本節公式速查對照表（必核）**：緊接術語表之後（EVAL 行之前），須有第二則 Markdown 表格（欄位「公式（LaTeX 原文）｜工程意涵一句話」）；若本節無新公式，表中須標明並簡述銜接關係，**不可**省略此表。
+7. 跨節：各節首 [Observation] 開場句型不得與其他節高度雷同；術語不得無意義重複定義（跨節已詳解者可極短「見前節」）。
+8. 自評行：**該節** `story_text` **最末一行**須為（括號內僅能有/無/通過/未通過）：
+<!-- EVAL: 問題觀察[有/無] | 取捨分析[有/無] | 公式保留[有/無] | 速查表檢核[通過/未通過] | 虛構[無/有] -->
+9. 若某節已完全符合，passes 為 true，issues 空陣列，replacement_story_markdown 為 null。
+
+【本批待審 JSON】
+{batch_json}
+
+請只輸出一個 JSON 物件（不要 markdown code fence），格式嚴格如下：
+{{"results":[{{"index":<整數>,"passes":true,"issues":[],"replacement_story_markdown":null}},{{"index":<整數>,"passes":false,"issues":["..."],"replacement_story_markdown":"<若 passes 為 false，請給完整可取代該節的 Markdown 改稿全文；若 passes 為 true 則 null>"}}]}}
+
+規則：passes=false 時，replacement_story_markdown 必須是非空字串，且須為**該單節**完整改稿（含 Log Entry 1…N、**兩表**、**該節**最末一行 EVAL），可直接覆蓋該節之 story_text。"""
+
+        try:
+            raw, _used = _complete_prompt_with_model_fallback(
+                prompt=prompt,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=audit_timeout,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+            )
+        except Exception as exc:
+            llm_failures.append(
+                f"post_rewrite_log_audit batch {bi}: {type(exc).__name__}: {exc}"
+            )
+            continue
+
+        parsed = _try_parse_rewrite_payload(raw) or {}
+        results = parsed.get("results")
+        if not isinstance(results, list):
+            llm_failures.append(f"post_rewrite_log_audit batch {bi}: invalid JSON shape")
+            continue
+
+        by_index = {int(row.get("index", 0)): row for row in rendered_sections}
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = int(item.get("index", 0))
+            row = by_index.get(idx)
+            if not row:
+                continue
+            passes = bool(item.get("passes", True))
+            issues = item.get("issues") or []
+            if not isinstance(issues, list):
+                issues = []
+            replacement = item.get("replacement_story_markdown")
+            if passes:
+                continue
+            issues_txt = "; ".join(str(x) for x in issues if str(x).strip())
+            if isinstance(replacement, str) and replacement.strip():
+                row["story_text"] = replacement.strip()
+                row["terms"] = []
+                row["formula_explanations"] = []
+                llm_failures.append(
+                    f"post_rewrite_log_audit: section {idx} revised in batch {bi} ({issues_txt or 'see replacement'})"
+                )
+                continue
+
+            title = str(row.get("title", ""))
+            source = str(row.get("source_text", ""))
+            extra = (
+                "總編輯稽核未通過，請依下列問題重寫本節（須完整符合實驗日誌格式：Log Entry 1…N、"
+                "各含 [Observation]/[Decision]/[Result] 標籤、[Decision] 含替代方案取捨說明、"
+                "**本節末尾兩表**（術語速查＋公式速查）、**本節最末一行** EVAL 五欄）：\n"
+                + (issues_txt or "未註明具體問題，請自行對照稽核標準全面檢查。")
+            )
+            fixed, terms, fexps, ok, err, _um = _rewrite_section(
+                section_title=title,
+                source_text=source,
+                model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                style="log",
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=fallback_timeout_seconds,
+                section_index=idx,
+                section_count=len(rendered_sections),
+                introduced_concepts=None,
+                extra_instruction=extra,
+            )
+            if ok and fixed.strip():
+                row["story_text"] = fixed.strip()
+                row["terms"] = terms or []
+                row["formula_explanations"] = fexps or []
+                llm_failures.append(
+                    f"post_rewrite_log_audit: section {idx} re-rewritten after audit batch {bi} "
+                    f"({issues_txt or 'no replacement from audit'})"
+                )
+            elif err:
+                llm_failures.append(
+                    f"post_rewrite_log_audit: section {idx} re-rewrite failed: {err}"
+                )
+
+
 def _normalize_style(style: Any) -> str:
     normalized = str(style or "").strip().lower()
     if normalized == "podcast":
@@ -3265,6 +3694,8 @@ def _build_story_html_document(
         toc_items.append(f'<li><a href="#{section_id}">Section {idx} - {safe_title}</a></li>')
 
         story_html = _text_to_html_blocks(str(section.get("story_text", "")))
+        if style == "lazy":
+            story_html = _normalize_lazy_section_headings(story_html)
 
         # Build terms table
         terms = section.get("terms", [])
@@ -3525,6 +3956,42 @@ def _build_story_html_document(
         .term-table tr:nth-child(even) {{
             background: #fafafa;
         }}
+        /* ── 正文 Markdown 清單與表格 ─────────────────────────────────────── */
+        ul, ol {{
+            padding-left: 1.6em;
+            margin: 10px 0;
+        }}
+        ul {{ list-style-type: disc; }}
+        ol {{ list-style-type: decimal; }}
+        ul ul, ul ol {{ list-style-type: circle; }}
+        ol ol, ol ul {{ list-style-type: lower-alpha; }}
+        li {{ margin: 4px 0; }}
+        .story-block ul, .story-block ol,
+        .col-orig ul, .col-orig ol,
+        .col-plain ul, .col-plain ol {{
+            padding-left: 1.6em;
+            margin: 8px 0;
+        }}
+        /* 正文一般 table（非 .term-table） */
+        table:not(.term-table) {{
+            border-collapse: collapse;
+            width: auto;
+            max-width: 100%;
+            margin: 12px 0;
+        }}
+        table:not(.term-table) th,
+        table:not(.term-table) td {{
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            text-align: left;
+        }}
+        table:not(.term-table) thead tr {{
+            background: #f1f5f9;
+            font-weight: 700;
+        }}
+        table:not(.term-table) tbody tr:nth-child(even) {{
+            background: #fafafa;
+        }}
     </style>
 </head>
 <body>
@@ -3546,6 +4013,56 @@ def _build_story_html_document(
 </html>"""
 
 
+def _split_inline_list_markers(text: str) -> str:
+    """Split list items compressed onto one line by LLMs into separate lines.
+
+    LLMs sometimes output multiple list items on a single line:
+      - Unordered:  '- item1 * item2 * item3'  (separated by ' * ')
+      - Ordered:    '1. step1 2. step2 3. step3' (separated by ' N. ')
+
+    Because the extra markers are not at the start of a line the Markdown
+    parser treats them as inline text and renders everything inside a single
+    <li>.  This pre-processor splits such lines so each item gets its own line.
+
+    This runs AFTER _protect_latex, so '*' inside math expressions has already
+    been replaced by LATEXPH placeholders and will not be mistakenly split.
+    Plain ' * ' (space-single-asterisk-space) is therefore always a list
+    separator on a list-item line, never a bold/italic marker.
+
+    For ordered lists, ' N. ' is only split when the period is NOT followed
+    by another digit (to avoid splitting decimal numbers like '2.5x').
+    """
+    lines = text.split("\n")
+    result: List[str] = []
+    list_start_re = re.compile(r"^([ \t]*)([-*+]|\d+\.)[ \t]+")
+    # ' * ' where the '*' is not flanked by another '*' (avoids bold **)
+    unordered_sep_re = re.compile(r" (?<!\*)\*(?!\*) ")
+    # ' N. ' where period is NOT followed by a digit (avoids decimals like 2.5)
+    ordered_sep_re = re.compile(r" \d+\.(?!\d) ")
+
+    for line in lines:
+        m = list_start_re.match(line)
+        if m:
+            indent = m.group(1)
+            # Determine list type of this line to pick the right split marker
+            is_ordered = bool(re.match(r"^[ \t]*\d+\.", line))
+            if is_ordered:
+                parts = ordered_sep_re.split(line)
+                if len(parts) > 1:
+                    for i, part in enumerate(parts):
+                        result.append(f"{indent}{i + 1}. {part.lstrip()}" if i > 0 else part)
+                    continue
+            else:
+                parts = unordered_sep_re.split(line)
+                if len(parts) > 1:
+                    result.append(parts[0])
+                    for part in parts[1:]:
+                        result.append(f"{indent}* {part}")
+                    continue
+        result.append(line)
+    return "\n".join(result)
+
+
 def _ensure_list_blank_lines(text: str) -> str:
     """Insert a blank line before markdown list items and table rows not already preceded by one.
 
@@ -3554,32 +4071,201 @@ def _ensure_list_blank_lines(text: str) -> str:
     preceded by non-list/non-table text.  This pre-processor guarantees the
     blank line so that lists render as ``<ul>/<ol><li>`` and tables render as
     ``<table>`` instead of literal text with ``<br>`` separators.
+
+    Extra rule: a blank line is also inserted when the list type changes
+    between unordered (- / * / +) and ordered (1.) on consecutive lines.
+    Without this, the Python markdown library absorbs the ordered items into
+    the preceding unordered list block (and vice-versa).
     """
     lines = text.split("\n")
     result: List[str] = []
+    ul_re = re.compile(r"^[ \t]*[-*+][ \t]+")
+    ol_re = re.compile(r"^[ \t]*\d+\.[ \t]+")
     list_re = re.compile(r"^[ \t]*(?:[-*+]|\d+\.)[ \t]+")
     table_re = re.compile(r"^[ \t]*\|")
     for line in lines:
         prev = result[-1] if result else ""
-        is_list = bool(list_re.match(line))
+        is_ul = bool(ul_re.match(line))
+        is_ol = bool(ol_re.match(line))
+        is_list = is_ul or is_ol
         is_table = bool(table_re.match(line))
-        prev_is_list = bool(list_re.match(prev))
+        prev_is_ul = bool(ul_re.match(prev))
+        prev_is_ol = bool(ol_re.match(prev))
+        prev_is_list = prev_is_ul or prev_is_ol
         prev_is_table = bool(table_re.match(prev))
         if is_list or is_table:
-            # Blank line needed before list/table if previous is non-blank, non-compatible
             if prev.strip() and not prev_is_list and not prev_is_table:
+                # Blank line needed: previous line is non-blank prose/heading
+                result.append("")
+            elif prev_is_list and (
+                (is_ul and prev_is_ol) or (is_ol and prev_is_ul)
+            ):
+                # List type switches (ul↔ol): Python markdown merges adjacent
+                # different-type lists even with a blank line.  An invisible
+                # HTML comment acts as a hard separator that forces the parser
+                # to start a fresh list block.
+                result.append("")
+                result.append("<!-- -->")
                 result.append("")
         elif line.strip() and prev_is_table:
-            # Table blocks need a closing blank line; without it the next
-            # paragraph text is absorbed as an extra table row.
+            # Table blocks need a closing blank line to avoid next paragraph
+            # text being absorbed as an extra table row.
             result.append("")
         result.append(line)
     return "\n".join(result)
 
 
+def _normalize_lazy_section_headings(html: str) -> str:
+    """Normalize lazy-style section headings to consistent <h3> elements.
+
+    The LLM inconsistently renders the six structural labels (一句話結論,
+    背景／問題, 重點條列, 公式速查, 限制或注意事項, 一句帶走重點) as well as
+    the two trailing tables (本節術語速查, 本節公式速查) in three different ways:
+
+    * ``<h3>2. 背景與問題</h3>``   — h3, optional number prefix, variant name
+    * ``<p><strong>重點條列</strong></p>``  — bold inside paragraph
+    * ``<p>一句話結論<br />content…</p>``  — heading + content fused in one <p>
+
+    All three are normalised to ``<h3>canonical_heading</h3>`` and, when content
+    follows the heading inside the same ``<p>``, that content is split into a
+    separate ``<p>`` element.
+    """
+    # (regex_pattern, canonical_heading) — ordered longest/most-specific first
+    # to avoid partial matches (本節公式速查 must precede 公式速查).
+    HEADING_MAP: List[Tuple[str, str]] = [
+        (r"本節公式速查(?:對照)?(?:表)?", "本節公式速查"),
+        (r"本節術語速查(?:表)?", "本節術語速查"),
+        (r"限制或注意事項", "限制或注意事項"),
+        (r"(?:[（(]\s*選用\s*[）)]\s*)?公式速查", "公式速查"),
+        (r"重點條列", "重點條列"),
+        (r"背景[／/]問題|背景與問題", "背景／問題"),
+        (r"一句(?:話)?帶走重點", "一句帶走重點"),
+        (r"一句話結論", "一句話結論"),
+    ]
+
+    # Common optional prefix fragments: "1. ", "（1）", "1、", "表一：", "表二：" …
+    _NUM_PFX = (
+        r"(?:"
+        r"\d+\s*[\.、．]\s*"           # "1. " / "1、"
+        r"|[（(]\d+[）)]\s*"           # "（1）"
+        r"|表[一二三四五六七八九十][：:]\s*"  # "表一：" / "表二："
+        r")?"
+    )
+    # Optional <strong> open/close
+    _SO = r"(?:<strong>)?"
+    _SC = r"(?:</strong>)?"
+
+    for pattern, canonical in HEADING_MAP:
+        h3_tag = f"<h3>{canonical}</h3>"
+        # Wrap pattern in a non-capturing group so any | inside the pattern
+        # does NOT leak out and create unintended alternations in the full regex.
+        grp = f"(?:{pattern})"
+
+        # ── Case 1: <h3> variant ─────────────────────────────────────────────
+        # Handles:  <h3>2. 背景與問題</h3>  <h3>（選用）公式速查</h3>
+        h3_re = re.compile(
+            r"<h3>\s*" + _NUM_PFX + _SO + r"\s*"
+            + grp
+            + r"\s*[：:]?\s*" + _SC + r"\s*</h3>",
+            re.DOTALL,
+        )
+        html = h3_re.sub(h3_tag, html)
+
+        # ── Case 2: <p> containing ONLY the heading (no content after <br>) ──
+        # Handles:  <p><strong>重點條列</strong></p>   <p>重點條列：</p>
+        p_only_re = re.compile(
+            r"<p>\s*" + _NUM_PFX + _SO + r"\s*"
+            + grp
+            + r"\s*[：:]?\s*" + _SC + r"\s*</p>",
+            re.DOTALL,
+        )
+        html = p_only_re.sub(h3_tag, html)
+
+        # ── Case 3: <p> with heading then <br> then content ─────────────────
+        # Handles:  <p><strong>一句話結論</strong><br />content…</p>
+        #           <p>背景／問題：<br />  longer text…</p>
+        p_br_re = re.compile(
+            r"<p>\s*" + _NUM_PFX + _SO + r"\s*"
+            + grp
+            + r"\s*[：:]?\s*" + _SC + r"\s*<br\s*/?>\s*"
+            + r"((?:(?!</p>).)+)"   # captured trailing content
+            + r"</p>",
+            re.DOTALL,
+        )
+        html = p_br_re.sub(
+            lambda m, _h3=h3_tag: _h3 + "\n<p>" + m.group(1).strip() + "</p>",
+            html,
+        )
+
+        # ── Case 4: <p> with heading + colon (inside or outside <strong>) ───
+        # then content WITHOUT <br />.
+        # Handles:  <p><strong>一句話結論</strong>：content…</p>
+        #           <p><strong>一句帶走重點：</strong> content…</p>
+        # The colon may appear before </strong> (case A) or after (case B).
+        _colon_before_sc = r"\s*[：:]\s*" + _SC   # heading：</strong>
+        _colon_after_sc = _SC + r"\s*[：:]"        # </strong>：
+        p_inline_re = re.compile(
+            r"<p>\s*" + _NUM_PFX + _SO + r"\s*"
+            + grp
+            + r"(?:" + _colon_before_sc + r"|" + _colon_after_sc + r")\s*"
+            + r"(.+?)"
+            + r"</p>",
+            re.DOTALL,
+        )
+        html = p_inline_re.sub(
+            lambda m, _h3=h3_tag: _h3 + "\n<p>" + m.group(1).strip() + "</p>",
+            html,
+        )
+
+    return html
+
+
+def _split_multi_inline_math_paragraph(html: str) -> str:
+    """Split <p> blocks containing multiple inline-math spans into one <p> per formula.
+
+    The lazy (and other) styles output "公式速查" paragraphs where each entry is
+    ``<span class="math inline">formula</span> ← explanation``.  When 2+ entries
+    are crammed into one ``<p>`` they render without any line break between them.
+    This post-processor splits such paragraphs so each formula-explanation pair
+    gets its own ``<p>`` element.
+
+    Trigger condition: ``<p>`` contains 2+ ``<span class="math inline">`` AND
+    at least one ``←`` character (formula-with-explanation pattern).
+    """
+    _P_RE = re.compile(r"<p>((?:(?!</p>).)*)</p>", re.DOTALL)
+    _MATH_SPAN = '<span class="math inline">'
+
+    def _process(m: re.Match) -> str:
+        inner = m.group(1)
+        if inner.count(_MATH_SPAN) < 2 or "←" not in inner:
+            return m.group(0)
+
+        # Separate the header (text before the first math span) from formula entries
+        first_span_idx = inner.find(_MATH_SPAN)
+        header = inner[:first_span_idx].strip()
+        # Strip trailing <br /> that nl2br inserts after the header label
+        header = re.sub(r"<br\s*/?>\s*$", "", header).strip()
+
+        formula_block = inner[first_span_idx:]
+        # Split at every new math span boundary (each becomes its own entry)
+        parts = re.split(r"(?=<span class=\"math inline\">)", formula_block)
+
+        result: List[str] = []
+        if header:
+            result.append(f"<p>{header}</p>")
+        for part in parts:
+            part = part.strip()
+            if part:
+                result.append(f"<p>{part}</p>")
+        return "\n".join(result)
+
+    return _P_RE.sub(_process, html)
+
+
 def _text_to_html_blocks(text: str) -> str:
     protected, formulas = _protect_latex(text)
     markdown_input = _inject_display_formula_blocks(protected, formulas)
+    markdown_input = _split_inline_list_markers(markdown_input)
     markdown_input = _ensure_list_blank_lines(markdown_input)
     rendered = markdown.markdown(
         markdown_input,
@@ -3592,6 +4278,7 @@ def _text_to_html_blocks(text: str) -> str:
         restored,
         flags=re.DOTALL,
     )
+    restored = _split_multi_inline_math_paragraph(restored)
     return "\n".join(f"            {line}" for line in restored.splitlines())
 
 
