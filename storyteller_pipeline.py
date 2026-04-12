@@ -3676,6 +3676,17 @@ STYLE_DISPLAY_NAMES: Dict[str, str] = {
     "log":         "實驗日誌版本",
 }
 
+# Section-level block heading shown above each rewritten unit in the story HTML.
+STYLE_BLOCK_LABELS: Dict[str, str] = {
+    "storyteller": "📖 說書人改寫",
+    "blog":        "📝 科普部落格改寫",
+    "professor":   "🎓 課堂講義改寫",
+    "fairy":       "🧚 童話故事改寫",
+    "lazy":        "⚡ 懶人包改寫",
+    "question":    "❓ 問題驅動改寫",
+    "log":         "🔬 實驗日誌改寫",
+}
+
 
 def _build_story_html_document(
     *,
@@ -3685,6 +3696,9 @@ def _build_story_html_document(
     model: str,
     style: str = DEFAULT_STYLE,
 ) -> str:
+    block_label = html.escape(
+        STYLE_BLOCK_LABELS.get(style, "📖 改寫內容")
+    )
     toc_items: List[str] = []
     section_items: List[str] = []
     for section in rendered_sections:
@@ -3766,7 +3780,7 @@ def _build_story_html_document(
     <section id="{section_id}">
         <h2>Section {idx} - {safe_title}</h2>
         <div class="story-block">
-            <h3>📖 故事化改寫</h3>
+            <h3>{block_label}</h3>
 {story_html}
         </div>
         {formula_html}
