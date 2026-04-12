@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viva vlm-guided instruction-based video editing with reward optimization - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        /* 雙欄並列（說書人風格）*/
+        .dual-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .dual-col { grid-template-columns: 1fr; }
+        }
+        .col-orig, .col-plain {
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .col-orig {
+            background: #f1f5f9;
+            border-left: 4px solid #94a3b8;
+            color: #475569;
+            font-size: 0.93em;
+        }
+        .col-plain {
+            background: #ffffff;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        .col-label {
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+        /* ── 正文 Markdown 清單與表格 ─────────────────────────────────────── */
+        ul, ol {
+            padding-left: 1.6em;
+            margin: 10px 0;
+        }
+        ul { list-style-type: disc; }
+        ol { list-style-type: decimal; }
+        ul ul, ul ol { list-style-type: circle; }
+        ol ol, ol ul { list-style-type: lower-alpha; }
+        li { margin: 4px 0; }
+        .story-block ul, .story-block ol,
+        .col-orig ul, .col-orig ol,
+        .col-plain ul, .col-plain ol {
+            padding-left: 1.6em;
+            margin: 8px 0;
+        }
+        /* 正文一般 table（非 .term-table） */
+        table:not(.term-table) {
+            border-collapse: collapse;
+            width: auto;
+            max-width: 100%;
+            margin: 12px 0;
+        }
+        table:not(.term-table) th,
+        table:not(.term-table) td {
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            text-align: left;
+        }
+        table:not(.term-table) thead tr {
+            background: #f1f5f9;
+            font-weight: 700;
+        }
+        table:not(.term-table) tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+        /* ── Log 風格：Entry 標題與 tag 標籤 ──────────────────────────────── */
+        .log-entry-title strong {
+            display: block;
+            font-size: 1.05em;
+            color: #1e3a5f;
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+            margin: 20px 0 4px;
+        }
+        .log-tag {
+            margin: 12px 0 2px;
+            padding: 0;
+        }
+        .log-tag span {
+            display: inline-block;
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 2px 10px;
+            border-radius: 4px;
+            color: #fff;
+        }
+        .log-tag-observation span { background: #0369a1; }
+        .log-tag-hypothesis  span { background: #7c3aed; }
+        .log-tag-decision    span { background: #b45309; }
+        .log-tag-result      span { background: #15803d; }
+        .log-tag + p {
+            margin-top: 4px;
+            border-left: 3px solid #e2e8f0;
+            padding-left: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 Viva vlm-guided instruction-based video editing with reward optimization</h1>
+    <div class="meta">
+        <strong>懶人包版本</strong><br>
+        Source PDF: Viva_vlm-guided_instruction-based_video_editing_with_reward_optimization.pdf<br>
+        Model: models/gemini-3.1-flash-lite-preview (partial fallback: MiniMax-M2.5)<br>
+        Generated at (UTC): 2026-04-12T05:57:27.932151+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - Abstract</a></li>
+<li><a href="#section-2">Section 2 - 1. Introduction</a></li>
+<li><a href="#section-3">Section 3 - 2. Related Work</a></li>
+<li><a href="#section-4">Section 4 - 3. Method</a></li>
+<li><a href="#section-5">Section 5 - 3.1. Context-Aware VLM Instructor</a></li>
+<li><a href="#section-6">Section 6 - 3.2. Instruction-based Supervised Fine-Tuning</a></li>
+<li><a href="#section-7">Section 7 - 3.3. Edit-GRPO</a></li>
+<li><a href="#section-8">Section 8 - 3.4. Data Preparation</a></li>
+<li><a href="#section-9">Section 9 - 4. Experiments</a></li>
+<li><a href="#section-10">Section 10 - 4.2. Experimental Setup</a></li>
+<li><a href="#section-11">Section 11 - 4.3. Qualitative Comparisons</a></li>
+<li><a href="#section-12">Section 12 - 4.4. Quantitative Comparisons</a></li>
+<li><a href="#section-13">Section 13 - 4.5. Ablation Study</a></li>
+<li><a href="#section-14">Section 14 - 5. Conclusion</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - Abstract</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>一句話結論</h3>
+            <p>VIVA 是一個透過 VLM 引導編碼與強化學習優化（Edit-GRPO）實現高效能指令驅動影片編輯的可擴展框架，能在複雜真實場景指令下保持內容忠誠度與時序一致性。</p>
+            <h3>背景／問題</h3>
+            <p>現有擴散模型影片編輯方法的訓練資料僅限於簡單編輯操作的成對資料，導致無法泛化至多樣且複雜的真實世界指令——這是本領域面臨的核心瓶頸。</p>
+            <h3>重點條列</h3>
+            <ol>
+            <li><strong>核心任務</strong>：根據自然語言指令修改輸入影片，同時保留內容忠誠度與時間一致性。</li>
+            <li><strong>現有限制</strong>：現有擴散模型方法依賴成對簡單編輯操作資料，無法處理多樣化、複雜的真實指令。</li>
+            <li><strong>VIVA 框架兩大核心</strong>：</li>
+            </ol>
+            <!-- -->
+            
+            <ul>
+            <li><strong>VLM Instructor</strong>：將文字指令、來源影片首幀、可選參考影像編碼為視覺接地指令表示，提供細粒度空間與語義脈絡。</li>
+            <li><strong>Edit-GRPO</strong>：將 Group Relative Policy Optimization 適應至影片編輯領域，透過相對獎勵直接優化指令忠誠度、內容保留與美學品質。</li>
+            </ul>
+            <!-- -->
+            
+            <ol>
+            <li><strong>資料建構</strong>：設計合成資料管線，自動生成多樣化、高保真度的基礎編輯操作影片-指令成對資料。</li>
+            <li><strong>實驗結果</strong>：在指令遵循、泛化能力與編輯品質三項指標上，均超越現有最先進方法。</li>
+            </ol>
+            <h3>限制或注意事項</h3>
+            <ul>
+            <li>本節為全文摘要，詳細技術細節與實驗數據見後續章節。</li>
+            <li>原文未提供具體數值比較或基準測試分數。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+            <p>VIVA 透過 VLM 編碼與強化學習後訓練兩大創新，成功突破傳統擴散模型受限於簡單指令的瓶頸，實現更強的指令理解與編輯品質。</p>
+            <hr />
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th>術語</th>
+            <th>一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td>Instruction-based video editing</td>
+            <td>根據文字指令自動修改影片的技術</td>
+            </tr>
+            <tr>
+            <td>Diffusion-based approach</td>
+            <td>使用擴散概率模型的影片生成/編輯方法</td>
+            </tr>
+            <tr>
+            <td>VLM-guided encoding</td>
+            <td>視覺語言模型引導的編碼策略</td>
+            </tr>
+            <tr>
+            <td>Edit-GRPO</td>
+            <td>針對影片編輯任務調整的強化學習優化方法</td>
+            </tr>
+            <tr>
+            <td>Content fidelity</td>
+            <td>編輯後內容與原始內容的相似程度</td>
+            </tr>
+            <tr>
+            <td>Temporal coherence</td>
+            <td>影片時間維度的一致性（不閃爍、不跳變）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th>公式（LaTeX 原文）</th>
+            <th>意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td>本節無公式</td>
+            <td>本節為摘要性質，未包含數學式；後續章節將陸續呈現各模組的技術公式</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[無] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-2">
+        <h2>Section 2 - 1. Introduction</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>一句話結論</h3>
+<p>現有視頻編輯模型受限於簡單配對數據的瓶頸，本文提出 VLM instructor（多模態指令編碼器）和 Edit-GRPO（強化學習後訓練階段）兩項創新，使模型能在有限簡單數據下學會複雜編輯任務。</p>
+            <h3>背景／問題</h3>
+<p>現代數位媒體創作高度依賴視頻編輯技術。現有擴散模型編輯方法依賴「原始影片＋編輯指令→編輯後影片」的成對監督數據，但合成管道僅能產生簡單操作（如單一物體添加、刪除），難以應對複雜指令，導致模型在開放域場景表現下降。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>數據瓶頸</strong>：現有數據集侷限於簡單編輯，導致模型泛化能力不足。</li>
+            <li><strong>VLM instructor</strong>：引入視覺語言模型處理影片首幀與指令，輸出多模態 tokens 作為 DiT 主幹的條件信號，取代傳統文字嵌入。</li>
+            <li><strong>Edit-GRPO</strong>：採用群組相對策略優化（GRPO），透過多候選生成與比較，直接獎勵指令忠誠度、身份保留與結構一致性。</li>
+            <li><strong>合成數據管道</strong>：建立高品質合成數據集，涵蓋多樣化基本編輯操作，作為訓練基礎。</li>
+            <li><strong>貢獻</strong>：透過上述創新，顯著提升指令遵循與視覺品質，超越現有強基準。</li>
+            </ul>
+            <h3>限制或注意事項</h3>
+            <ul>
+            <li>Edit-GRPO 的獎勵權重需根據任務動態平衡。</li>
+            <li>VLM 的選擇直接影響指令解析精度。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+<p>透過 VLM 多模態編碼與 Edit-GRPO 強化學習優化，本方法突破了簡單數據訓練的限制，實現了複雜真實場景下的高效影片編輯。</p>
+            <hr />
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th>術語</th>
+            <th>一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td>VLM instructor</td>
+            <td>將視覺與指令轉譯為模型輸入的解碼器</td>
+            </tr>
+            <tr>
+            <td>DiT</td>
+            <td>執行影片生成的擴散模型主幹</td>
+            </tr>
+            <tr>
+            <td>Edit-GRPO</td>
+            <td>針對影片編輯優化的強化學習策略</td>
+            </tr>
+            <tr>
+            <td>指令忠誠度</td>
+            <td>編輯結果符合原始指令的程度</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th>公式（LaTeX 原文）</th>
+            <th>意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td>無（概念性說明）</td>
+            <td>本節介紹技術動機，具體的 Edit-GRPO 獎勵計算公式將於後續 3.3 節詳述。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-3">
+        <h2>Section 3 - 2. Related Work</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h2>一句話結論</h2>
+            <p>本節回顧了三條與本研究相關的技術脈絡——<strong>指令驅動影片編輯</strong>、<strong>視覺語言模型（VLM）</strong>、以及<strong>生成模型的強化學習</strong>，說明本論文如何站在這些前人肩膀上提出創新。</p>
+            <h2>背景／問題</h2>
+            <p>影片編輯從手動操作逐步走向自然語言驅動，但早期方法受限於需要人工事先提供 masks、姿態或運動軌跡等輔助資訊，靈活性與泛化能力皆不足。近幾年視覺語言模型與強化學習相繼被引入生成任務，為本研究提供了新的技術基底。</p>
+            <h2>重點條列</h2>
+            <ul>
+            <li>
+            <p><strong>指令驅動影片編輯</strong>：早期研究主要採用 inversion-based 技術 [8,11,16,19,26,30,33,42,48,63,68] 實現零樣本或單樣本文字驅動編輯；自開源預訓練影片擴散模型 [21,29,60] 出現後，陸續有針對影片添加 [59,74]、修補 [5,76]、虛擬試穿 [17,27,77]、角色替換/動畫化 [9] 等任務的解決方案。然而這些方法仍仰賴人工設計的先驗知識（如 mask、姿態軌跡），InsV2V [10] 雖首度嘗試純指令編輯，卻受限於資料品質與骨幹模型效能；近期的規模化工作 [14,24,25,35,53,70,71] 已有顯著進展。</p>
+            </li>
+            <li>
+            <p><strong>VLMs 橋接視覺與語言</strong>：CLIP [49]、BLIP-2 [32]、Flamingo [1] 等基礎 VLM 學習視覺與文字的對齊表徵；經指令微調的變體如 LLaVA [37]、Video-ChatGPT [45]、Qwen2.5-VL [4] 更強化了視覺定位與上下文感知能力。本研究採用 VLM 作為 instructor，同時編碼文字指令與視覺脈絡，提升可控性與指令忠實度。</p>
+            </li>
+            <li>
+            <p><strong>強化學習對齊生成模型</strong>：PPO [54]、RPO [51]、GRPO [55] 等演算法已广泛用於大型語言模型的指令遵循與偏好對齊；近期研究 [39,40,65,69] 將這些思路延伸至視覺生成，也有學者 [44,67] 針對圖像編輯採用獎勵導向的微調。本研究將此策略擴展至影片編輯，以全面提升效能、穩健性與泛化能力。</p>
+            </li>
+            <li>
+            <p><strong>技術脈絡的匯合點</strong>：指令驅動編輯需要高可控性、VLM 提供語義理解、強化學習提供對齊機制——三者的結合正是本論文的核心創新起點。</p>
+            </li>
+            <li>
+            <p><strong>與本研究的銜接</strong>：後續章節將具體說明如何將 VLM 編碼器與 RL 對齊機制整合進影片編輯框架，解決過往方法需要人工先驗的痛點。</p>
+            </li>
+            </ul>
+            <h2>限制或注意事項</h2>
+            <p>本節為文獻回顧性質，未涉及本論文實驗數據或具體模型架構細節；相關數值結果留待後續章節呈現。</p>
+            <h2>一句帶走重點</h2>
+            <p>指令影片編輯從依賴人工先驗走到 VLM+RL 赋能的智慧化對齊，本研究正是沿此脈絡提出創新整合方案。</p>
+            <hr />
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th>術語</th>
+            <th>一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td>Instruction-based video editing</td>
+            <td>用自然語言指令控制影片編輯的技術</td>
+            </tr>
+            <tr>
+            <td>Inversion-based approach</td>
+            <td>透過反演擴散過程实现零樣本編輯的方法</td>
+            </tr>
+            <tr>
+            <td>Video diffusion model</td>
+            <td>能生成與編輯影片的擴散模型</td>
+            </tr>
+            <tr>
+            <td>VLM (Vision-Language Model)</td>
+            <td>同時理解圖像/影片與文字的模型</td>
+            </tr>
+            <tr>
+            <td>Reinforcement Learning (RL)</td>
+            <td>透過獎勵訊號優化策略的學習範式</td>
+            </tr>
+            <tr>
+            <td>GRPO</td>
+            <td>一種用於對齊的強化學習演算法</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <p>本節為文獻回顧章節，未包含任何 LaTeX 公式。</p>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[無] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-4">
+        <h2>Section 4 - 3. Method</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>一句話結論</h3>
+<p>VIVA 是一套結合「生成分支（DiT）」與「理解分支（VLM 指令器）」的指令驅動影片編輯框架，透過 Edit-GRPO 後訓練策略提升指令遵循能力與視覺品質。</p>
+            <h3>背景／問題</h3>
+<p>影片編輯往往需要同時理解多種輸入條件（文字指令、原始影片、參考影像），而傳統方法難以兼顧編輯靈活性與生成品質。本節說明 VIVA 如何整合擴散 Transformer 與視覺語言模型，實現「理解意圖 → 生成結果」的端到端流程。</p>
+            <h3>重點條列</h3>
+            <ol>
+            <li><strong>雙分支架構</strong>：如 Figure 2 所示，VIVA 由 <strong>Diffusion Transformer（DiT）</strong> 生成分支與 <strong>Vision-Language Model（VLM）</strong> 指令理解分支組成，兩者协同運作。</li>
+            <li><strong>VLM 指令器（Sect. 3.1）</strong>：彙整文字指令、原始影片、可選參考圖像等多元多模態條件，提供語意上下文給生成分支。</li>
+            <li><strong>DiT 微調（Sect. 3.2）</strong>：將預訓練的文字轉影片 DiT adapter，根據 VLM 提供的語意脈絡執行多樣化指令驅動編輯。</li>
+            <li><strong>Edit-GRPO 後訓練（Sect. 3.3）</strong>：引入基於 <strong>Group Relative Policy Optimization（GRPO）</strong> 的後訓練策略，提升指令遵循精確度、內容保真度與視覺美觀性。</li>
+            <li><strong>資料製備（Sect. 3.4）</strong>：建構多樣化、高品質的影片編輯訓練資料集。</li>
+            </ol>
+            <h3>限制或注意事項</h3>
+<p>本節為方法總覽，具體技術細節（模型架構、訓練目標函數、資料集統計）分別於 3.1–3.4 節說明。</p>
+            <h3>一句帶走重點</h3>
+<p>VIVA 以「理解 + 生成」雙分支架構搭配 GRPO 後訓練，實現精準遵循編輯指令的高品質影片生成。</p>
+            <hr />
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th>術語</th>
+            <th>一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td><strong>Diffusion Transformer (DiT)</strong></td>
+            <td>一種結合擴散模型與 Transformer 架構的影片生成模型</td>
+            </tr>
+            <tr>
+            <td><strong>Vision-Language Model (VLM)</strong></td>
+            <td>同時理解圖像與文字的多模態模型</td>
+            </tr>
+            <tr>
+            <td><strong>Group Relative Policy Optimization (GRPO)</strong></td>
+            <td>一種 Policy Gradient 強化學習方法，用於提升模型輸出品質</td>
+            </tr>
+            <tr>
+            <td><strong>Instruction-based video editing</strong></td>
+            <td>根據文字指令對影片進行編輯的任務</td>
+            </tr>
+            <tr>
+            <td><strong>T2V (Text-to-Video)</strong></td>
+            <td>文字轉影片的生成任務</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <p>本節為方法總覽章節，未包含獨立推導之數學公式。相關損失函數與訓練目標將於 3.3 節 Edit-GRPO 中具體呈現。</p>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[無] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-5">
+        <h2>Section 5 - 3.1. Context-Aware VLM Instructor</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <p>本節說明：如何透過視覺語言模型（VLM）精準解析多模態指令，解決影片編輯中「指令模糊」的問題。</p>
+            <h3>一句話結論</h3>
+            <p>透過引入視覺語言模型（VLM）整合文字、來源影片首幀與參考影像，我們能將模糊的自然語言轉換為精細的視覺控制訊號，大幅提升編輯的可控性。</p>
+            <h3>背景／問題</h3>
+            <p>傳統影片編輯模型多依賴 T5 等純語言編碼器，這類編碼器缺乏視覺空間對齊，當面對複雜的編輯需求時，僅憑稀疏的文字指令極易產生歧義，導致生成結果與用戶預期不符。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>VLM 的優勢</strong>：相較於純文字編碼器，VLM 能實現語言空間與視覺特徵空間的強對齊，是理解複雜多模態上下文的最佳選擇。</li>
+            <li><strong>架構選型</strong>：本研究採用 Hunyuan-T2V-13B 作為骨幹，因其預訓練模型已具備與 VLM（llava-llama-3-8b）對齊的特性，避免了繁重的空間對齊預訓練。</li>
+            <li><strong>輸入增強</strong>：我們將來源影片 <span class="math inline">$\mathbf{V}_{src}$</span> 的首幀 <span class="math inline">$\mathbf{I}_{src}$</span> 加入輸入，為模型提供「錨點」，使模型能從模糊的文字指令 <span class="math inline">$\mathbf{t}_{ins}$</span> 中萃取出具體的編輯對象與區域。</li>
+            <li><strong>彈性控制</strong>：除了基礎指令外，系統額外支援參考影像 <span class="math inline">$\mathbf{I}_{ref}$</span>，讓模型不僅知道「做什麼」，還能明確掌握「長什麼樣」。</li>
+            <li><strong>細粒度引導</strong>：透過上述輸入整合，VLM 能產生高保真的多模態條件標記，解決了傳統模型條件訊號不足造成的歧義問題。</li>
+            </ul>
+            <h3>公式速查</h3>
+            <div class="formula">$$\mathbf{x}_{vlm} = \text{VLM}(\mathbf{t}_{ins}, \mathbf{I}_{src}, \mathbf{I}_{ref}). \quad \quad \quad (1)$$</div>
+            
+            <p>← 此式表示模型將文字指令</p>
+            <p><span class="math inline">$\mathbf{t}_{ins}$</span>、來源影片首幀</p>
+            <p><span class="math inline">$\mathbf{I}_{src}$</span> 與可選的參考影像</p>
+            <p><span class="math inline">$\mathbf{I}_{ref}$</span> 餵入 VLM，最終輸出作為編輯引導的隱層狀態</p>
+            <p><span class="math inline">$\mathbf{x}_{vlm}$</span>。</p>
+            <h3>限制或注意事項</h3>
+            <ul>
+            <li>此方法高度依賴 VLM 的多模態理解能力，若 VLM 無法正確識別參考影像中的關鍵特徵，編輯效果可能受限。</li>
+            <li>雖然引入多種輸入增加了靈活性，但處理參考影像 <span class="math inline">$\mathbf{I}_{ref}$</span> 時仍須考慮計算負載，目前設計為「可選」輸入以兼顧效率。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+            <p>別再只給文字指令，透過 VLM 結合影片首幀與參考影像，讓 AI 看懂你要編輯的具體位置與外觀，才是實現精準影片編輯的關鍵。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VLM</td>
+            <td style="text-align: left;">視覺語言模型，能同時理解與處理影像與文字的 AI 模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">T5</td>
+            <td style="text-align: left;">一種純語言編碼器，將文字轉換為數值表示。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">DiT</td>
+            <td style="text-align: left;">擴散變換器（Diffusion Transformer），負責根據條件生成影片的核心模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">多模態條件</td>
+            <td style="text-align: left;">結合文字、圖片等多種來源所形成的控制訊號。</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{ins}$</span></td>
+            <td style="text-align: left;">用戶輸入的原始文字編輯指令。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{src}$</span></td>
+            <td style="text-align: left;">從來源影片取樣出的第一幀影像，作為編輯的參考錨點。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{src}$</span></td>
+            <td style="text-align: left;">用戶提供的原始影片素材。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{ref}$</span></td>
+            <td style="text-align: left;">用戶提供的選用參考圖，定義目標編輯外觀。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{vlm}$</span></td>
+            <td style="text-align: left;">VLM 輸出之多模態隱層狀態，作為後續生成模型的引導訊號。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-6">
+        <h2>Section 6 - 3.2. Instruction-based Supervised Fine-Tuning</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>3.2. Instruction-based Supervised Fine-Tuning</h3>
+            <h3>一句話結論</h3>
+<p>透過凍結 VLM 核心參數並引入「輕量化投影與修正模組」，我們能在保持模型推理能力的同時，精準對齊跨模態指令與視覺輸入，達成高品質的影像與影片編輯。</p>
+            <h3>背景／問題</h3>
+<p>在保持視覺語言模型（VLM）強大泛化能力的同時，如何將額外的視覺參考資訊（<span class="math inline">$\mathbf{I}_{src}$</span> 與 <span class="math inline">$\mathbf{I}_{ref}$</span>）有效注入模型，並讓影片生成模型（DiT）理解這些複雜條件？我們透過針對性微調解決了此對齊挑戰。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>模組化設計</strong>：模型凍結了 VLM 的原始參數，僅透過微調 DiT 及新增的輕量化 Token Refiner <span class="math inline">$\mathcal{R}$</span>，來強化對視覺條件訊號的響應。</li>
+            <li><strong>空間一致性注入</strong>：為了維持與原始影片 <span class="math inline">$\mathbf{V}_{src}$</span> 的編輯一致性，我們將來源影片的潛空間特徵 <span class="math inline">$\mathbf{z}_{src}$</span> 與噪聲 <span class="math inline">$\mathbf{z}_{noise}$</span> 在通道維度合併。</li>
+            <li><strong>Token 轉換機制</strong>：將 <span class="math inline">$\mathbf{z}_{src}$</span> 與 <span class="math inline">$\mathbf{z}_{noise}$</span> 經由 Patchification 模組 <span class="math inline">$\mathbf{P}$</span> 展平為序列，並結合為 <span class="math inline">$[\mathbf{x}_{src}, \mathbf{x}_{noise}] \in \mathbb{R}^{L \times 2C}$</span>，藉由投影器 <span class="math inline">$\mathcal{P}$</span> 壓縮回原始維度 <span class="math inline">$\mathbf{x}_{video} \in \mathbb{R}^{L \times C}$</span>。</li>
+            <li><strong>多模態訓練策略</strong>：同時利用 <span class="math inline">$\mathbf{x}_{vlm}$</span> 與 <span class="math inline">$\mathbf{x}_{video}$</span>，採用 Flow Matching [36] 進行訓練；並補入靜態影像編輯資料作為輔助，成功將影像域的編輯能力遷移至影片。</li>
+            <li><strong>遮罩損耗函數</strong>：為精確控制編輯區域，引入遮罩影片 <span class="math inline">$M$</span>，將原有的 Rectified Flow 損失擴充為 <span class="math inline">$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}$</span>，其中 <span class="math inline">$w_m$</span> 為權重。</li>
+            </ul>
+            <h3>公式速查</h3>
+<p>$$\mathbf{x}_{video} = \mathcal{P}(\text{Concat}(\mathbf{P}(\mathbf{z}_{src}), \mathbf{P}(\mathbf{z}_{noise}))^c), \quad (2)$$ ← 透過通道合併與投影器 <span class="math inline">$\mathcal{P}$</span> 整合來源影片與噪聲，生成具備結構導向的影片特徵。 $$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}, \quad (3)$$ ← 藉由 mask 區域提升 loss 權重，引導模型專注於編輯遮罩區域內的內容。</p>
+            <h3>限制或注意事項</h3>
+<p>本階段高度依賴合成的配對資料集，雖然引入了靜態影像資料補足編輯多樣性，但對於極端複雜的時序連續性編輯，其效能仍受限於配對數據的豐富度；此外，由於使用了 Flow Matching 框架，訓練過程對 Mask 權重 <span class="math inline">$w_m$</span> 的設定較為敏感。</p>
+            <h3>一句帶走重點</h3>
+<p>凍結基礎架構，利用投影器 <span class="math inline">$\mathcal{P}$</span> 與修正器 <span class="math inline">$\mathcal{R}$</span> 對齊多模態訊號，並透過遮罩加權的 Flow Matching 實現可控的影片編輯。</p>
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{I}_{src} / \mathbf{I}_{ref}$</span></td>
+            <td style="text-align: left;">編輯過程中的來源影像與參考影像。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{R}$</span></td>
+            <td style="text-align: left;">負責強化视觉條件與文字對齊的 Token Refiner。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{src}$</span></td>
+            <td style="text-align: left;">用於提供結構與運動導向的來源影片。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{z}_{src} / \mathbf{z}_{noise}$</span></td>
+            <td style="text-align: left;">來源影片的潛空間表示與編輯過程中的初始噪聲。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{src} / \mathbf{x}_{noise}$</span></td>
+            <td style="text-align: left;">經 Patchification 處理後的 1D token 序列。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$[\mathbf{x}_{src}, \mathbf{x}_{noise}]$</span></td>
+            <td style="text-align: left;">兩者於通道維度合併後的拼接特徵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Concat}(\cdot, \cdot)^c$</span></td>
+            <td style="text-align: left;">執行通道維度的張量拼接操作。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{video}$</span></td>
+            <td style="text-align: left;">整合後的內容感知影片 tokens。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{vlm}$</span></td>
+            <td style="text-align: left;">來自多模態模型的條件資訊。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{P}$</span></td>
+            <td style="text-align: left;">將拼接特徵降維至 DiT 對應維度的投影模組。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{P}$</span></td>
+            <td style="text-align: left;">將潛空間特徵轉換為 Patch tokens 的模組。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$M$</span></td>
+            <td style="text-align: left;">指引編輯範圍的遮罩 (mask) 影片。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{src} \in \mathbb{R}^{L \times C}$</span></td>
+            <td style="text-align: left;">來源影片經轉換後的特徵張量維度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{noise} \in \mathbb{R}^{L \times C}$</span></td>
+            <td style="text-align: left;">噪聲訊號經轉換後的特徵張量維度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$[\mathbf{x}_{src}, \mathbf{x}_{noise}] \in \mathbb{R}^{L \times 2C}$</span></td>
+            <td style="text-align: left;">拼接後包含雙倍通道數的完整上下文特徵。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{x}_{video} \in \mathbb{R}^{L \times C}$</span></td>
+            <td style="text-align: left;">經過投影器對齊後的影片特徵矩陣。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\text{Concat}(\cdot, \cdot)^c$</span></td>
+            <td style="text-align: left;">指代通道維度拼接的運算子。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathcal{L}_{\text{mask}} = (1 + w_m M) \mathcal{L}_{\text{FM}}$</span></td>
+            <td style="text-align: left;">引入 Mask 限制的 Flow Matching 損失函數。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-7">
+        <h2>Section 7 - 3.3. Edit-GRPO</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <p>為了讓模型精準執行影片編輯指令，我們開發了 <strong>Edit-GRPO</strong> 獎勵機制，透過指令遵循、內容保留與人類偏好對齊三大維度，引導模型產出更優質的影片。</p>
+            <h3>核心機制懶人包</h3>
+            <ol>
+            <li><strong>指令遵循（Instruction Following）</strong>：我們要求編輯後的影片 <span class="math inline">$\mathbf{V}_{edit}$</span> 與目標描述 <span class="math inline">$\mathbf{t}_{edit}$</span> 的相似度要高，同時要與原描述 <span class="math inline">$\mathbf{t}_{src}$</span> 保持距離。</li>
+            <li><strong>來源保留（Source Preservation）</strong>：確保編輯過程未破壞影片原有的視覺結構與連貫性，計算原始影片 <span class="math inline">$\mathbf{V}_{src}$</span> 與編輯後影片 <span class="math inline">$\mathbf{V}_{edit}$</span> 的相似度作為懲罰依據。</li>
+            <li><strong>人類偏好（Human Preference）</strong>：引入 Pickscore 評估影片整體的視覺品質與指令對齊程度，確保結果符合人類審美。</li>
+            <li><strong>目標函數整合</strong>：將上述三者加權總和，公式為 <span class="math inline">$\mathbf{R} = w_{IF}\mathbf{R}_{\text{IF}} + w_{SP}\mathbf{R}_{\text{SP}} + w_{PS}\mathbf{R}_{\text{PS}}, \quad \quad \quad \quad \quad \quad (7)$</span>。</li>
+            <li><strong>訓練效率</strong>：為節省算力，我們採用 LoRA 技術對 DiT 主幹網路進行微調，而非全參數調整。</li>
+            </ol>
+            <h3>指令遵循的核心計算</h3>
+            <p>我們透過計算 <span class="math inline">$(C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{src}, \mathbf{t}_{edit})) + (C(\mathbf{V}_{src}, \mathbf{t}_{src}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}))$</span> 來量化模型對指令的理解。由於在相同樣本組中，<span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span> 與 <span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span> 為常數，對梯度更新無貢獻，故簡化為：</p>
+            <div class="formula">$$\mathbf{R}_{\text{IF}} = C(\mathbf{V}_{edit}, \mathbf{t}_{edit}) - C(\mathbf{V}_{edit}, \mathbf{t}_{src}). \quad (4)$$</div>
+            
+            <p><em>此公式意在拉大「正確目標」與「原始描述」之間的 CLIP 特徵距離。</em></p>
+            <h3>關鍵機制公式速查</h3>
+            <ul>
+            <li><strong>來源保留分</strong>：<span class="math inline">$\mathbf{R}_{\text{SP}} = C(\mathbf{V}_{src}, \mathbf{V}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad \quad (5)$</span> （數值越高，代表編輯前後的視覺一致性越高）</li>
+            <li><strong>人類偏好分</strong>：<span class="math inline">$\mathbf{R}_{\text{PS}} = \text{Pickscore}(\mathbf{V}_{edit}, \mathbf{t}_{edit}). \quad \quad \quad \quad \quad \quad \quad \quad (6)$</span> （利用預訓練的視覺偏好模型衡量編輯品質）</li>
+            </ul>
+            <h3>限制與注意事項</h3>
+            <ul>
+            <li>本方法依賴 CLIP 模型計算相似度 <span class="math inline">$C(V, \mathbf{t})$</span>，若 CLIP 對特定複雜指令的理解力有限，可能會影響獎勵訊號的準確性。</li>
+            <li>獎勵平衡權重 <span class="math inline">$w_{IF}, w_{SP}, w_{PS}$</span> 的設定對訓練穩定性至關重要，需視具體編輯任務調整。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+<p>Edit-GRPO 透過三個數學量化維度（指令對齊、原影保存、人類審美），引導模型在保持原作精隨的同時精準執行編輯。</p>
+            <hr />
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><strong>Edit-GRPO</strong></td>
+            <td style="text-align: left;">本文提出的影片編輯強化學習對齊框架</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>CLIP similarity</strong></td>
+            <td style="text-align: left;"><span class="math inline">$C(V, \mathbf{t})$</span>，衡量影片內容與文字描述的關聯性</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>Pickscore</strong></td>
+            <td style="text-align: left;">專用於評估圖像/影片與文字對齊度及質感的評分系統</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>LoRA</strong></td>
+            <td style="text-align: left;">僅微調少量參數以達成高效訓練的技術（見前節）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><strong>DiT</strong></td>
+            <td style="text-align: left;">Diffusion Transformer，本模型的基礎架構（見前節）</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{src}$</span></td>
+            <td style="text-align: left;">原始影片的描述文字</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{t}_{edit}$</span></td>
+            <td style="text-align: left;">編輯後的目標描述文字</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{src}$</span></td>
+            <td style="text-align: left;">原始輸入影片</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{V}_{edit}$</span></td>
+            <td style="text-align: left;">模型生成的編輯後影片</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(V, \mathbf{t})$</span></td>
+            <td style="text-align: left;">影片與文字間的 CLIP 相似度得分</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{edit})$</span></td>
+            <td style="text-align: left;">原始影片與目標指令的相似度（梯度更新中的常數項）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$C(\mathbf{V}_{src}, \mathbf{t}_{src})$</span></td>
+            <td style="text-align: left;">原始影片與原始描述的相似度（梯度更新中的常數項）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}_{\text{IF}}$</span></td>
+            <td style="text-align: left;">最終採用的指令遵循獎勵分數</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}_{\text{SP}}$</span></td>
+            <td style="text-align: left;">來源影片內容保留的獎勵分數</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}_{\text{PS}}$</span></td>
+            <td style="text-align: left;">基於 Pickscore 的人類偏好獎勵分數</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$\mathbf{R}$</span></td>
+            <td style="text-align: left;">綜合獎勵加權總和目標函數</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-8">
+        <h2>Section 8 - 3.4. Data Preparation</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <p>為了補足高品質影片編輯資料集的缺口，我們建立了一個包含 150 萬組對應編輯範例的大型資料集，透過微調預訓練模型並結合多階段篩選機制，克服了傳統資料集常見的視覺偽影與指令對齊誤差。</p>
+            <h3>背景／問題</h3>
+            <p>目前學界缺乏大規模且高品質的「成對影片編輯資料集」，現有依賴密集的深度或邊緣控制訊號的方法，常導致影片內容不連貫或指令執行不精確。</p>
+            <h3>重點條列</h3>
+            <ol>
+            <li><strong>架構升級</strong>：我們以 MMDiT 架構為基礎，加入專門處理影片輸入的支線並進行微調，實測證明其成效顯著優於傳統的 ControlNet。</li>
+            <li><strong>物件編輯流程</strong>：利用 Grounding-DINO 定位物件、SAM 2 進行遮罩追蹤，配合 LLM 修改描述文字，實現精確的物件替換與增刪。</li>
+            <li><strong>結構引導</strong>：針對全局內容編輯，透過提取原始影片的密集塗鴉（Scribble）作為結構引導，讓模型在修改場景描述時保持視覺結構一致。</li>
+            <li><strong>雙階段品管</strong>：捨棄不可靠的自動過濾，改用 VLM 進行指令重寫並標註影片是否殘留偽影，確保僅選用高品質樣本進行訓練。</li>
+            <li><strong>影像資料混用</strong>：整合 540 萬組影像編輯對作為「單幀影片」進行聯合訓練，大幅提升了模型對於各類編輯類型的適應力。</li>
+            </ol>
+            <h3>公式速查</h3>
+            <p>本研究在資料過濾階段使用如下邏輯判斷樣本可用性：</p>
+            <blockquote>
+            <p>公式：<span class="math inline">$Q_{score} = f_{VLM}(V_{syn})$</span></p>
+            </blockquote>
+            <p>此公式代表利用視覺語言模型 <span class="math inline">$f_{VLM}$</span> 對合成影片 <span class="math inline">$V_{syn}$</span> 進行品質評分與偽影檢測。</p>
+            <h3>限制與注意事項</h3>
+            <ul>
+            <li>雖然引入了 VLM 進行品質把關，但合成資料本質上仍依賴生成模型的能力上限。</li>
+            <li>影像資料集僅作為補充，處理動態連貫性時仍需依賴影片資料。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+<p>透過「專屬支線微調」與「VLM 雙階段品管」，我們成功建立了一套大規模、高品質且指令對齊精準的影片編輯學習資源。</p>
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">MMDiT</td>
+            <td style="text-align: left;">本研究基礎模型架構（見前節）。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Grounding-DINO</td>
+            <td style="text-align: left;">用於檢測影片物件邊界的模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">SAM 2</td>
+            <td style="text-align: left;">用於動態追蹤物件遮罩的技術。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">VLM</td>
+            <td style="text-align: left;">視覺語言模型，負責指令理解與品質篩選。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$Q_{score} = f_{VLM}(V_{syn})$</span></td>
+            <td style="text-align: left;">利用 VLM 評估合成影片品質是否合格的二元判定函數。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-9">
+        <h2>Section 9 - 4. Experiments</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>4.1. 實作細節：如何調校大規模模型</h3>
+            <h3>一句話結論</h3>
+<p>本研究透過對 <em>HunyuanVideo-T2V-13B</em> 進行精細的微調（Fine-tuning），並動態平衡影像與影片資料比例，以實現高品質的生成效果。</p>
+            <h3>背景／問題</h3>
+<p>為確保模型能從預訓練基礎上適應本任務的特定數據分佈，必須精確設置訓練參數，以平衡模型對不同媒介（靜態影像 vs. 動態影片）的學習偏好。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>骨幹模型</strong>：採用 <em>HunyuanVideo-T2V-13B</em> 作為 <strong>DiT</strong>（Diffusion Transformer，一種將擴散模型與 Transformer 架構結合的技術）主幹，進行針對性訓練。</li>
+            <li><strong>訓練步數</strong>：設定總訓練步數為 <span class="math inline">$12,000$</span>，確保模型有足夠的迭代週期來收斂參數。</li>
+            <li><strong>優化配置</strong>：學習率固定為 <span class="math inline">$2 \times 10^{-5}$</span>，並配合 <span class="math inline">$128$</span> 的全局批次大小（Global Batch Size），以兼顧訓練穩定度與硬體效率。</li>
+            <li><strong>資料混合策略</strong>：為解決影片與影像數據特徵差異，設計了混合取樣機制，其中影片資料取樣機率為 <span class="math inline">$0.4$</span>，而影像資料取樣機率為 <span class="math inline">$0.6$</span>。</li>
+            <li><strong>擴充資訊</strong>：更細節的訓練設定可參考補充資料（Supplementary Materials）。</li>
+            </ul>
+            <h3>公式速查</h3>
+            <ul>
+            <li>訓練總步數：<span class="math inline">$12,000$</span> ← 決定模型學習週期的關鍵參數。</li>
+            <li>學習率：<span class="math inline">$2 \times 10^{-5}$</span> ← 控制權重更新幅度的微小步長。</li>
+            <li>全局批次：<span class="math inline">$128$</span> ← 一次訓練 iteration 中同時處理的樣本總量。</li>
+            <li>影片取樣機率：<span class="math inline">$0.4$</span> ← 在混合資料集內抽取影片的比例。</li>
+            <li>影像取樣機率：<span class="math inline">$0.6$</span> ← 在混合資料集內抽取影像的比例。</li>
+            </ul>
+            <h3>限制或注意事項</h3>
+<p>上述參數僅適用於本實驗環境，若在不同規模的運算資源或資料分佈下進行復現，建議根據實際收斂情況調整學習率與取樣比例。</p>
+            <h3>一句帶走重點</h3>
+<p>透過嚴謹的 <span class="math inline">$12,000$</span> 步迭代與 <span class="math inline">$4:6$</span> 的動態影像比例平衡，模型得以在確保穩定的同時有效融合多媒體資訊。</p>
+            <h4>本節術語速查</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">HunyuanVideo-T2V-13B</td>
+            <td style="text-align: left;">本研究使用的預訓練文字生成影片模型基底。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">DiT</td>
+            <td style="text-align: left;">擴散變換器，將生成式擴散模型架構在 Transformer 之上。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Global Batch Size</td>
+            <td style="text-align: left;">訓練時每次更新權重所參考的整體樣本總數。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h4>本節公式速查</h4>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$12,000$</span></td>
+            <td style="text-align: left;">本次微調訓練所進行的總迭代步數。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$2 \times 10^{-5}$</span></td>
+            <td style="text-align: left;">訓練時使用的學習率數值。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$128$</span></td>
+            <td style="text-align: left;">全局批次大小，衡量並行運算強度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$0.4$</span></td>
+            <td style="text-align: left;">訓練中影片數據的選擇機率。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$0.6$</span></td>
+            <td style="text-align: left;">訓練中影像數據的選擇機率。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-10">
+        <h2>Section 10 - 4.2. Experimental Setup</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>一句話結論</h3>
+            <p>我們透過嚴謹的 VIE-Bench 指標，利用 Gemini-2.5-pro 進行專業評分，將影片編輯表現量化為 <span class="math inline">$0-10$</span> 的評分區間，藉此與五種主流編輯模型進行客觀對決。</p>
+            <h3>背景／問題</h3>
+            <p>傳統指標（如 CLIP 分數）僅能評估最終畫面與提示詞的匹配度，卻無法檢視模型是否「聽懂」編輯指令。為了精確量化指令遵循能力，我們採用一套更全面的評估機制。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>測試基準</strong>：使用 VIE-Bench 數據集（包含 140 個高品質案例），涵蓋「有無參考影片」的各類編輯場景。</li>
+            <li><strong>評比對象</strong>：與 ICVE、Lucy-Edit-Dev、Ditto、InsV2V 及商業級模型 Runway Gen-4 Aleph 進行實證比較。</li>
+            <li><strong>評分機制</strong>：引入 Gemini-2.5-pro 作為 VLM 裁判，針對指令遵循、來源保持、編輯品質及主體相似度進行 <span class="math inline">$0-10$</span> 的專業評分。</li>
+            <li><strong>綜合輔助</strong>：導入 VBench 套件與計算 CLIP/DINO 特徵相似度，以確保影片背景一致性與主體結構完整。</li>
+            <li><strong>人機偏好</strong>：利用逐幀計算的 PickScore 來模擬人類對影片美學與風格一致性的主觀偏好。</li>
+            </ul>
+            <h3>公式速查</h3>
+            <p><span class="math inline">$0-10$</span> ← 衡量影片編輯成效的量化分數區間，數值越高代表模型遵循指令與維持品質的能力越強。</p>
+            <h3>限制或注意事項</h3>
+            <ul>
+            <li>評估依賴 VLM（Gemini-2.5-pro）的評判，該評分可能存在模型偏好偏差。</li>
+            <li>部分指標（如主體相似度）僅適用於參考影片類型的編輯任務，參考前述「基準」說明。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+            <p>別再只看單一分數，透過 VIE-Bench 多維度評測，我們能真正看清模型是否聽懂了你的編輯指令。</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VIE-Bench</td>
+            <td style="text-align: left;">專門測試影片編輯模型指令遵循能力的標準資料集。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">VLM Evaluator</td>
+            <td style="text-align: left;">利用視覺語言模型（如 Gemini）擔任自動化裁判進行評分。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">CLIP/DINO</td>
+            <td style="text-align: left;">用於比對影格與影格之間、或影格與文字之間的特徵相似度。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">PickScore</td>
+            <td style="text-align: left;">用來評估模型生成品質是否符合人類審美偏好的指標。</td>
+            </tr>
+            </tbody>
+            </table>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$0-10$</span></td>
+            <td style="text-align: left;">此數值範圍代表 VLM 評分員對影片編輯表現的量化輸出結果。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-11">
+        <h2>Section 11 - 4.3. Qualitative Comparisons</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <p>本節將透過「純指令編輯」與「參考圖控制」兩大維度，驗證模型相較於現有方案（如 Runway）的實質效能差距。</p>
+            <h3>一句話結論</h3>
+            <p>本模型透過 <strong>VLM 指導器 (VLM Instructor)</strong> 注入豐富上下文，在理解複雜語意與精準融合參考圖的能力上，顯著優於現有基線模型。</p>
+            <h3>背景／問題</h3>
+            <p>現有影片編輯模型在處理「複雜語意指令」或「外部參考影像」時，常出現指令理解不全、物體移除後背景不連貫，或參考特徵對齊失準的問題。本節旨在透過定性比較，證實本方法能更精準地將語意映射至原始影片。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>純指令編輯效能</strong>：測試了局部材質變更、主體添加與移除三種任務；本模型在處理「坐於駕駛座」等複雜語意時，準確度領先。</li>
+            <li><strong>指令理解缺失修正</strong>：對照組（Runway）在材質變更任務中出現編輯不完整現象，本模型則能維持全局背景一致性。</li>
+            <li><strong>參考圖對齊精準度</strong>：針對「參考影像控制」，對照組在物體細節（如泰迪熊標籤）上出現明顯偏差，本模型則能完美對齊。</li>
+            <li><strong>技術關鍵：VLM 指導器</strong>：該模組將指令與參考圖特徵編碼並傳遞給 <strong>DiT (Diffusion Transformer) 主幹網路</strong>，提供了更充足的語境引導。</li>
+            <li><strong>模型泛化能力</strong>：實驗結果顯示，透過將參考圖特徵整合至指導模組，模型能更有效地處理跨模態的細節資訊。</li>
+            </ul>
+            <h3>公式速查</h3>
+            <p>本節主要進行定性分析，未涉及核心算法公式。然而，其邏輯運作可視為下式的一種功能體現：</p>
+            <p><span class="math inline">$Y = f(V, I, R)$</span> ← 輸出影片</p>
+            <p><span class="math inline">$Y$</span> 是由原始影片</p>
+            <p><span class="math inline">$V$</span>、文字指令</p>
+            <p><span class="math inline">$I$</span> 與參考影像</p>
+            <p><span class="math inline">$R$</span> 共同映射而成的結果。</p>
+            <h3>限制或注意事項</h3>
+            <ul>
+            <li>原文未提及除了 Runway Gen-4 Aleph 以外的其他參考圖控制模型比較數據。</li>
+            <li>定性比較依賴於 Figure 4 與 Figure 1 的視覺觀察，未提供量化指標（如 PSNR 或 LPIPS）。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+            <p>別人的編輯靠「猜」，本模型靠「VLM 指導器」讀懂複雜語意與細節對齊。</p>
+            <hr />
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VLM Instructor</td>
+            <td style="text-align: left;">將指令與參考圖轉為模型看得懂的語意資訊的指導模組。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">DiT Backbone</td>
+            <td style="text-align: left;">負責處理影片生成與編輯的 Diffusion Transformer 核心架構。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">定性比較</td>
+            <td style="text-align: left;">非透過數據計算，而是透過視覺效果觀察來評價品質。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$Y = f(V, I, R)$</span></td>
+            <td style="text-align: left;">描述編輯過程是將原影片、文字、參考圖共同輸入函數 <span class="math inline">$f$</span> 產生輸出。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-12">
+        <h2>Section 12 - 4.4. Quantitative Comparisons</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>一句話結論</h3>
+            <p>本模型在量化評估中全面超越開源基準，並與商業頂尖模型 Runway 持平，且在涵蓋指令遵循、原片保留與視覺質感的綜合使用者研究中，展現出顯著的偏好優勢。</p>
+            <h3>背景／問題</h3>
+            <p>模型效能不能只看開發者自評，必須通過「客觀量化指標（VLM 評分）」與「人類主觀感受」兩層驗證，才能證明其在真實應用場景的價值。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>數據驗證一致性</strong>：量化指標與定性視覺評估結果高度吻合，證實模型具備強大的影片編輯能力與穩定性。</li>
+            <li><strong>專家評鑑維度</strong>：邀請 14 位領域專家進行嚴謹評估，針對「指令遵循（是否精準操作）」、「原片保留（是否維持一致性）」及「編輯品質（視覺是否自然流暢）」三個維度進行評分。</li>
+            <li><strong>評估樣本組成</strong>：研究隨機抽樣了 30 個純指令編輯案例與 10 個參考影像控制案例，確保測試場景的廣度與真實性。</li>
+            <li><strong>人類偏好分析</strong>：透過圖 5 量化比較，明確標記出使用者對本模型與基準模型的偏好傾向，包含 <span class="math inline">$G$</span> 代表我方模型獲勝、<span class="math inline">$S$</span> 表示兩者難以分辨或無明顯偏好，以及 <span class="math inline">$B$</span> 代表基準模型較佳。</li>
+            <li><strong>壓倒性領先</strong>：在五組基準對照實驗中，本模型在上述三個評估維度下均獲得了優於對手的偏好比例，確認了方法的實用性。</li>
+            </ul>
+            <h3>公式速查</h3>
+            <p>本節統計數據定義如下：</p>
+            <blockquote>
+            <p>公式：<span class="math inline">$G$</span> (Ours preferred) 代表模型勝出；<span class="math inline">$S$</span> (Indistinguishable) 代表平手；<span class="math inline">$B$</span> (Baseline preferred) 代表基準模型勝出。</p>
+            </blockquote>
+            <h3>限制或注意事項</h3>
+            <ul>
+            <li>人類評測樣本數（40 例）雖經過專家精選，但在極端複雜的影片類型上可能仍需擴大評估範圍。</li>
+            <li>本次評比僅限於給定的五個基準模型，未納入所有市面上最新的競爭對手，數據解釋需參考該對照組範疇。</li>
+            </ul>
+            <h3>一句帶走重點</h3>
+            <p>本模型透過專家嚴格測試，證實其編輯精準度與視覺品質皆領先於同級開源模型，並達到了商業級的頂尖標準。</p>
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VLM-based evaluations</td>
+            <td style="text-align: left;">利用視覺語言模型作為自動化評分工具</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">指令遵循</td>
+            <td style="text-align: left;">模型是否聽得懂並執行了使用者的文字編輯要求</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">原片保留</td>
+            <td style="text-align: left;">編輯後影片是否維持了與原始內容的一致性與連貫性</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">基準模型 (Baseline)</td>
+            <td style="text-align: left;">用於比較的標準對照組，即實驗對象的競爭對手</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$G$</span></td>
+            <td style="text-align: left;">評測標記：模型勝出（Ours preferred）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$S$</span></td>
+            <td style="text-align: left;">評測標記：不分勝負或平手（Indistinguishable）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$B$</span></td>
+            <td style="text-align: left;">評測標記：基準模型勝出（Baseline preferred）</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-13">
+        <h2>Section 13 - 4.5. Ablation Study</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <ol>
+            <li>
+            <h3>一句話結論</h3>
+<p>本研究透過消融實驗證實，視覺引導模組、遮蔽損失函數與混合數據策略的協同作用，能顯著提升影像編輯的精確度與品質，並結合 Edit-GRPO 強化人類偏好對齊。</p>
+            </li>
+            <li>
+            <h3>背景／問題</h3>
+<p>在開發複雜的影像編輯模型時，需釐清各項設計選擇（Design Choices）對模型成效的具體貢獻，以證明模型架構並非疊床架屋，而是各司其職。</p>
+            </li>
+            <li>
+            <h3>重點條列</h3>
+            </li>
+            </ol>
+            <!-- -->
+            
+            <ul>
+            <li><strong>VLM Instructor（視覺語言模型導師）</strong>：透過引入視覺資訊，為 DiT（擴散變壓器）提供語義豐富的上下文，大幅提升模型對指令編輯的精確度。</li>
+            <li><strong>Masked Loss（遮蔽損失函數）</strong>：運用 <span class="math inline">$L_{mask}$</span> 引入空間歸納偏置（Spatial Inductive Bias），加速模型收斂並精準鎖定待編輯區域。</li>
+            <li><strong>混合數據策略</strong>：利用大規模影像編輯數據擴展編輯類別覆蓋範圍，成功解決了複雜影片編輯數據難以取得的問題。</li>
+            <li><strong>Edit-GRPO（編輯增強策略）</strong>：結合前節提到的獎勵系統（Reward System），有效提升模型在維持原始影片一致性上的表現。</li>
+            <li>
+            <p><strong>人類偏好對齊</strong>：實驗數據顯示，採用 Edit-GRPO 訓練的模型在 PickScore 指標上獲得更高分，證明其生成的內容更符合人類審美。</p>
+            </li>
+            <li>
+            <h3>公式速查</h3>
+            <blockquote>
+            <p><span class="math inline">$L_{mask}$</span> ← 用於計算編輯區域損耗的遮蔽損失函數，透過限制更新範圍來增強空間定位能力。</p>
+            </blockquote>
+            </li>
+            <li>
+            <h3>限制或注意事項</h3>
+<p>本實驗結果基於 Table 2 的指標分析；雖然 Edit-GRPO 能提升整體品質，但其效果仍高度依賴於前述獎勵系統的權重設定與編輯指令的品質。</p>
+            </li>
+            <li>
+            <h3>一句帶走重點</h3>
+<p>每個組件都有其必要性：VLM 負責精準理解，Masked Loss 負責空間控制，混合數據與 GRPO 則分別負責廣度與審美優化。</p>
+            </li>
+            </ul>
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VLM Instructor</td>
+            <td style="text-align: left;">將視覺資訊轉化為文字指令的引導模組</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">DiT</td>
+            <td style="text-align: left;">擴散變壓器，本模型的核心生成架構（見前節）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Spatial Inductive Bias</td>
+            <td style="text-align: left;">強制模型關注特定空間區域的先驗知識</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Edit-GRPO</td>
+            <td style="text-align: left;">針對編輯任務優化的強化學習策略（見前節）</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">PickScore</td>
+            <td style="text-align: left;">用於衡量 AI 生成內容與人類偏好一致性的指標</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;"><span class="math inline">$L_{mask}$</span></td>
+            <td style="text-align: left;">透過遮蔽掩碼，強制模型僅優化被編輯區域的損失數值</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+
+    <section id="section-14">
+        <h2>Section 14 - 5. Conclusion</h2>
+        <div class="story-block">
+            <h3>⚡ 懶人包改寫</h3>
+            <h3>一句話結論</h3>
+            <p>VIVA 透過引入「VLM 指導員」與「Edit-GRPO 強化學習策略」，確立了在指令驅動影片編輯領域的頂尖效能，並為未來的互動式、高畫質與組合式編輯奠定了技術架構。</p>
+            <h3>背景／問題</h3>
+            <p>現有的影片編輯模型往往難以精準對應複雜的文字指令，且在維持視覺連貫性與編輯細節控制上存在瓶頸。VIVA 的出現正是為了打破這些限制，將影片編輯提升至具備高度邏輯判斷與自動化優化的層次。</p>
+            <h3>重點條列</h3>
+            <ul>
+            <li><strong>VLM 指導員機制</strong>：運用視覺語言模型（VLM）將文字指令與影片視覺內容同步轉換為「多模態標記」，大幅提升系統對編輯意圖的理解精度。</li>
+            <li><strong>Edit-GRPO 應用</strong>：首次將 GRPO (Group Relative Policy Optimization) 應用於影片編輯，實現了生成品質的穩定提升。</li>
+            <li><strong>效能表現</strong>：在指令遵循度（Instruction Following）、視覺編輯品質與跨場景泛化能力上，均優於現有的開源基線模型。</li>
+            <li><strong>未來擴充性</strong>：團隊正致力於將編輯能力從基礎任務轉向「更豐富的組合式行為」，並計劃提升解析度與影片長度支援。</li>
+            <li><strong>實用化願景</strong>：下一步開發重點在於「互動式編輯」體驗與建立通用的影片編輯獎勵模型，以進一步提升應用層的靈活度。</li>
+            </ul>
+            <h3>公式速查</h3>
+            <blockquote>
+            <p>由於本節為結論章節，無新增數學公式，相關優化機制與公式參見前文 3.3 節。</p>
+            </blockquote>
+            <h3>限制或注意事項</h3>
+            <p>本研究目前仍專注於特定類型的編輯任務，關於模型的邊界情況（Failure cases）與詳細技術限制，請參考論文附錄之完整說明。</p>
+            <h3>一句帶走重點</h3>
+            <p>VIVA 證明了利用視覺語言模型指導與群體相對優化，能讓機器更聽話地進行高品質的影片編輯。</p>
+            <h3>本節術語速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">一句白話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VIVA</td>
+            <td style="text-align: left;">本文提出的影片編輯框架。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">VLM</td>
+            <td style="text-align: left;">視覺語言模型，負責解析圖像與文字關聯。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Edit-GRPO</td>
+            <td style="text-align: left;">改良自強化學習的影片編輯優化演算法。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">基線 (Baseline)</td>
+            <td style="text-align: left;">用來對照效能的既有模型標準。</td>
+            </tr>
+            </tbody>
+            </table>
+            <h3>本節公式速查</h3>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">公式（LaTeX 原文）</th>
+            <th style="text-align: left;">意涵一句話</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">無（見前節）</td>
+            <td style="text-align: left;">本節總結全篇技術貢獻，無新定義公式。</td>
+            </tr>
+            </tbody>
+            </table>
+            <!-- EVAL: 結論先行[有] | 條列摘要[有] | 公式保留[有] | 速查表檢核[通過] | 虛構[無] -->
+        </div>
+        
+        
+    </section>
+</body>
+</html>

@@ -299,9 +299,9 @@ def _build_job_summary(job: Dict) -> Dict:
     concise_level = payload.get("concise_level", 6)
     anti_repeat_level = payload.get("anti_repeat_level", 6)
     gemini_preflight_enabled = payload.get("gemini_preflight_enabled", True)
-    gemini_preflight_timeout_seconds = payload.get("gemini_preflight_timeout_seconds", 8)
-    gemini_rewrite_timeout_seconds = payload.get("gemini_rewrite_timeout_seconds", 75)
-    rewrite_fallback_timeout_seconds = payload.get("rewrite_fallback_timeout_seconds", 45)
+    gemini_preflight_timeout_seconds = payload.get("gemini_preflight_timeout_seconds", 30)
+    gemini_rewrite_timeout_seconds = payload.get("gemini_rewrite_timeout_seconds", 140)
+    rewrite_fallback_timeout_seconds = payload.get("rewrite_fallback_timeout_seconds", 180)
     style_params = payload.get("style_params") if isinstance(payload.get("style_params"), dict) else {}
     rewrite_engine_order = _normalize_engine_order(payload.get("rewrite_engine_order"))
     generation_engine_labels = _engine_label_map("generation")
@@ -310,6 +310,36 @@ def _build_job_summary(job: Dict) -> Dict:
     errors = _extract_errors(result)
     steps = _extract_steps(result)
     sections_generated = result.get("sections_generated") or _as_dict(result.get("metadata")).get("sections_generated")
+    section_rewrite_stats = result.get("section_rewrite_stats")
+    if not isinstance(section_rewrite_stats, list):
+        meta = _as_dict(result.get("metadata"))
+        section_rewrite_stats = meta.get("section_rewrite_stats")
+    if not isinstance(section_rewrite_stats, list):
+        section_rewrite_stats = []
+    rewrite_wall_seconds_total = result.get("rewrite_wall_seconds_total")
+    if rewrite_wall_seconds_total is None:
+        rewrite_wall_seconds_total = _as_dict(result.get("metadata")).get(
+            "rewrite_wall_seconds_total"
+        )
+    integrate_subchunk_flag = result.get("integrate_subchunk_rewrites")
+    if integrate_subchunk_flag is None:
+        integrate_subchunk_flag = payload.get("integrate_subchunk_rewrites")
+    integrate_subchunk_rewrites_bool = (
+        bool(integrate_subchunk_flag) if integrate_subchunk_flag is not None else True
+    )
+    rewrite_formula_retry_flag = result.get("rewrite_formula_retry")
+    if rewrite_formula_retry_flag is None:
+        rewrite_formula_retry_flag = _as_dict(result.get("metadata")).get("rewrite_formula_retry")
+    if rewrite_formula_retry_flag is None:
+        rewrite_formula_retry_flag = payload.get("rewrite_formula_retry")
+    rewrite_formula_retry_bool = (
+        bool(rewrite_formula_retry_flag) if rewrite_formula_retry_flag is not None else True
+    )
+    subchunk_integrate_sections_done = result.get("subchunk_integrate_sections")
+    if subchunk_integrate_sections_done is None:
+        subchunk_integrate_sections_done = _as_dict(result.get("metadata")).get(
+            "subchunk_integrate_sections"
+        )
     rewrite_model = result.get("model") or _as_dict(result.get("metadata")).get("model") or "-"
     rewrite_model_primary = result.get("rewrite_model_primary") or payload.get("model") or "-"
     pdf_extraction_model = result.get("pdf_extraction_model") or _as_dict(result.get("metadata")).get("pdf_extraction_model") or "-"
@@ -326,10 +356,15 @@ def _build_job_summary(job: Dict) -> Dict:
             suf = f"_{job_id}.html"
             if fn.endswith(suf):
                 paper_title = fn[: -len(suf)].strip()
+    phase_detail = job.get("phase_detail")
+    if not isinstance(phase_detail, dict):
+        phase_detail = None
+
     return {
         "job_id": job_id,
         "status": str(job.get("status", "-")),
         "phase": job.get("phase") or "",
+        "phase_detail": phase_detail,
         "pdf_path": str(payload.get("pdf_path", payload.get("source_pdf_path", "-"))),
         "paper_title": paper_title,
         "style": style,
@@ -345,6 +380,11 @@ def _build_job_summary(job: Dict) -> Dict:
         "output_filename": output_filename,
         "output_paper_id": output_paper_id,
         "sections_generated": sections_generated,
+        "section_rewrite_stats": section_rewrite_stats,
+        "rewrite_wall_seconds_total": rewrite_wall_seconds_total,
+        "integrate_subchunk_rewrites": integrate_subchunk_rewrites_bool,
+        "subchunk_integrate_sections": subchunk_integrate_sections_done,
+        "rewrite_formula_retry": rewrite_formula_retry_bool,
         "rewrite_model": rewrite_model,
         "rewrite_model_primary": rewrite_model_primary,
         "rewrite_engine_order": rewrite_engine_order,
@@ -580,6 +620,8 @@ def submit_job():
     saved_path = None
     cleanup_result = None
 
+    integrate_subchunk_rewrites = True
+    rewrite_formula_retry = True
     if request.content_type and "multipart" in request.content_type:
         # File upload path
         pdf_file = request.files.get("pdf")
@@ -600,9 +642,13 @@ def submit_job():
         concise_level = request.form.get("concise_level", 6)
         anti_repeat_level = request.form.get("anti_repeat_level", 6)
         gemini_preflight_enabled = _as_bool(request.form.get("gemini_preflight_enabled", "true"))
-        gemini_preflight_timeout_seconds = request.form.get("gemini_preflight_timeout_seconds", 8)
-        gemini_rewrite_timeout_seconds = request.form.get("gemini_rewrite_timeout_seconds", 75)
-        rewrite_fallback_timeout_seconds = request.form.get("rewrite_fallback_timeout_seconds", 45)
+        gemini_preflight_timeout_seconds = request.form.get("gemini_preflight_timeout_seconds", 30)
+        gemini_rewrite_timeout_seconds = request.form.get("gemini_rewrite_timeout_seconds", 140)
+        rewrite_fallback_timeout_seconds = request.form.get("rewrite_fallback_timeout_seconds", "180")
+        integrate_subchunk_rewrites = _as_bool(
+            request.form.get("integrate_subchunk_rewrites", "true")
+        )
+        rewrite_formula_retry = _as_bool(request.form.get("rewrite_formula_retry", "true"))
         pdf_path_field = request.form.get("pdf_path", "").strip()
     else:
         data = request.get_json(force=True) or {}
@@ -611,9 +657,11 @@ def submit_job():
         concise_level = data.get("concise_level", 6)
         anti_repeat_level = data.get("anti_repeat_level", 6)
         gemini_preflight_enabled = _as_bool(data.get("gemini_preflight_enabled", True))
-        gemini_preflight_timeout_seconds = data.get("gemini_preflight_timeout_seconds", 8)
-        gemini_rewrite_timeout_seconds = data.get("gemini_rewrite_timeout_seconds", 75)
-        rewrite_fallback_timeout_seconds = data.get("rewrite_fallback_timeout_seconds", 45)
+        gemini_preflight_timeout_seconds = data.get("gemini_preflight_timeout_seconds", 30)
+        gemini_rewrite_timeout_seconds = data.get("gemini_rewrite_timeout_seconds", 140)
+        rewrite_fallback_timeout_seconds = data.get("rewrite_fallback_timeout_seconds", 180)
+        integrate_subchunk_rewrites = _as_bool(data.get("integrate_subchunk_rewrites", True))
+        rewrite_formula_retry = _as_bool(data.get("rewrite_formula_retry", True))
         pdf_path_field = str(data.get("pdf_path", "")).strip()
 
     # Parse style_params (JSON-encoded string in multipart, or dict in JSON body)
@@ -674,6 +722,8 @@ def submit_job():
             "gemini_preflight_timeout_seconds": gemini_preflight_timeout_seconds,
             "gemini_rewrite_timeout_seconds": gemini_rewrite_timeout_seconds,
             "rewrite_fallback_timeout_seconds": rewrite_fallback_timeout_seconds,
+            "integrate_subchunk_rewrites": integrate_subchunk_rewrites,
+            "rewrite_formula_retry": rewrite_formula_retry,
             "style_params": style_params,
             "model": resolved_engines["primary_model"],
             "rewrite_fallback_chain": resolved_engines["fallbacks"],

@@ -54,9 +54,12 @@ function App() {
     genConciseLevel: 6,
     genAntiRepeatLevel: 6,
     genGeminiPreflightEnabled: true,
-    genGeminiPreflightTimeoutSeconds: 8,
-    genGeminiRewriteTimeoutSeconds: 75,
-    genRewriteFallbackTimeoutSeconds: 45,
+    genGeminiPreflightTimeoutSeconds: 30,
+    genGeminiRewriteTimeoutSeconds: 140,
+    genRewriteFallbackTimeoutSeconds: 180,
+    genRewriteChunkChars: 5000,
+    genIntegrateSubchunks: true,
+    genRewriteFormulaRetry: true,
     genEngines: [],
     genPdfPath: '',
     genAutoIndex: true,
@@ -203,10 +206,54 @@ function App() {
       return 'status-succeeded s-style-' + k;
     },
 
-    /** 任務列表中欄：論文標題 */
+    /** 任務列表中欄：論文標題（進行中不顯示，由模板 x-show 控制） */
     jobListPaperTitle(job) {
+      const st = String(job?.status || '').trim();
+      if (st === 'pending' || st === 'running') return '';
       const t = String(job?.paper_title ?? '').trim();
       return t || '（無標題）';
+    },
+
+    /** 執行中：phase_detail 結構化摘要（列表第二行） */
+    formatRunningPhaseDetail(pd) {
+      if (!pd || typeof pd !== 'object') return '';
+      const parts = [];
+      if (pd.kind) parts.push(String(pd.kind));
+      if (pd.stage) parts.push(String(pd.stage));
+      if (pd.section_index != null && pd.section_total != null) {
+        parts.push(`節 ${pd.section_index}/${pd.section_total}`);
+      }
+      if (pd.section_title) parts.push(`「${String(pd.section_title).slice(0, 48)}」`);
+      if (pd.chunk_index != null && pd.chunks_total != null) {
+        parts.push(`子塊 ${pd.chunk_index}/${pd.chunks_total}`);
+      }
+      if (pd.primary_model) parts.push(`主模型 ${pd.primary_model}`);
+      if (pd.used_model) parts.push(`實際 ${pd.used_model}`);
+      if (pd.after_retry) parts.push('重試後成功');
+      if (pd.elapsed_seconds != null) parts.push(`本節耗時 ${pd.elapsed_seconds}s`);
+      if (pd.error_snippet) {
+        const one = String(pd.error_snippet).replace(/\s+/g, ' ').trim();
+        parts.push(`錯誤 ${one.length > 120 ? one.slice(0, 119) + '…' : one}`);
+      }
+      return parts.join(' · ');
+    },
+
+    /** 完成後：各節改寫牆鐘時間（多行文字） */
+    formatSectionRewriteStats(stats, totalSeconds) {
+      if (!Array.isArray(stats) || stats.length === 0) return '（無節次統計）';
+      const lines = stats.map((s) => {
+        const idx = s.index ?? '?';
+        const sec = s.elapsed_seconds != null ? `${s.elapsed_seconds}s` : '-';
+        const tt = String(s.title_short || s.title || '').slice(0, 64);
+        const m = s.used_model ? ` — ${s.used_model}` : '';
+        const r = s.had_chunk_retry ? '（含子塊重試）' : '';
+        return `§${idx} 牆鐘 ${sec}${r}${m} — ${tt}`;
+      });
+      let out = lines.join('\n');
+      if (totalSeconds != null && !Number.isNaN(Number(totalSeconds))) {
+        out += `\n改寫階段牆鐘合計：${Number(totalSeconds).toFixed(2)}s`;
+      }
+      return out;
     },
 
     /* ════════ INDEX ════════ */
@@ -997,6 +1044,8 @@ function App() {
             gemini_preflight_timeout_seconds: this.genGeminiPreflightTimeoutSeconds,
             gemini_rewrite_timeout_seconds: this.genGeminiRewriteTimeoutSeconds,
             rewrite_fallback_timeout_seconds: this.genRewriteFallbackTimeoutSeconds,
+            integrate_subchunk_rewrites: this.genIntegrateSubchunks,
+            rewrite_formula_retry: this.genRewriteFormulaRetry,
             style_params: this.genStyleParams,
             engine_order: this.getEngineOrder('generate'),
           };
@@ -1030,6 +1079,8 @@ function App() {
         form.append('gemini_preflight_timeout_seconds', String(this.genGeminiPreflightTimeoutSeconds));
         form.append('gemini_rewrite_timeout_seconds', String(this.genGeminiRewriteTimeoutSeconds));
         form.append('rewrite_fallback_timeout_seconds', String(this.genRewriteFallbackTimeoutSeconds));
+        form.append('integrate_subchunk_rewrites', this.genIntegrateSubchunks ? 'true' : 'false');
+        form.append('rewrite_formula_retry', this.genRewriteFormulaRetry ? 'true' : 'false');
         if (Object.keys(this.genStyleParams).length > 0) {
           form.append('style_params', JSON.stringify(this.genStyleParams));
         }

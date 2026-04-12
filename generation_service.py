@@ -415,6 +415,15 @@ def _build_success_result(
     model = pipeline_output.get("model")
     pdf_extraction_model = pipeline_output.get("pdf_extraction_model")
     sections_generated = pipeline_output.get("sections_generated")
+    section_rewrite_stats = pipeline_output.get("section_rewrite_stats")
+    if not isinstance(section_rewrite_stats, list):
+        section_rewrite_stats = []
+    rewrite_wall_seconds_total = pipeline_output.get("rewrite_wall_seconds_total")
+    integrate_subchunk_rewrites = bool(pipeline_output.get("integrate_subchunk_rewrites"))
+    subchunk_integrate_sections = int(
+        pipeline_output.get("subchunk_integrate_sections") or 0
+    )
+    rewrite_formula_retry = bool(pipeline_output.get("rewrite_formula_retry"))
 
     result: Dict[str, Any] = {
         "ok": True,
@@ -428,6 +437,11 @@ def _build_success_result(
         "pdf_extraction_model": pdf_extraction_model,
         "generated_at": generated_at,
         "sections_generated": sections_generated,
+        "section_rewrite_stats": section_rewrite_stats,
+        "rewrite_wall_seconds_total": rewrite_wall_seconds_total,
+        "integrate_subchunk_rewrites": integrate_subchunk_rewrites,
+        "subchunk_integrate_sections": subchunk_integrate_sections,
+        "rewrite_formula_retry": rewrite_formula_retry,
         "steps": steps,
         "pipeline_detail": {
             "name": pipeline_name,
@@ -450,6 +464,11 @@ def _build_success_result(
             "model": model,
             "pdf_extraction_model": pdf_extraction_model,
             "sections_generated": sections_generated,
+            "section_rewrite_stats": section_rewrite_stats,
+            "rewrite_wall_seconds_total": rewrite_wall_seconds_total,
+            "integrate_subchunk_rewrites": integrate_subchunk_rewrites,
+            "subchunk_integrate_sections": subchunk_integrate_sections,
+            "rewrite_formula_retry": rewrite_formula_retry,
             "steps": steps,
             "input_payload_keys": sorted(payload.keys()),
         },
@@ -718,8 +737,16 @@ class GenerationService:
         if latest and latest.get("status") == STATUS_CANCELED:
             return latest
 
-        def _phase_reporter(label: str) -> None:
-            self.store.update_job(job_id, {"phase": label, "updated_at": _utc_now_iso()})
+        def _phase_reporter(
+            message: str, detail: Optional[Dict[str, Any]] = None
+        ) -> None:
+            updates: Dict[str, Any] = {
+                "phase": message,
+                "updated_at": _utc_now_iso(),
+            }
+            if detail is not None:
+                updates["phase_detail"] = detail
+            self.store.update_job(job_id, updates)
 
         try:
             pipeline_output = run_storyteller_pipeline(job, phase_reporter=_phase_reporter)
@@ -744,6 +771,7 @@ class GenerationService:
                     "result": result,
                     "error": None,
                     "phase": None,
+                    "phase_detail": None,
                 },
             )
         except Exception as exc:
@@ -768,6 +796,7 @@ class GenerationService:
                     "result": result,
                     "error": f"{type(exc).__name__}: {exc}",
                     "phase": None,
+                    "phase_detail": None,
                 },
             )
 
@@ -855,6 +884,8 @@ class GenerationService:
             "completed_at": now,
             "canceled_at": now,
             "error": "canceled by user",
+            "phase": "已取消",
+            "phase_detail": None,
         }
         return self.store.update_job(job_id, updates)
 

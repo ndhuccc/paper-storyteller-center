@@ -556,7 +556,8 @@ a { color: var(--primary); text-decoration: none; }
 .job-card[open] { border-color: var(--border-light); }
 .job-summary-row {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 10px;
   padding: 10px 14px;
   cursor: pointer;
@@ -578,7 +579,35 @@ a { color: var(--primary); text-decoration: none; }
 }
 .job-time { font-size: 11px; white-space: nowrap; }
 
-.job-phase { font-size: 11px; color: var(--primary); font-style: italic; white-space: nowrap; }
+.job-phase-wrap {
+  flex: 1 1 220px;
+  min-width: 140px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.job-phase {
+  font-size: 11px;
+  color: var(--primary);
+  font-style: italic;
+  white-space: normal;
+  line-height: 1.35;
+  word-break: break-word;
+}
+.job-phase-sub {
+  flex: 1 1 100%;
+  font-size: 10px;
+  line-height: 1.35;
+  padding-left: 2px;
+}
+.detail-pre {
+  white-space: pre-wrap;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
 .status-succeeded { background: var(--success); color: #fff; padding: 2px 8px; border-radius: 999px; font-size: 11px; }
 /* succeeded 標章：依改寫風格區分顏色（對應 app.js jobStatusChipClass s-style-*） */
 .status-succeeded.s-style-storyteller { background: #059669; }
@@ -882,6 +911,27 @@ a { color: var(--primary); text-decoration: none; }
   margin-top: 3px;
 }
 
+.manual-unit-card.manual-unit-over-chunk {
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.manual-unit-chunk-warn {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #b91c1c;
+  font-weight: 600;
+}
+.manual-unit-chunk-warn code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #991b1b;
+  background: rgba(254, 202, 202, 0.55);
+  border: 1px solid #fca5a5;
+  border-radius: 3px;
+  padding: 0 4px;
+}
+
 /* Drag and drop styles */
 .manual-unit-wrapper {
   display: flex;
@@ -897,6 +947,9 @@ a { color: var(--primary); text-decoration: none; }
 .manual-unit-card.dragging {
   opacity: 0.5;
   background: var(--surface);
+}
+.manual-unit-card.manual-unit-over-chunk.dragging {
+  background: #fee2e2;
 }
 
 .manual-unit-card.dragover {

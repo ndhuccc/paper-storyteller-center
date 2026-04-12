@@ -31,19 +31,27 @@ PDF_EXTRACTION_FALLBACK_MODEL = "gemini-2.5-flash"
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
 DEFAULT_MINIMAX_PORTAL_BASE_URL = "https://api.minimax.io"
 DEFAULT_MAX_SECTIONS = 0
-DEFAULT_REWRITE_CHUNK_CHARS = 3000
+DEFAULT_REWRITE_CHUNK_CHARS = 5000
 DEFAULT_REWRITE_MODE = "paragraph"
 DEFAULT_APPEND_MISSING_FORMULAS = False
+DEFAULT_REWRITE_FORMULA_RETRY = True
 DEFAULT_REWRITE_RESPONSE_FORMAT = "markdown"
 DEFAULT_CONCISE_LEVEL = 6
 DEFAULT_ANTI_REPEAT_LEVEL = 6
 DEFAULT_GEMINI_PREFLIGHT_ENABLED = True
-DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS = 8
-DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS = 75
-DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS = 300
+DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS = 30
+DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS = 140
+DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS = 180
 DEFAULT_POST_REWRITE_AUDIT_ENABLED = True
+# When True and a section is split into 2+ sub-blocks, run one extra LLM pass on the
+# concatenated draft to smooth transitions (optional; extra latency + cost).
+DEFAULT_INTEGRATE_SUBCHUNK_REWRITES = True
+# Safety cap for integrate prompt (source + draft); skip integrate if exceeded.
+INTEGRATE_SUBCHUNK_MAX_PROMPT_CHARS = 120_000
 POST_REWRITE_AUDIT_BATCH_MAX_CHARS = 72000
 GEMINI_PREFLIGHT_CACHE_TTL_SECONDS = 120
+# Gemini generate / preflight：暫態錯誤（含偶發 404）最多重試次數（含首次共 3 次）
+GEMINI_GENERATE_MAX_ATTEMPTS = 3
 DEFAULT_STYLE = "storyteller"
 LATEX_PLACEHOLDER = "LATEXPH"
 GEMINI_EXTRACTION_PROMPT = (
@@ -513,6 +521,59 @@ STYLE_PARAMS: Dict[str, List[Dict[str, Any]]] = {
     ]
 }
 
+# Short verb for live phase lines during per-section rewrite (UI + job store).
+STYLE_REWRITE_PHASE_VERB: Dict[str, str] = {
+    "storyteller": "說書人改寫",
+    "blog": "科普部落格改寫",
+    "professor": "講義改寫（大教授）",
+    "fairy": "知識童話改寫",
+    "lazy": "懶人包改寫",
+    "question": "問題驅動改寫",
+    "log": "實驗日誌改寫",
+}
+
+
+def _report_phase(
+    phase_reporter: Any,
+    message: str,
+    detail: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Invoke ``phase_reporter`` with optional structured detail for job-store / UI polling.
+
+    Backward compatible: if the callable only accepts one argument, fall back to ``(message,)``.
+    """
+    if not phase_reporter:
+        return
+    try:
+        phase_reporter(message, detail)
+    except TypeError:
+        phase_reporter(message)
+
+
+def _phase_short_section_title(title: Any, *, max_len: int = 72) -> str:
+    t = re.sub(r"^\s*#+\s*", "", str(title or "").strip())
+    if len(t) > max_len:
+        return t[: max_len - 1] + "…"
+    return t
+
+
+def _phase_err_snip(text: Any, *, max_len: int = 160) -> str:
+    t = str(text or "").replace("\n", " ").strip()
+    if len(t) > max_len:
+        return t[: max_len - 1] + "…"
+    return t
+
+
+def _summarize_section_rewrite_stats(stats: List[Dict[str, Any]]) -> str:
+    if not stats:
+        return "（無節次統計）"
+    parts = [
+        f"§{int(s.get('index', 0))}={float(s.get('elapsed_seconds', 0)):.2f}s"
+        for s in stats
+    ]
+    total = sum(float(s.get("elapsed_seconds", 0)) for s in stats)
+    return "; ".join(parts) + f" | total_wall={total:.2f}s"
+
 
 def _get_style_prompt(style_key: str, params: Dict[str, Any] = None) -> str:
     """Return the style prompt with parameters substituted (falls back to defaults)."""
@@ -537,9 +598,10 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
 
     Args:
         job: Job dict from the job store.
-        phase_reporter: Optional callable(label: str) -> None.  Called at each
-            major pipeline phase so the caller can persist progress (e.g. write a
-            ``phase`` field back to the job store for frontend polling).
+        phase_reporter: Optional ``callable(message: str, detail: dict | None) -> None``.
+            Called at each major pipeline phase and for fine-grained per-section rewrite
+            progress.  ``detail`` may include keys such as ``kind``, ``stage``,
+            ``section_index``, ``chunk_index``, ``elapsed_seconds`` for structured UIs.
 
     Payload (optional):
         post_rewrite_audit_enabled: bool, default True. When True and style is
@@ -554,8 +616,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     # ── Manual sections mode: bypass PDF extraction entirely ──────────────────
     manual_sections_raw = payload.get("manual_sections")
     if isinstance(manual_sections_raw, list) and manual_sections_raw:
-        if phase_reporter:
-            phase_reporter("使用手動輸入改寫單元…")
+        _report_phase(
+            phase_reporter,
+            "使用手動輸入改寫單元…",
+            {"kind": "ingest", "stage": "manual_sections"},
+        )
         sections = []
         for item in manual_sections_raw:
             if isinstance(item, dict):
@@ -579,14 +644,20 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 "Supported keys include pdf_path/source_pdf_path/input_path/file_path/path/pdf."
             )
 
-        if phase_reporter:
-            phase_reporter("PDF 文字掃描中…")
+        _report_phase(
+            phase_reporter,
+            "PDF 文字掃描中…",
+            {"kind": "ingest", "stage": "pdf_scan"},
+        )
         extracted_text, extraction_warning, pdf_extraction_model = _extract_pdf_text(pdf_path)
         if not extracted_text.strip():
             raise RuntimeError(f"No text extracted from PDF: {pdf_path}")
 
-        if phase_reporter:
-            phase_reporter("段落結構解析中…")
+        _report_phase(
+            phase_reporter,
+            "段落結構解析中…",
+            {"kind": "ingest", "stage": "structure_parse"},
+        )
         sections = _split_into_sections(extracted_text)
         if not sections:
             raise RuntimeError(f"Unable to build sections from extracted text: {pdf_path}")
@@ -596,6 +667,9 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         payload.get("rewrite_chunk_chars"),
         DEFAULT_REWRITE_CHUNK_CHARS,
     )
+    # Stored on the result for compatibility; section splitting is always:
+    # one pass if len(section) <= rewrite_chunk_chars, else chunk-style merge
+    # (see _split_section_into_rewrite_parts).
     rewrite_mode = _normalize_rewrite_mode(payload.get("rewrite_mode"))
     rewrite_response_format = _normalize_rewrite_response_format(
         payload.get("rewrite_response_format")
@@ -620,23 +694,31 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         payload.get("gemini_preflight_timeout_seconds"),
         default=DEFAULT_GEMINI_PREFLIGHT_TIMEOUT_SECONDS,
         min_value=3,
-        max_value=30,
+        max_value=60,
     )
     gemini_rewrite_timeout_seconds = _safe_range_int(
         payload.get("gemini_rewrite_timeout_seconds"),
         default=DEFAULT_GEMINI_REWRITE_TIMEOUT_SECONDS,
         min_value=15,
-        max_value=240,
+        max_value=360,
     )
     rewrite_fallback_timeout_seconds = _safe_range_int(
         payload.get("rewrite_fallback_timeout_seconds"),
         default=DEFAULT_REWRITE_FALLBACK_TIMEOUT_SECONDS,
         min_value=10,
-        max_value=180,
+        max_value=360,
     )
     append_missing_formulas = _normalize_bool(
         payload.get("append_missing_formulas"),
         DEFAULT_APPEND_MISSING_FORMULAS,
+    )
+    rewrite_formula_retry = _normalize_bool(
+        payload.get("rewrite_formula_retry"),
+        DEFAULT_REWRITE_FORMULA_RETRY,
+    )
+    integrate_subchunk_rewrites = _normalize_bool(
+        payload.get("integrate_subchunk_rewrites"),
+        DEFAULT_INTEGRATE_SUBCHUNK_REWRITES,
     )
     primary_model = str(payload.get("model") or DEFAULT_REWRITE_MODEL)
     fallback_chain_raw = payload.get("rewrite_fallback_chain")
@@ -668,6 +750,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         or ""
     ).strip()
     style = _normalize_style(payload.get("style"))
+    rewrite_verb = STYLE_REWRITE_PHASE_VERB.get(style, "改寫")
 
     style_params: Dict[str, Any] = {}
     raw_style_params = payload.get("style_params")
@@ -693,22 +776,45 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     rewrite_chunks_generated = 0
     total_sections = len(selected_sections)
     introduced_concepts: List[str] = []  # accumulates term names across sections
+    section_rewrite_stats: List[Dict[str, Any]] = []
+    subchunk_integrate_sections = 0
     for index, section in enumerate(selected_sections, start=1):
-        if phase_reporter:
-            phase_reporter(f"說書改寫中（第 {index}／{total_sections} 節）…")
+        section_t0 = time.perf_counter()
+        stitle = _phase_short_section_title(section.get("title"))
         rewrite_parts = _split_section_into_rewrite_parts(
             section_title=section["title"],
             source_text=section["source_text"],
             max_chunk_chars=rewrite_chunk_chars,
             rewrite_mode=rewrite_mode,
         )
-        rewrite_chunks_generated += len(rewrite_parts)
+        n_parts = len(rewrite_parts)
+        rewrite_chunks_generated += n_parts
+
+        _report_phase(
+            phase_reporter,
+            (
+                f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                f" — 已切分為 {n_parts} 個子塊，開始 LLM 改寫"
+            ),
+            {
+                "kind": "section_rewrite",
+                "stage": "section_started",
+                "style": style,
+                "section_index": index,
+                "section_total": total_sections,
+                "section_title": stitle,
+                "chunks_total": n_parts,
+                "primary_model": primary_model,
+            },
+        )
 
         section_story_parts: List[str] = []
         section_terms: List[Dict[str, str]] = []
         section_formula_explanations: List[Dict[str, str]] = []
         section_used_llm = False
         section_used_models: set[str] = set()
+        section_had_chunk_retry = False
+        integrate_ok: Optional[bool] = None
 
         for part_index, part in enumerate(rewrite_parts, start=1):
             _rewrite_kwargs = dict(
@@ -732,23 +838,143 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 section_index=index,
                 section_count=total_sections,
                 introduced_concepts=introduced_concepts if introduced_concepts else None,
+                rewrite_formula_retry=rewrite_formula_retry,
             )
-            rewritten_text, terms, formula_explanations, used_llm, failure, used_model = _rewrite_section(
-                **_rewrite_kwargs
+            _report_phase(
+                phase_reporter,
+                (
+                    f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                    f" — 子塊 {part_index}／{n_parts}：呼叫主模型 {primary_model}"
+                ),
+                {
+                    "kind": "section_rewrite",
+                    "stage": "chunk_llm",
+                    "style": style,
+                    "section_index": index,
+                    "section_total": total_sections,
+                    "section_title": stitle,
+                    "chunk_index": part_index,
+                    "chunks_total": n_parts,
+                    "primary_model": primary_model,
+                },
             )
-            if failure:
+            rewritten_text, terms, formula_explanations, rewrite_ok, rewrite_note, used_model = (
+                _rewrite_section(**_rewrite_kwargs)
+            )
+            # 第 5 個回傳值在成功時可能是附註（後備模型、dedup、公式檢查等），不得以「非空」當成失敗。
+            used_llm = bool(rewrite_ok)
+            failure: Optional[str] = str(rewrite_note).strip() if not rewrite_ok else None
+            if not rewrite_ok:
+                section_had_chunk_retry = True
+                err1 = str(rewrite_note or "").strip() or "(no detail)"
+                _report_phase(
+                    phase_reporter,
+                    (
+                        f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                        f" — 子塊 {part_index}／{n_parts}：第一次失敗（{_phase_err_snip(err1)}），"
+                        "5 秒後重試第二次…"
+                    ),
+                    {
+                        "kind": "section_rewrite",
+                        "stage": "chunk_retry_wait",
+                        "style": style,
+                        "section_index": index,
+                        "section_total": total_sections,
+                        "section_title": stitle,
+                        "chunk_index": part_index,
+                        "chunks_total": n_parts,
+                        "error_snippet": _phase_err_snip(err1, max_len=400),
+                    },
+                )
                 # Retry once after a brief pause for transient errors (e.g. Gemini 504, Ollama overload)
                 time.sleep(5)
-                rt2, te2, fe2, ul2, fa2, um2 = _rewrite_section(**_rewrite_kwargs)
-                if not fa2:
-                    rewritten_text, terms, formula_explanations, used_llm, failure, used_model = (
-                        rt2, te2, fe2, ul2, fa2, um2
+                _report_phase(
+                    phase_reporter,
+                    (
+                        f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                        f" — 子塊 {part_index}／{n_parts}：第二次改寫中…"
+                    ),
+                    {
+                        "kind": "section_rewrite",
+                        "stage": "chunk_retry_llm",
+                        "style": style,
+                        "section_index": index,
+                        "section_total": total_sections,
+                        "section_title": stitle,
+                        "chunk_index": part_index,
+                        "chunks_total": n_parts,
+                    },
+                )
+                rt2, te2, fe2, ok2, note2, um2 = _rewrite_section(**_rewrite_kwargs)
+                if ok2:
+                    rewritten_text, terms, formula_explanations, rewrite_ok, rewrite_note, used_model = (
+                        rt2, te2, fe2, ok2, note2, um2
                     )
+                    used_llm = True
+                    failure = None
+                    if used_model:
+                        _report_phase(
+                            phase_reporter,
+                            (
+                                f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                                f" — 子塊 {part_index}／{n_parts}：重試後完成（模型 {used_model}）"
+                            ),
+                            {
+                                "kind": "section_rewrite",
+                                "stage": "chunk_done",
+                                "style": style,
+                                "section_index": index,
+                                "section_total": total_sections,
+                                "section_title": stitle,
+                                "chunk_index": part_index,
+                                "chunks_total": n_parts,
+                                "used_model": used_model,
+                                "after_retry": True,
+                            },
+                        )
                 else:
-                    failure = f"兩次均失敗 — 第一次: {failure}; 第二次: {fa2}"
+                    err2 = str(note2 or "").strip() or "(no detail)"
+                    failure = f"兩次均失敗 — 第一次: {err1}; 第二次: {err2}"
                     llm_failures.append(
                         f"section {index} part {part_index}/{len(rewrite_parts)}: {failure}"
                     )
+                    _report_phase(
+                        phase_reporter,
+                        (
+                            f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                            f" — 子塊 {part_index}／{n_parts}：兩次均失敗，已記錄警告並繼續"
+                        ),
+                        {
+                            "kind": "section_rewrite",
+                            "stage": "chunk_failed",
+                            "style": style,
+                            "section_index": index,
+                            "section_total": total_sections,
+                            "section_title": stitle,
+                            "chunk_index": part_index,
+                            "chunks_total": n_parts,
+                            "error_snippet": _phase_err_snip(failure, max_len=400),
+                        },
+                    )
+            elif used_model:
+                _report_phase(
+                    phase_reporter,
+                    (
+                        f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                        f" — 子塊 {part_index}／{n_parts}：完成（模型 {used_model}）"
+                    ),
+                    {
+                        "kind": "section_rewrite",
+                        "stage": "chunk_done",
+                        "style": style,
+                        "section_index": index,
+                        "section_total": total_sections,
+                        "section_title": stitle,
+                        "chunk_index": part_index,
+                        "chunks_total": n_parts,
+                        "used_model": used_model,
+                    },
+                )
             if used_model:
                 section_used_models.add(used_model)
                 rewrite_models_used.add(used_model)
@@ -767,8 +993,108 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 section_formula_explanations.extend(formula_explanations)
 
         section_story_text = "\n\n".join(section_story_parts).strip()
+        if (
+            integrate_subchunk_rewrites
+            and n_parts > 1
+            and bool(section_story_parts)
+            and bool(section_story_text)
+        ):
+            _report_phase(
+                phase_reporter,
+                (
+                    f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                    f" — 子塊整合改寫中（將 {n_parts} 段合併稿統稿為一篇）…"
+                ),
+                {
+                    "kind": "section_rewrite",
+                    "stage": "subchunk_integrate",
+                    "style": style,
+                    "section_index": index,
+                    "section_total": total_sections,
+                    "section_title": stitle,
+                    "chunks_total": n_parts,
+                },
+            )
+            merged, int_err, int_model = _integrate_subchunk_story_text(
+                section_title=str(section.get("title", "")),
+                full_source_text=str(section.get("source_text", "")),
+                combined_draft=section_story_text,
+                style=style,
+                style_params=style_params,
+                concise_level=concise_level,
+                anti_repeat_level=anti_repeat_level,
+                section_index=index,
+                section_count=total_sections,
+                introduced_concepts=introduced_concepts if introduced_concepts else None,
+                primary_model=primary_model,
+                fallback_chain=fallback_chain,
+                ollama_base_url=ollama_base_url,
+                minimax_base_url=minimax_base_url,
+                minimax_oauth_token=minimax_oauth_token,
+                gemini_preflight_enabled=gemini_preflight_enabled,
+                gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                rewrite_response_format=rewrite_response_format,
+                append_missing_formulas=append_missing_formulas,
+            )
+            if merged and merged.strip():
+                section_story_text = merged.strip()
+                integrate_ok = True
+                subchunk_integrate_sections += 1
+                if int_model:
+                    section_used_models.add(int_model)
+                    rewrite_models_used.add(int_model)
+                if int_model:
+                    section_used_llm = True
+            else:
+                integrate_ok = False
+                # section_story_text 仍為各子塊改寫再以 \n\n 串接之合併稿
+                if int_err:
+                    llm_failures.append(
+                        f"section {index} subchunk integrate: {int_err}"
+                    )
+
         if not section_story_text:
             section_story_text = section["source_text"]
+
+        sec_elapsed = time.perf_counter() - section_t0
+        sec_elapsed_r = round(sec_elapsed, 2)
+        models_joined = ", ".join(sorted(section_used_models))
+        section_rewrite_stats.append(
+            {
+                "index": index,
+                "title": section["title"],
+                "title_short": stitle,
+                "elapsed_seconds": sec_elapsed_r,
+                "chunks": n_parts,
+                "used_model": models_joined or None,
+                "used_llm": section_used_llm,
+                "had_chunk_retry": section_had_chunk_retry,
+                "subchunk_integrate": integrate_ok,
+            }
+        )
+        _report_phase(
+            phase_reporter,
+            (
+                f"{rewrite_verb} · 第 {index}／{total_sections} 節「{stitle}」"
+                f" — 本節完成（牆鐘耗時 {sec_elapsed:.1f}s，子塊 {n_parts}"
+                f"{'' if not models_joined else f'，模型 {models_joined}'}"
+                f"{'' if not section_had_chunk_retry else '，含子塊重試'}）"
+            ),
+            {
+                "kind": "section_rewrite",
+                "stage": "section_done",
+                "style": style,
+                "section_index": index,
+                "section_total": total_sections,
+                "section_title": stitle,
+                "chunks_total": n_parts,
+                "elapsed_seconds": sec_elapsed_r,
+                "used_model": models_joined or None,
+                "had_chunk_retry": section_had_chunk_retry,
+            },
+        )
 
         rendered_sections.append(
             {
@@ -779,8 +1105,9 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 "terms": section_terms,
                 "formula_explanations": section_formula_explanations,
                 "used_llm": section_used_llm,
-                "used_model": ", ".join(sorted(section_used_models)),
+                "used_model": models_joined,
                 "rewrite_chunks": len(rewrite_parts),
+                "rewrite_wall_seconds": sec_elapsed_r,
             }
         )
 
@@ -792,8 +1119,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     if post_rewrite_audit_enabled and rendered_sections:
         if style == "storyteller":
             post_rewrite_audit_executed = True
-            if phase_reporter:
-                phase_reporter("說書改寫總稽核與修正…")
+            _report_phase(
+                phase_reporter,
+                "說書改寫總稽核與修正…",
+                {"kind": "post_rewrite_audit", "style": "storyteller", "stage": "batch_audit"},
+            )
             _post_rewrite_storyteller_audit(
                 rendered_sections,
                 primary_model=primary_model,
@@ -814,8 +1144,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             )
         elif style == "blog":
             post_rewrite_audit_executed = True
-            if phase_reporter:
-                phase_reporter("部落格改寫總稽核與修正…")
+            _report_phase(
+                phase_reporter,
+                "部落格改寫總稽核與修正…",
+                {"kind": "post_rewrite_audit", "style": "blog", "stage": "batch_audit"},
+            )
             _post_rewrite_blog_audit(
                 rendered_sections,
                 primary_model=primary_model,
@@ -836,8 +1169,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             )
         elif style == "professor":
             post_rewrite_audit_executed = True
-            if phase_reporter:
-                phase_reporter("講義體改寫總稽核與修正…")
+            _report_phase(
+                phase_reporter,
+                "講義體改寫總稽核與修正…",
+                {"kind": "post_rewrite_audit", "style": "professor", "stage": "batch_audit"},
+            )
             _post_rewrite_professor_audit(
                 rendered_sections,
                 primary_model=primary_model,
@@ -858,8 +1194,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             )
         elif style == "fairy":
             post_rewrite_audit_executed = True
-            if phase_reporter:
-                phase_reporter("知識童話改寫總稽核與修正…")
+            _report_phase(
+                phase_reporter,
+                "知識童話改寫總稽核與修正…",
+                {"kind": "post_rewrite_audit", "style": "fairy", "stage": "batch_audit"},
+            )
             _post_rewrite_fairy_audit(
                 rendered_sections,
                 primary_model=primary_model,
@@ -880,8 +1219,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             )
         elif style == "lazy":
             post_rewrite_audit_executed = True
-            if phase_reporter:
-                phase_reporter("懶人包改寫總稽核與修正…")
+            _report_phase(
+                phase_reporter,
+                "懶人包改寫總稽核與修正…",
+                {"kind": "post_rewrite_audit", "style": "lazy", "stage": "batch_audit"},
+            )
             _post_rewrite_lazy_audit(
                 rendered_sections,
                 primary_model=primary_model,
@@ -902,8 +1244,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             )
         elif style == "question":
             post_rewrite_audit_executed = True
-            if phase_reporter:
-                phase_reporter("問題驅動改寫總稽核與修正…")
+            _report_phase(
+                phase_reporter,
+                "問題驅動改寫總稽核與修正…",
+                {"kind": "post_rewrite_audit", "style": "question", "stage": "batch_audit"},
+            )
             _post_rewrite_question_audit(
                 rendered_sections,
                 primary_model=primary_model,
@@ -924,8 +1269,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
             )
         elif style == "log":
             post_rewrite_audit_executed = True
-            if phase_reporter:
-                phase_reporter("實驗日誌改寫總稽核與修正…")
+            _report_phase(
+                phase_reporter,
+                "實驗日誌改寫總稽核與修正…",
+                {"kind": "post_rewrite_audit", "style": "log", "stage": "batch_audit"},
+            )
             _post_rewrite_log_audit(
                 rendered_sections,
                 primary_model=primary_model,
@@ -952,8 +1300,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
     elif fallback_models_used and primary_model not in rewrite_models_used:
         rewrite_model = ", ".join(sorted(fallback_models_used))
 
-    if phase_reporter:
-        phase_reporter("輸出 HTML…")
+    _report_phase(
+        phase_reporter,
+        "輸出 HTML…",
+        {"kind": "render", "stage": "html_output"},
+    )
     title = _resolve_title(payload=payload, pdf_path=pdf_path, sections=rendered_sections)
     output_path = _build_output_path(pdf_path=pdf_path, payload=payload, title=title, job=job)
     output_html = _build_story_html_document(
@@ -966,6 +1317,12 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
 
     STORYTELLERS_DIR.mkdir(parents=True, exist_ok=True)
     output_path.write_text(output_html, encoding="utf-8")
+
+    rewrite_wall_seconds_total = round(
+        sum(float(s.get("elapsed_seconds", 0)) for s in section_rewrite_stats),
+        2,
+    )
+    timing_note = _summarize_section_rewrite_stats(section_rewrite_stats)
 
     return {
         "pipeline": "storyteller_hybrid_generation",
@@ -985,6 +1342,8 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         "sections_processed": len(selected_sections),
         "sections_skipped_by_limit": skipped_sections,
         "sections_generated": len(rendered_sections),
+        "section_rewrite_stats": section_rewrite_stats,
+        "rewrite_wall_seconds_total": rewrite_wall_seconds_total,
         "rewrite_chunks_generated": rewrite_chunks_generated,
         "rewrite_chunk_chars": rewrite_chunk_chars,
         "rewrite_mode": rewrite_mode,
@@ -996,9 +1355,12 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         "gemini_rewrite_timeout_seconds": gemini_rewrite_timeout_seconds,
         "rewrite_fallback_timeout_seconds": rewrite_fallback_timeout_seconds,
         "append_missing_formulas": append_missing_formulas,
+        "rewrite_formula_retry": rewrite_formula_retry,
         "max_sections": max_sections,
         "post_rewrite_audit_enabled": post_rewrite_audit_enabled,
         "post_rewrite_audit_executed": post_rewrite_audit_executed,
+        "integrate_subchunk_rewrites": integrate_subchunk_rewrites,
+        "subchunk_integrate_sections": subchunk_integrate_sections,
         "steps": [
             {"name": "ingest_source", "status": "done", "note": str(pdf_path)},
             {
@@ -1036,6 +1398,11 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 if post_rewrite_audit_executed and style == "professor"
                 else []
             ),
+            {
+                "name": "section_rewrite_wall_clock",
+                "status": "done",
+                "note": timing_note,
+            },
             {
                 "name": "html_story_render",
                 "status": "done",
@@ -1744,10 +2111,17 @@ def _rewrite_section(
     section_count: int = 0,
     introduced_concepts: List[str] = None,
     extra_instruction: Optional[str] = None,
+    rewrite_formula_retry: bool = False,
+    _formula_retry_used: bool = False,
 ) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str], str]:
     """Rewrite a section into storyteller style.
-    
-    Returns: (story_text, terms, formula_explanations, success, error)
+
+    Returns:
+        (story_text, terms, formula_explanations, ok, note_or_error, used_model)
+        ``ok`` is True iff rewrite completed (story_text may still carry quality notes).
+        When ``ok`` is False, ``note_or_error`` is the error string and story_text is
+        usually the source fallback; when ``ok`` is True, ``note_or_error`` may be None
+        or an informational string (fallback path, dedup, formula echo warnings, etc.).
     """
     text = source_text.strip()
     if not text:
@@ -1845,13 +2219,41 @@ def _rewrite_section(
     if removed_repeats > 0:
         dedup_note = f"dedup removed {removed_repeats} repetitive blocks"
 
-    # Check for missing formulas
+    # Check for missing formulas（子字串 + 空白／定界符彈性比對）
     missing_formula_note = None
     if formulas:
-        missing = [formula for formula in formulas if formula not in story_text]
+        missing = [formula for formula in formulas if not _story_contains_formula(story_text, formula)]
         if missing:
             if append_missing_formulas:
                 story_text = story_text.rstrip() + "\n\n公式保留：\n" + "\n".join(missing)
+            elif rewrite_formula_retry and not _formula_retry_used:
+                retry_extra = _build_formula_retry_extra_instruction(missing)
+                merged_extra = _merge_notes(extra_instruction, retry_extra)
+                return _rewrite_section(
+                    section_title=section_title,
+                    source_text=text,
+                    model=model,
+                    fallback_chain=fallback_chain,
+                    ollama_base_url=ollama_base_url,
+                    minimax_base_url=minimax_base_url,
+                    minimax_oauth_token=minimax_oauth_token,
+                    style=style,
+                    rewrite_response_format=rewrite_response_format,
+                    append_missing_formulas=append_missing_formulas,
+                    style_params=style_params,
+                    concise_level=concise_level,
+                    anti_repeat_level=anti_repeat_level,
+                    gemini_preflight_enabled=gemini_preflight_enabled,
+                    gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+                    gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
+                    fallback_timeout_seconds=fallback_timeout_seconds,
+                    section_index=section_index,
+                    section_count=section_count,
+                    introduced_concepts=introduced_concepts,
+                    extra_instruction=merged_extra,
+                    rewrite_formula_retry=rewrite_formula_retry,
+                    _formula_retry_used=True,
+                )
             else:
                 missing_formula_note = (
                     f"detected {len(missing)} source formulas not echoed literally; "
@@ -1897,6 +2299,28 @@ def _build_story_prompt(
             f"直接使用術語本身即可（違反此規則會導致輸出被截斷）：\n{concepts_str}"
         )
 
+    latex_exprs = _extract_latex_expressions(source_text)
+    formula_guard_lines: List[str] = []
+    if latex_exprs:
+        cap = 12
+        formula_guard_lines.append("")
+        formula_guard_lines.append("【公式逐字保留（撰稿前請逐條勾稽）】")
+        formula_guard_lines.append(
+            f"偵測到 {len(latex_exprs)} 個 LaTeX 片段。改寫後 Markdown 正文必須讓下列每一條都以「子字串完全一致」"
+            "至少出現一次；即使精簡度較高也不可刪減這些字面值。不可只口述意義而不貼原式、"
+            "不可改用 Unicode 數學符號取代、不可變更定界符（$、$$、\\(、\\)、\\[、\\] 須與下列片段一致）。"
+        )
+        for i, ex in enumerate(latex_exprs[:cap], start=1):
+            disp = ex if len(ex) <= 480 else (ex[:479] + "…")
+            formula_guard_lines.append(f"{i}. 以下整段必須原樣嵌入正文：")
+            formula_guard_lines.append(disp)
+        if len(latex_exprs) > cap:
+            formula_guard_lines.append(
+                f"（另有 {len(latex_exprs) - cap} 條公式，亦須以同一「逐字子字串」規則保留。）"
+            )
+        formula_guard_lines.append("")
+    formula_guard_block = "\n".join(formula_guard_lines)
+
     base_prompt = f"""你是頂尖的論文說書人，請把論文段落改寫成「易懂、可信、具教學感」的繁體中文說明。{section_context_block}
 
 改寫風格：
@@ -1916,7 +2340,7 @@ def _build_story_prompt(
 8. 可視需要加入簡短開場白、懸念或生活化一句話，以吸引讀者並提高閱讀興趣；避免空洞寒暄，亦避免制式套話（例如只說「好的」卻不進入正文）。
 9. 精簡度：{concise_value}/10。優先保留資訊增量，刪除同義重述與口語贅詞；每段最多 {paragraph_sentence_cap} 句，整段小節最多 {max_short_sections} 個主要小段。
 10. 重複抑制度：{anti_repeat_value}/10。若前文已解釋過同一概念，除非補充新資訊，否則不可再次定義；避免重複使用相同句型開頭；生活類比與故事主線亦應避免與前序章節過度近似（與風格提示中的自評呼應）。
-
+{formula_guard_block}
 章節標題：
 {section_title}
 
@@ -3163,6 +3587,39 @@ def _call_local_llm(*, prompt: str, model: str, ollama_base_url: str, timeout: i
     return str(payload.get("response", "")).strip()
 
 
+def _gemini_transport_error_retryable(exc: BaseException, attempt_index: int) -> bool:
+    """True if Gemini SDK error may be transient (safe to retry a few times).
+
+    ``attempt_index`` is 0-based index of the attempt that just failed.
+    """
+    if attempt_index >= GEMINI_GENERATE_MAX_ATTEMPTS - 1:
+        return False
+    low = str(exc).lower()
+    if any(
+        x in low
+        for x in (
+            "429",
+            "resource exhausted",
+            "503",
+            "502",
+            "500",
+            "504",
+            "timeout",
+            "timed out",
+            "deadline",
+            "unavailable",
+            "overloaded",
+            "try again",
+            "internal",
+        )
+    ):
+        return True
+    # 少數 CDN / 路由會短暫回 404：僅再試一次，避免把「真不存在」模型拖太久
+    if ("404" in low or "not found" in low) and attempt_index < 1:
+        return True
+    return False
+
+
 def _call_gemini_llm(*, prompt: str, model: str, timeout: int = 240) -> str:
     from gemini_client import generate_content_text
 
@@ -3170,12 +3627,23 @@ def _call_gemini_llm(*, prompt: str, model: str, timeout: int = 240) -> str:
     if not gemini_api_key:
         raise RuntimeError("missing GOOGLE_API_KEY/GEMINI_API_KEY")
 
-    return generate_content_text(
-        api_key=gemini_api_key,
-        model=model,
-        contents=prompt,
-        timeout=int(timeout),
-    )
+    last_exc: Optional[BaseException] = None
+    for attempt in range(GEMINI_GENERATE_MAX_ATTEMPTS):
+        try:
+            return generate_content_text(
+                api_key=gemini_api_key,
+                model=model,
+                contents=prompt,
+                timeout=int(timeout),
+            )
+        except Exception as exc:
+            last_exc = exc
+            if not _gemini_transport_error_retryable(exc, attempt):
+                raise
+            time.sleep(min(8.0, 1.6 * (1.65**attempt)))
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Gemini generate failed with no exception detail")
 
 
 def _gemini_rewrite_preflight(*, model: str, timeout: int) -> Tuple[bool, str]:
@@ -3190,16 +3658,30 @@ def _gemini_rewrite_preflight(*, model: str, timeout: int) -> Tuple[bool, str]:
         _GEMINI_PREFLIGHT_CACHE[model] = (now, result[0], result[1])
         return result
 
+    last_exc: Optional[BaseException] = None
+    ok_run = False
     try:
         from gemini_client import generate_content_text
 
-        generate_content_text(
-            api_key=gemini_api_key,
-            model=model,
-            contents="回覆 OK",
-            timeout=int(timeout),
-        )
-        result = (True, "ok")
+        for attempt in range(GEMINI_GENERATE_MAX_ATTEMPTS):
+            try:
+                generate_content_text(
+                    api_key=gemini_api_key,
+                    model=model,
+                    contents="回覆 OK",
+                    timeout=int(timeout),
+                )
+                ok_run = True
+                break
+            except Exception as exc:
+                last_exc = exc
+                if not _gemini_transport_error_retryable(exc, attempt):
+                    break
+                time.sleep(min(6.0, 1.4 * (1.65**attempt)))
+        if ok_run:
+            result = (True, "ok")
+        else:
+            result = (False, f"{type(last_exc).__name__}: {last_exc}" if last_exc else "unknown preflight failure")
     except Exception as exc:
         result = (False, f"{type(exc).__name__}: {exc}")
 
@@ -3287,6 +3769,152 @@ def _parse_rewrite_response(
         return extracted_story, [], []
 
     return cleaned or fallback_text, [], []
+
+
+def _integrate_subchunk_story_text(
+    *,
+    section_title: str,
+    full_source_text: str,
+    combined_draft: str,
+    style: str,
+    style_params: Dict[str, Any],
+    concise_level: int,
+    anti_repeat_level: int,
+    section_index: int,
+    section_count: int,
+    introduced_concepts: Optional[List[str]],
+    primary_model: str,
+    fallback_chain: List[Dict[str, str]],
+    ollama_base_url: str,
+    minimax_base_url: str,
+    minimax_oauth_token: str,
+    gemini_preflight_enabled: bool,
+    gemini_preflight_timeout_seconds: int,
+    gemini_rewrite_timeout_seconds: int,
+    fallback_timeout_seconds: int,
+    rewrite_response_format: str,
+    append_missing_formulas: bool,
+) -> Tuple[Optional[str], Optional[str], str]:
+    """One LLM pass to merge multi-sub-block rewrites into a single coherent section story.
+
+    Returns ``(story_text, failure_note, used_model)``.  On hard failure ``story_text`` is
+    ``None`` and the caller should keep the simple ``\\n\\n``-joined draft.
+    """
+    src = str(full_source_text or "").strip()
+    draft = str(combined_draft or "").strip()
+    if not draft:
+        return None, "empty combined draft", ""
+
+    total_len = len(src) + len(draft)
+    if total_len > INTEGRATE_SUBCHUNK_MAX_PROMPT_CHARS:
+        return (
+            None,
+            (
+                f"source+draft length {total_len} exceeds cap "
+                f"{INTEGRATE_SUBCHUNK_MAX_PROMPT_CHARS}; integrate skipped"
+            ),
+            "",
+        )
+
+    style_key = _normalize_style(style)
+    style_hint = _get_style_prompt(style_key, style_params or {})
+    fmt = _normalize_rewrite_response_format(rewrite_response_format)
+    json_hint = ""
+    if fmt == "json":
+        json_hint = (
+            "\n【輸出格式】本任務必須輸出合法 JSON 物件，鍵包含 story_text（Markdown 字串）、"
+            "terms（陣列，可為空陣列）、formula_explanations（陣列，可為空陣列）。"
+            "不要輸出 code fence。"
+        )
+    else:
+        json_hint = (
+            "\n【輸出格式】僅輸出 Markdown 正文（可含表格與風格要求的自評行等）；"
+            "不要輸出 JSON 或 code fence。"
+        )
+
+    section_context_block = ""
+    if section_index > 0 and section_count > 0:
+        section_context_block = f"\n章節定位：本節是全文第 {section_index}/{section_count} 節。"
+    if introduced_concepts:
+        concepts_str = "、".join(introduced_concepts[:40])
+        section_context_block += (
+            f"\n【術語去重】以下術語於前序內容已解釋過，整合稿中禁止再次冗長定義：\n{concepts_str}"
+        )
+
+    prompt = f"""你是論文改寫管線的「整節統稿編輯」。同一章節曾被切成多段各自改寫，以下【分段改寫合併稿】是將各段輸出以空行直接併接的結果，可能出現：
+- 重複的開場、過渡句或小結；
+- 子塊邊界上指稱不順（「上述」「本節一開始」重複）；
+- 用語或符號風格略不一致。
+
+你的任務：在**不改變技術事實**的前提下，改寫成**單一連貫**的正文，並遵守與初次改寫相同的風格規範。
+
+【改寫風格規範】
+{style_hint}
+{section_context_block}
+
+【硬性要求】
+1. 事實、數值、結論必須與【對照用原文】一致；禁止捏造未出現的實驗、引用或數據。
+2. 原文中所有 LaTeX 公式（$...$、$$...$$、\\(...\\)、\\[...\\]）必須在整合稿中**字面保留**（不可改寫成 Unicode 偽公式或刪除）。
+3. 刪除或改寫只在子塊邊界上因分段造成的冗餘銜接；保留必要的技術細節與結構（標題、清單、表格、EVAL 等若風格要求則須保留並放在正確相對位置）。
+4. 精簡度參考：{int(concise_level)}/10；重複抑制度參考：{int(anti_repeat_level)}/10。
+{json_hint}
+
+【章節標題】
+{section_title}
+
+【對照用原文】（事實與公式以此為準）
+{src}
+
+【分段改寫合併稿】（僅供參考的初稿，可大幅重排與刪冗）
+{draft}
+"""
+
+    integrate_timeout = max(int(gemini_rewrite_timeout_seconds), 120)
+    try:
+        raw, used_model = _complete_prompt_with_model_fallback(
+            prompt=prompt,
+            model=primary_model,
+            fallback_chain=fallback_chain,
+            ollama_base_url=ollama_base_url,
+            minimax_base_url=minimax_base_url,
+            minimax_oauth_token=minimax_oauth_token,
+            gemini_preflight_enabled=gemini_preflight_enabled,
+            gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
+            gemini_rewrite_timeout_seconds=integrate_timeout,
+            fallback_timeout_seconds=fallback_timeout_seconds,
+        )
+    except Exception as exc:
+        return None, f"{type(exc).__name__}: {exc}", ""
+
+    story_text, _terms, _fexps = _parse_rewrite_response(
+        rewritten=str(raw or ""),
+        fallback_text=draft,
+    )
+    story_text, _removed = _deduplicate_story_text(
+        story_text,
+        anti_repeat_level=int(anti_repeat_level),
+    )
+
+    formulas = _extract_latex_expressions(src)
+    if formulas:
+        missing = [f for f in formulas if not _story_contains_formula(story_text, f)]
+        if missing:
+            if append_missing_formulas:
+                story_text = story_text.rstrip() + "\n\n公式保留：\n" + "\n".join(missing)
+            else:
+                return (
+                    None,
+                    (
+                        f"integrate pass: {len(missing)} source formulas not echoed literally; "
+                        "auto-append disabled"
+                    ),
+                    used_model,
+                )
+
+    if not (story_text or "").strip():
+        return None, "integrate pass returned empty story_text", used_model
+
+    return story_text.strip(), None, used_model
 
 
 def _try_parse_rewrite_payload(text: str) -> Optional[Dict[str, Any]]:
@@ -3454,6 +4082,29 @@ def _strip_conversational_chatter(text: str) -> str:
     return cleaned.strip()
 
 
+def _normalize_for_latex_presence(text: str) -> str:
+    """Collapse whitespace for lenient substring / core matching (not semantic LaTeX canon)."""
+    t = str(text or "")
+    t = t.replace("\r\n", "\n").replace("\r", "\n")
+    t = re.sub(r"[ \t\u00a0]+", " ", t)
+    t = re.sub(r"\n\s*\n+", "\n", t)
+    return t.strip()
+
+
+def _latex_core_normalized(expr: str) -> str:
+    """Strip common outer delimiters then apply _normalize_for_latex_presence."""
+    e = str(expr or "").strip()
+    if len(e) >= 4 and e.startswith("$$") and e.endswith("$$"):
+        e = e[2:-2].strip()
+    elif e.startswith(r"\[") and e.endswith(r"\]") and len(e) >= 4:
+        e = e[2:-2].strip()
+    elif e.startswith(r"\(") and e.endswith(r"\)") and len(e) >= 4:
+        e = e[2:-2].strip()
+    elif e.startswith("$") and e.endswith("$") and len(e) >= 2:
+        e = e[1:-1].strip()
+    return _normalize_for_latex_presence(e)
+
+
 def _extract_latex_expressions(text: str) -> List[str]:
     patterns = [
         r"\\\[(.*?)\\\]",
@@ -3477,6 +4128,42 @@ def _extract_latex_expressions(text: str) -> List[str]:
         seen.add(expr)
         unique.append(expr)
     return unique
+
+
+def _story_contains_formula(story: str, formula: str) -> bool:
+    """Whether ``story`` already contains ``formula`` (literal or whitespace-normalized / core match)."""
+    if not str(formula or "").strip():
+        return True
+    st = str(story or "")
+    if formula in st:
+        return True
+    n_story = _normalize_for_latex_presence(st)
+    n_form = _normalize_for_latex_presence(formula)
+    if n_form and n_form in n_story:
+        return True
+    core_f = _latex_core_normalized(formula)
+    if not core_f:
+        return formula in st
+    if core_f in n_story:
+        return True
+    for ex in _extract_latex_expressions(st):
+        if _latex_core_normalized(ex) == core_f:
+            return True
+    return False
+
+
+def _build_formula_retry_extra_instruction(missing: List[str]) -> str:
+    cap = 25
+    body = "\n".join(missing[:cap])
+    tail = ""
+    if len(missing) > cap:
+        tail = f"\n（其餘 {len(missing) - cap} 條亦須同樣處理。）"
+    return (
+        "【公式補強（必須遵守）】\n"
+        "下列 LaTeX 在上一版輸出中仍未被偵測為已納入（已做空白／定界符彈性比對）。\n"
+        "請重新輸出本節**完整**改寫；正文中須將每條下列字面（含外層 $、$$、\\(、\\)、\\[、\\]）**原樣**至少出現一次：\n"
+        f"{body}{tail}"
+    )
 
 
 def _deduplicate_story_text(text: str, *, anti_repeat_level: int) -> Tuple[str, int]:
@@ -4628,25 +5315,40 @@ def _split_section_into_rewrite_parts(
     max_chunk_chars: int,
     rewrite_mode: str,
 ) -> List[Dict[str, str]]:
-    normalized_mode = _normalize_rewrite_mode(rewrite_mode)
-    if normalized_mode == "paragraph":
-        chunks = _paragraph_parts_for_rewrite(source_text, max_chunk_chars)
-    else:
-        chunks = _chunk_text_for_rewrite(source_text, max_chunk_chars)
+    """Split one rewrite *section* into one or more LLM calls (sub-blocks).
 
+    Policy (``rewrite_mode`` is kept for API compatibility but **no longer selects**
+    paragraph-vs-chunk splitting):
+
+    1. If the whole section body fits in ``max_chunk_chars`` (floor 400), rewrite it
+       in **one** pass — no blank-line paragraph slicing.
+    2. If it exceeds ``max_chunk_chars``, split using **chunk-style packing**
+       (``_chunk_text_for_rewrite``): merge blank-line paragraphs up to the limit,
+       avoiding many tiny sub-blocks from paragraph-only splitting.
+    """
+    _ = rewrite_mode  # kept for API compatibility; splitting policy is fixed as above
+    text = str(source_text or "").strip()
+    if not text:
+        return [{"title": section_title, "source_text": ""}]
+
+    max_chars = max(int(max_chunk_chars or DEFAULT_REWRITE_CHUNK_CHARS), 400)
+
+    if len(text) <= max_chars:
+        return [{"title": section_title, "source_text": text}]
+
+    chunks = _chunk_text_for_rewrite(text, max_chars)
     if not chunks:
-        return [{"title": section_title, "source_text": source_text.strip()}]
+        return [{"title": section_title, "source_text": text}]
 
     if len(chunks) == 1:
         return [{"title": section_title, "source_text": chunks[0]}]
 
     total = len(chunks)
-    part_label = "paragraph" if normalized_mode == "paragraph" else "part"
     parts: List[Dict[str, str]] = []
     for idx, chunk in enumerate(chunks, start=1):
         parts.append(
             {
-                "title": f"{section_title} ({part_label} {idx}/{total})",
+                "title": f"{section_title} (part {idx}/{total})",
                 "source_text": chunk,
             }
         )

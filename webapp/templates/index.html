@@ -465,7 +465,11 @@
                        @dragover.prevent="onUnitDragOver($event, unit.id)"
                        @drop.prevent="onUnitDrop($event, unit.id)"
                        @dragend="onUnitDragEnd($event)"
-                       :class="{dragging: dragSource === unit.id, dragover: dragTarget === unit.id}">
+                       :class="{
+                         dragging: dragSource === unit.id,
+                         dragover: dragTarget === unit.id,
+                         'manual-unit-over-chunk': (unit.body || '').length > genRewriteChunkChars
+                       }">
                     <div class="manual-unit-header">
                       <span class="manual-unit-index" x-text="`#${index + 1}`"></span>
                       <span class="drag-handle" title="拖拉排序">⋮⋮</span>
@@ -486,6 +490,11 @@
                               placeholder="貼上此單元的原文內容…"
                               x-model="unit.body"></textarea>
                     <div class="manual-unit-chars" x-text="`${(unit.body||'').length} 字元`"></div>
+                    <div class="manual-unit-chunk-warn"
+                         x-show="(unit.body || '').length > genRewriteChunkChars">
+                      已超過建議的 <code>rewrite_chunk_chars</code>（介面參考
+                      <span x-text="genRewriteChunkChars"></span>），此單元將切成多子塊改寫。
+                    </div>
                   </div>
                   <div class="manual-unit-footer">
                     <button class="btn btn-sm btn-outline" type="button"
@@ -631,6 +640,21 @@
               <span>改寫前先做 Gemini 快速健康檢查（避免卡住）</span>
             </label>
 
+            <label class="check-label" style="margin-bottom:10px;">
+              <input type="checkbox" x-model="genIntegrateSubchunks">
+              <span>多子塊改寫後再做整節「統稿整合」改寫（多耗約每節一次 LLM，邊界較順）</span>
+            </label>
+
+            <label class="check-label" style="margin-bottom:10px;">
+              <input type="checkbox" x-model="genRewriteFormulaRetry">
+              <span>公式未逐字出現時自動再改寫一次（rewrite_formula_retry，約多耗一輪子塊 LLM）</span>
+            </label>
+            <div class="style-param-hint" style="margin:-4px 0 12px 1.6rem; max-width:52rem;">
+              若統稿整合失敗，該節仍會以各子塊改寫結果串接（以空行合併）作為輸出。
+              建議每個改寫單元內文盡量勿超過 <code>rewrite_chunk_chars</code> 字元（介面參考預設
+              <span x-text="genRewriteChunkChars"></span>），可減少子塊切割與統稿負擔；PDF 模式則取決於解析後各節長度。
+            </div>
+
             <div class="style-param-row">
               <label class="style-param-label">
                 <span>健康檢查逾時秒數</span>
@@ -638,12 +662,12 @@
               </label>
               <div class="style-param-hint">超過此秒數就視為不穩，直接進入後備模型。</div>
               <input class="style-param-slider" type="range"
-                     min="3" max="30" step="1"
+                     min="3" max="60" step="1"
                      :value="genGeminiPreflightTimeoutSeconds"
                      @input="genGeminiPreflightTimeoutSeconds = parseInt($event.target.value)">
               <div class="style-param-range">
                 <span>3 秒</span>
-                <span>30 秒</span>
+                <span>60 秒</span>
               </div>
             </div>
 
@@ -654,12 +678,12 @@
               </label>
               <div class="style-param-hint">單次 Gemini 改寫最長等待時間。</div>
               <input class="style-param-slider" type="range"
-                     min="15" max="240" step="1"
+                     min="15" max="360" step="1"
                      :value="genGeminiRewriteTimeoutSeconds"
                      @input="genGeminiRewriteTimeoutSeconds = parseInt($event.target.value)">
               <div class="style-param-range">
                 <span>15 秒</span>
-                <span>240 秒</span>
+                <span>360 秒</span>
               </div>
             </div>
 
@@ -670,12 +694,12 @@
               </label>
               <div class="style-param-hint">Ollama / MiniMax 等後備模型的最長等待時間。</div>
               <input class="style-param-slider" type="range"
-                     min="10" max="180" step="1"
+                     min="10" max="360" step="1"
                      :value="genRewriteFallbackTimeoutSeconds"
                      @input="genRewriteFallbackTimeoutSeconds = parseInt($event.target.value)">
               <div class="style-param-range">
                 <span>10 秒</span>
-                <span>180 秒</span>
+                <span>360 秒</span>
               </div>
             </div>
           </div>
@@ -716,9 +740,17 @@
                 <span class="job-id" x-text="job.job_id.slice(0,8)"></span>
                 <span class="job-status-chip" :class="jobStatusChipClass(job)" x-text="job.status"></span>
                 <template x-if="job.status === 'running' && job.phase">
-                  <span class="job-phase" x-text="job.phase"></span>
+                  <div class="job-phase-wrap">
+                    <span class="job-phase" x-text="job.phase"></span>
+                    <span class="job-phase-sub muted"
+                          x-show="job.phase_detail && formatRunningPhaseDetail(job.phase_detail)"
+                          x-text="formatRunningPhaseDetail(job.phase_detail)"></span>
+                  </div>
                 </template>
-                <span class="job-paper-title" :title="jobListPaperTitle(job)" x-text="jobListPaperTitle(job)"></span>
+                <span class="job-paper-title"
+                      x-show="job.status !== 'pending' && job.status !== 'running'"
+                      :title="jobListPaperTitle(job)"
+                      x-text="jobListPaperTitle(job)"></span>
                 <span class="job-time muted" x-text="formatLocalDateTime(job.updated_at)"></span>
               </summary>
 
@@ -737,6 +769,9 @@
                     <div class="detail-row"><label>健康檢查逾時秒數（gemini_preflight_timeout_seconds）</label><span x-text="jobDetail.gemini_preflight_timeout_seconds ?? '-'"></span></div>
                     <div class="detail-row"><label>Gemini 改寫逾時秒數（gemini_rewrite_timeout_seconds）</label><span x-text="jobDetail.gemini_rewrite_timeout_seconds ?? '-'"></span></div>
                     <div class="detail-row"><label>後備模型逾時秒數（rewrite_fallback_timeout_seconds）</label><span x-text="jobDetail.rewrite_fallback_timeout_seconds ?? '-'"></span></div>
+                    <div class="detail-row"><label>子塊統稿整合（integrate_subchunk_rewrites）</label><span x-text="jobDetail.integrate_subchunk_rewrites ? '是' : '否'"></span></div>
+                    <div class="detail-row"><label>實際完成統稿之節數（subchunk_integrate_sections）</label><span x-text="jobDetail.subchunk_integrate_sections ?? '-'"></span></div>
+                    <div class="detail-row"><label>公式缺漏時自動再改寫（rewrite_formula_retry）</label><span x-text="jobDetail.rewrite_formula_retry ? '是' : '否'"></span></div>
                     <div class="detail-row"><label>pdf_path</label><span x-text="jobDetail.pdf_path||'-'"></span></div>
                     <div class="detail-row"><label>output_path</label><span x-text="jobDetail.output_path||'-'"></span></div>
                     <div class="detail-row"><label>rewrite_model</label><span x-text="jobDetail.rewrite_model||'-'"></span></div>
@@ -744,6 +779,23 @@
                     <div class="detail-row"><label>rewrite_engine_order</label><span x-text="(jobDetail.rewrite_engine_labels || []).join(' → ') || '-'"></span></div>
                     <div class="detail-row"><label>auto_index</label><span x-text="jobDetail.auto_index_state_name||'-'"></span></div>
                     <div class="detail-row"><label>updated_at（本地時區）</label><span x-text="formatLocalDateTime(jobDetail.updated_at)"></span></div>
+
+                    <template x-if="job.status === 'running' && jobDetail.phase">
+                      <div class="detail-row"><label>目前進度（摘要）</label><span x-text="jobDetail.phase"></span></div>
+                    </template>
+                    <template x-if="job.status === 'running' && jobDetail.phase_detail">
+                      <div class="detail-params">
+                        <div class="detail-subhead">進度細節（結構化 JSON）</div>
+                        <pre class="detail-pre" x-text="JSON.stringify(jobDetail.phase_detail, null, 2)"></pre>
+                      </div>
+                    </template>
+
+                    <template x-if="job.status === 'succeeded' && jobDetail.section_rewrite_stats && jobDetail.section_rewrite_stats.length">
+                      <div class="detail-params">
+                        <div class="detail-subhead">各節改寫牆鐘時間（實際經過時間，非 CPU）</div>
+                        <pre class="detail-pre" x-text="formatSectionRewriteStats(jobDetail.section_rewrite_stats, jobDetail.rewrite_wall_seconds_total)"></pre>
+                      </div>
+                    </template>
 
                     <template x-if="formatStyleParams(jobDetail.style, jobDetail.style_params).length > 0">
                       <div class="detail-params">
