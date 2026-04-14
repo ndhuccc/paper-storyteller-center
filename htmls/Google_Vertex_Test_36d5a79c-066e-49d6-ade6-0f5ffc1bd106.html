@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Vertex Test - 說書人版</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+      renderMathInElement(document.body, {
+        delimiters: [
+          {left: "$$", right: "$$", display: true},
+          {left: "\\[", right: "\\]", display: true},
+          {left: "$", right: "$", display: false},
+          {left: "\\(", right: "\\)", display: false}
+        ],
+        throwOnError: false
+      });
+    });
+    </script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Noto Sans TC", "PingFang TC", "Segoe UI", sans-serif;
+            line-height: 1.8;
+            max-width: 940px;
+            margin: 0 auto;
+            padding: 24px;
+            background: #fafafa;
+            color: #1e293b;
+        }
+        h1 {
+            color: #1a1a2e;
+            border-bottom: 4px solid #3b82f6;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        .meta {
+            color: #64748b;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+        .toc {
+            background: #f1f5f9;
+            padding: 16px 20px;
+            border-radius: 10px;
+            margin-bottom: 28px;
+        }
+        .toc h3 {
+            margin: 0 0 10px;
+            color: #1d4ed8;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 6px 0;
+        }
+        .toc a {
+            color: #1d4ed8;
+            text-decoration: none;
+        }
+        h2 {
+            color: #1d4ed8;
+            margin-top: 40px;
+            font-size: 22px;
+            border-left: 5px solid #3b82f6;
+            padding-left: 12px;
+        }
+        h3 {
+            color: #0369a1;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .story-block {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            margin: 16px 0;
+        }
+        /* 雙欄並列（說書人風格）*/
+        .dual-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 16px 0;
+            align-items: start;
+        }
+        @media (max-width: 768px) {
+            .dual-col { grid-template-columns: 1fr; }
+        }
+        .col-orig, .col-plain {
+            border-radius: 12px;
+            padding: 18px 20px;
+        }
+        .col-orig {
+            background: #f1f5f9;
+            border-left: 4px solid #94a3b8;
+            color: #475569;
+            font-size: 0.93em;
+        }
+        .col-plain {
+            background: #ffffff;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+        .col-label {
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        p {
+            margin: 14px 0;
+            text-align: justify;
+        }
+        .formula-box {
+            background: #f8fafc;
+            border-left: 4px solid #3b82f6;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .formula-content {
+            background: #ffffff;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .formula-explanation {
+            margin: 12px 0;
+            line-height: 1.6;
+        }
+        .example-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        .terms-box {
+            background: #f0f9ff;
+            border-radius: 12px;
+            padding: 16px;
+            margin: 16px 0;
+        }
+        .terms-box h3 {
+            margin-top: 0;
+            color: #0c4a6e;
+        }
+        .term-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0;
+        }
+        .term-table th, .term-table td {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            text-align: left;
+        }
+        .term-table th {
+            background: #f1f5f9;
+            color: #1e293b;
+        }
+        .term-table tr:nth-child(even) {
+            background: #fafafa;
+        }
+        /* ── 正文 Markdown 清單與表格 ─────────────────────────────────────── */
+        ul, ol {
+            padding-left: 1.6em;
+            margin: 10px 0;
+        }
+        ul { list-style-type: disc; }
+        ol { list-style-type: decimal; }
+        ul ul, ul ol { list-style-type: circle; }
+        ol ol, ol ul { list-style-type: lower-alpha; }
+        li { margin: 4px 0; }
+        .story-block ul, .story-block ol,
+        .col-orig ul, .col-orig ol,
+        .col-plain ul, .col-plain ol {
+            padding-left: 1.6em;
+            margin: 8px 0;
+        }
+        /* 正文一般 table（非 .term-table） */
+        table:not(.term-table) {
+            border-collapse: collapse;
+            width: auto;
+            max-width: 100%;
+            margin: 12px 0;
+        }
+        table:not(.term-table) th,
+        table:not(.term-table) td {
+            border: 1px solid #e2e8f0;
+            padding: 6px 12px;
+            text-align: left;
+        }
+        table:not(.term-table) thead tr {
+            background: #f1f5f9;
+            font-weight: 700;
+        }
+        table:not(.term-table) tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+        /* ── Log 風格：Entry 標題與 tag 標籤 ──────────────────────────────── */
+        .log-entry-title strong {
+            display: block;
+            font-size: 1.05em;
+            color: #1e3a5f;
+            border-left: 4px solid #3b82f6;
+            padding-left: 10px;
+            margin: 20px 0 4px;
+        }
+        .log-tag {
+            margin: 12px 0 2px;
+            padding: 0;
+        }
+        .log-tag span {
+            display: inline-block;
+            font-size: 0.78em;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            padding: 2px 10px;
+            border-radius: 4px;
+            color: #fff;
+        }
+        .log-tag-observation span { background: #0369a1; }
+        .log-tag-hypothesis  span { background: #7c3aed; }
+        .log-tag-decision    span { background: #b45309; }
+        .log-tag-result      span { background: #15803d; }
+        .log-tag + p {
+            margin-top: 4px;
+            border-left: 3px solid #e2e8f0;
+            padding-left: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 Google Vertex Test</h1>
+    <div class="meta">
+        <strong>說書人版本</strong><br>
+        Source PDF: Google_Vertex_Test.pdf<br>
+        Model: gemma4:e2b<br>
+        Generated at (UTC): 2026-04-12T07:50:11.332746+00:00
+    </div>
+    <div class="toc">
+        <h3>📋 目錄</h3>
+        <ul>
+            <li><a href="#section-1">Section 1 - Abstract</a></li>
+        </ul>
+    </div>
+    
+    <section id="section-1">
+        <h2>Section 1 - Abstract</h2>
+        <div class="dual-col">
+            <div class="col-orig">
+                <div class="col-label">📄 原文</div>
+            <p>Instruction-based video editing aims to modify an input video according to a natural-language instruction while preserving content fidelity and temporal coherence. However, existing diffusion-based approaches are often trained on paired data of simple editing operations, which fundamentally limits their ability to generalize to diverse and complex, real-world instructions. To address this generalization gap, we propose VIVA, a scalable framework for instruction-based video editing that leverages VLM-guided encoding and reward optimization. First, we introduce a VLM-based instructor that encodes the textual instruction, the first frame of the source video, and an optional reference image into visually-grounded instruction representations, providing fine-grained spatial and semantic context for the diffusion transformer backbone. Second, we propose a post-training stage, Edit-GRPO, which adapts Group Relative Policy Optimization to the domain of video editing, directly optimizing the model for instruction-faithful, content-preserving, and aesthetically pleasing edits using relative rewards. Furthermore, we propose a data construction pipeline designed to synthetically generate diverse, high-fidelity paired video-instruction data of basic editing operations. Extensive experiments show that VIVA achieves superior instruction following, generalization, and editing quality over state-of-the-art methods. Website: https://viva-paper.github.io/.</p>
+            </div>
+            <div class="col-plain">
+                <div class="col-label">💬 說書人白話</div>
+            <p>我們現在來聊聊，當我們想讓 AI 真正理解並執行複雜的影片編輯指令時，它到底遇到了什麼困難。</p>
+            <p>想像一下，你請一位畫家（我們的 AI 模型）去修改一幅畫。你給他一個文字指令，比如「把這隻貓的顏色改成藍色」，你還給他一張參考圖，告訴他「這隻貓的毛髮紋理要保持原樣」。</p>
+            <p>現有的許多基於擴散（Diffusion-based）的方法，通常是透過簡單的「配對數據」來訓練的。這就像是給畫家看一堆「貓變藍色」的簡單範例。問題是，當你給他一個更複雜、更細膩的指令時，比如「把貓的眼睛顏色改成藍綠色，同時讓背景的草地顏色稍微變深一點」，模型就很容易迷失方向，無法將這些複雜的、多層次的指令完美地執行。這就是所謂的<strong>泛化能力（Generalization）的瓶頸</strong>。</p>
+            <p>為了突破這個限制，我們提出了 <strong>VIVA</strong> 框架，這是一個更具擴展性的解決方案，它結合了<strong>視覺語言模型（VLM）的引導編碼</strong>和<strong>獎勵優化</strong>，讓 AI 不再只是記住簡單的編輯步驟，而是能真正理解指令背後的視覺和語義脈絡。</p>
+            <p>VIVA 框架是如何做到這一點的呢？我們主要做了三個關鍵的創新：</p>
+            <p>首先，我們引入了一個 <strong>VLM 導向的指導器（VLM-based instructor）</strong>。這就像是給畫家提供一個超級聰明的導師。它會將你的文字指令、影片的第一幀畫面，以及你提供的參考圖片，轉換成一種<strong>視覺上紮根的指令表示</strong>。這意味著模型在進行編輯時，不再是盲目地處理像素，而是能獲得更精細的空間和語義上下文，讓擴散的骨幹網路（Diffusion Transformer backbone）能夠更精準地理解「要改什麼」以及「如何改」。</p>
+            <p>其次，我們設計了一個<strong>訓練後的階段，稱為 Edit-GRPO</strong>。這部分是我們將<strong>群體相對策略優化（Group Relative Policy Optimization, GRPO）</strong>的理念，直接應用到影片編輯的領域。簡單來說，我們讓模型在編輯過程中，透過<strong>相對獎勵（Relative Rewards）</strong>來優化自身。這讓模型在執行編輯時，不僅要遵循指令，還要確保編輯結果在<strong>內容保持、指令遵循和美觀性</strong>之間達到最佳平衡。這就像是讓畫家在塗色時，不僅要畫對，還要確保整體畫面看起來自然、協調。</p>
+            <p>最後，為了讓這個框架更強大，我們設計了一個<strong>數據建構流程</strong>。我們能夠<strong>合成</strong>出大量多樣化、高保真的「影片-指令」配對數據，涵蓋各種基礎的編輯操作。這就像是為畫家準備了一套豐富的、多樣化的練習題，讓模型能夠在更廣泛的場景中學習，從而極大地提升了它對各種複雜指令的遵循能力。</p>
+            <p>總結來說，透過 VIVA，我們證明了這種結合了視覺指導和獎勵優化的方法，能夠在指令遵循度、泛化能力和編輯品質上，全面超越現有的最先進方法。</p>
+            <hr />
+            <p>本節專業術語白話對照表</p>
+            <table>
+            <thead>
+            <tr>
+            <th style="text-align: left;">術語</th>
+            <th style="text-align: left;">白話說明</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+            <td style="text-align: left;">VLM</td>
+            <td style="text-align: left;"><strong>視覺語言模型</strong>：一種能同時理解和處理圖像（視覺）和文字（語言）的 AI 模型。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Diffusion Transformer</td>
+            <td style="text-align: left;"><strong>擴散變換器</strong>：一種用於生成圖像的基礎模型架構，它透過逐步去噪的過程來創造新的內容。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Edit-GRPO</td>
+            <td style="text-align: left;"><strong>編輯-GRPO</strong>：一種專門為影片編輯設計的優化策略，利用相對獎勵來指導模型進行精確的編輯。</td>
+            </tr>
+            <tr>
+            <td style="text-align: left;">Relative Rewards</td>
+            <td style="text-align: left;"><strong>相對獎勵</strong>：在優化過程中，模型根據編輯的結果與目標之間的差異來計算獎勵，用來指導模型進行更精準的調整。</td>
+            </tr>
+            </tbody>
+            </table>
+            <p>本節公式白話解釋表<br />
+            本節無任何須獨立展開的 LaTeX 式公式。</p>
+            <!-- EVAL: 類比[有] | 為什麼[有] | 虛構[無] | 前文情節或類比重複[無] | 術語表檢核[通過] | 公式白話表檢核[通過] -->
+            </div>
+        </div>
+        
+        
+    </section>
+</body>
+</html>

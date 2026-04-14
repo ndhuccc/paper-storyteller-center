@@ -1,5 +1,7 @@
 # Gemini legacy mode (modern google.genai path intentionally excluded)
 google-generativeai>=0.8.0
+# Optional: Vertex AI Gemini (provider=vertex); uses ADC / service account
+google-cloud-aiplatform>=1.70.0
 
 flask
 flask-cors

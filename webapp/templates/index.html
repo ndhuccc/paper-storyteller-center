@@ -288,16 +288,29 @@
             <button class="btn btn-sm btn-ghost" @click="resetEngineOrder('qa')">↺ 還原預設順序</button>
           </div>
           <div class="engine-order-list">
-            <template x-for="(engine, index) in qaEngines" :key="engine.id">
-              <div class="engine-order-item">
+            <template x-for="(slot, index) in qaEngineSlots" :key="slot.kind === 'core' ? slot.id : slot.slotKey">
+              <div class="engine-order-item" :class="slot.kind === 'vertex' ? 'engine-order-item-vertex' : ''">
                 <div class="engine-rank" x-text="index + 1"></div>
-                <div class="engine-info">
-                  <div class="engine-name" x-text="engine.label"></div>
-                  <div class="engine-desc" x-text="engine.description"></div>
+                <div class="engine-info" x-show="slot.kind === 'core'">
+                  <div class="engine-name" x-text="slot.label"></div>
+                  <div class="engine-desc" x-text="slot.description"></div>
+                </div>
+                <div class="engine-info engine-info-vertex" x-show="slot.kind === 'vertex'">
+                  <div class="engine-name" x-text="slot.regionLabel"></div>
+                  <select class="form-select engine-vertex-inline-select" x-model="slot.selectedId">
+                    <option value="">不使用此區</option>
+                    <template x-for="o in slot.options" :key="o.id">
+                      <option :value="o.id" x-text="o.label"></option>
+                    </template>
+                  </select>
                 </div>
                 <div class="engine-actions">
-                  <button class="btn-icon" type="button" @click="moveEngineUp('qa', engine.id)" :disabled="index === 0">▲</button>
-                  <button class="btn-icon" type="button" @click="moveEngineDown('qa', engine.id)" :disabled="index === qaEngines.length - 1">▼</button>
+                  <button class="btn-icon" type="button"
+                          @click="moveEngineUp('qa', slot.kind === 'core' ? slot.id : slot.slotKey)"
+                          :disabled="index === 0">▲</button>
+                  <button class="btn-icon" type="button"
+                          @click="moveEngineDown('qa', slot.kind === 'core' ? slot.id : slot.slotKey)"
+                          :disabled="index === qaEngineSlots.length - 1">▼</button>
                 </div>
               </div>
             </template>
@@ -534,16 +547,29 @@
               </button>
             </div>
             <div class="engine-order-list">
-              <template x-for="(engine, index) in genEngines" :key="engine.id">
-                <div class="engine-order-item">
+              <template x-for="(slot, index) in genEngineSlots" :key="slot.kind === 'core' ? slot.id : slot.slotKey">
+                <div class="engine-order-item" :class="slot.kind === 'vertex' ? 'engine-order-item-vertex' : ''">
                   <div class="engine-rank" x-text="index + 1"></div>
-                  <div class="engine-info">
-                    <div class="engine-name" x-text="engine.label"></div>
-                    <div class="engine-desc" x-text="engine.description"></div>
+                  <div class="engine-info" x-show="slot.kind === 'core'">
+                    <div class="engine-name" x-text="slot.label"></div>
+                    <div class="engine-desc" x-text="slot.description"></div>
+                  </div>
+                  <div class="engine-info engine-info-vertex" x-show="slot.kind === 'vertex'">
+                    <div class="engine-name" x-text="slot.regionLabel"></div>
+                    <select class="form-select engine-vertex-inline-select" x-model="slot.selectedId">
+                      <option value="">不使用此區</option>
+                      <template x-for="o in slot.options" :key="o.id">
+                        <option :value="o.id" x-text="o.label"></option>
+                      </template>
+                    </select>
                   </div>
                   <div class="engine-actions">
-                    <button class="btn-icon" type="button" @click="moveEngineUp('generate', engine.id)" :disabled="index === 0">▲</button>
-                    <button class="btn-icon" type="button" @click="moveEngineDown('generate', engine.id)" :disabled="index === genEngines.length - 1">▼</button>
+                    <button class="btn-icon" type="button"
+                            @click="moveEngineUp('generate', slot.kind === 'core' ? slot.id : slot.slotKey)"
+                            :disabled="index === 0">▲</button>
+                    <button class="btn-icon" type="button"
+                            @click="moveEngineDown('generate', slot.kind === 'core' ? slot.id : slot.slotKey)"
+                            :disabled="index === genEngineSlots.length - 1">▼</button>
                   </div>
                 </div>
               </template>

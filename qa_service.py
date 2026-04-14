@@ -144,6 +144,8 @@ def generate_answer_with_metadata(
     ollama_base_url: str,
     minimax_base_url: str = "",
     minimax_oauth_token: str = "",
+    vertex_project: str = "",
+    vertex_location: str = "",
     timeout: int = 180,
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, str]:
@@ -157,12 +159,14 @@ def generate_answer_with_metadata(
             ollama_base_url=ollama_base_url,
             minimax_base_url=minimax_base_url,
             minimax_oauth_token=minimax_oauth_token,
+            vertex_project=vertex_project,
+            vertex_location=vertex_location,
             timeout=timeout,
         )
         return {
             "text": text,
             "model": str(model or "").strip(),
-            "provider": str(provider or ("gemini" if _is_gemini_model(model) else "ollama")).strip(),
+            "provider": _resolve_answer_provider_label(provider=provider, model=model),
         }
     except Exception as primary_exc:
         _errors.append(f"primary ({model}): {primary_exc}")
@@ -173,6 +177,8 @@ def generate_answer_with_metadata(
         fb_ollama_url = spec.get("ollama_base_url") or ollama_base_url
         fb_minimax_base = spec.get("minimax_base_url", "")
         fb_minimax_token = spec.get("minimax_oauth_token", "")
+        fb_vertex_project = str(spec.get("vertex_project") or "").strip()
+        fb_vertex_location = str(spec.get("vertex_location") or "").strip()
         try:
             text = _call_single_model(
                 prompt=prompt,
@@ -181,12 +187,17 @@ def generate_answer_with_metadata(
                 ollama_base_url=fb_ollama_url,
                 minimax_base_url=fb_minimax_base,
                 minimax_oauth_token=fb_minimax_token,
+                vertex_project=fb_vertex_project,
+                vertex_location=fb_vertex_location,
                 timeout=timeout,
             )
             return {
                 "text": text,
                 "model": str(fb_model or "").strip(),
-                "provider": str(fb_provider or "ollama").strip() or "ollama",
+                "provider": _resolve_answer_provider_label(
+                    provider=str(fb_provider or ""),
+                    model=str(fb_model or ""),
+                ),
             }
         except Exception as fb_exc:
             _errors.append(f"{fb_provider or 'ollama'}:{fb_model}: {fb_exc}")
@@ -202,6 +213,8 @@ def generate_answer(
     ollama_base_url: str,
     minimax_base_url: str = "",
     minimax_oauth_token: str = "",
+    vertex_project: str = "",
+    vertex_location: str = "",
     timeout: int = 180,
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> str:
@@ -213,6 +226,8 @@ def generate_answer(
         ollama_base_url=ollama_base_url,
         minimax_base_url=minimax_base_url,
         minimax_oauth_token=minimax_oauth_token,
+        vertex_project=vertex_project,
+        vertex_location=vertex_location,
         timeout=timeout,
         fallbacks=fallbacks,
     ).get("text", "")
@@ -226,12 +241,20 @@ def _call_single_model(
     ollama_base_url: str,
     minimax_base_url: str = "",
     minimax_oauth_token: str = "",
+    vertex_project: str = "",
+    vertex_location: str = "",
     timeout: int = 180,
 ) -> str:
-    """單次呼叫一個模型（Gemini、MiniMax 或 Ollama）。"""
-    if _is_gemini_model(model):
-        return _generate_answer_with_gemini(prompt=prompt, model=model, timeout=timeout)
+    """單次呼叫一個模型（Gemini、Vertex、MiniMax 或 Ollama）。"""
     p = (provider or "").strip().lower()
+    if p in ("vertex", "vertexai"):
+        return _generate_answer_with_vertex(
+            prompt=prompt,
+            model=model,
+            vertex_project=vertex_project,
+            vertex_location=vertex_location,
+            timeout=timeout,
+        )
     if p in {"minimax.io", "minimax", "minimax-portal"}:
         return _call_minimax_qa_llm(
             prompt=prompt,
@@ -240,6 +263,8 @@ def _call_single_model(
             base_url=minimax_base_url or "https://api.minimax.io",
             timeout=timeout,
         )
+    if _is_gemini_model(model):
+        return _generate_answer_with_gemini(prompt=prompt, model=model, timeout=timeout)
     req = urllib.request.Request(
         f"{ollama_base_url}/api/generate",
         data=json.dumps({"model": model, "prompt": prompt, "stream": False}).encode(),
@@ -291,6 +316,17 @@ def _call_minimax_qa_llm(
     return text
 
 
+def _resolve_answer_provider_label(*, provider: str, model: str) -> str:
+    pv = str(provider or "").strip().lower()
+    if pv in ("vertex", "vertexai"):
+        return "vertex"
+    if pv in {"minimax.io", "minimax", "minimax-portal"}:
+        return str(provider or "minimax").strip() or "minimax"
+    if pv:
+        return str(provider or "").strip()
+    return "gemini" if _is_gemini_model(model) else "ollama"
+
+
 def _is_gemini_model(model: str) -> bool:
     normalized = str(model or "").strip().lower()
     return normalized.startswith("models/") or normalized.startswith("gemini")
@@ -317,6 +353,20 @@ def _generate_answer_with_gemini(*, prompt: str, model: str, timeout: int) -> st
     )
 
 
+def _generate_answer_with_vertex(
+    *, prompt: str, model: str, vertex_project: str, vertex_location: str, timeout: int
+) -> str:
+    from vertex_client import vertex_generate_content_text, resolve_vertex_location, resolve_vertex_project
+
+    return vertex_generate_content_text(
+        project_id=resolve_vertex_project(vertex_project),
+        location=resolve_vertex_location(vertex_location),
+        model_id=model,
+        contents=prompt,
+        timeout=int(timeout),
+    )
+
+
 def answer_with_results(
     *,
     question: str,
@@ -330,6 +380,8 @@ def answer_with_results(
     ollama_base_url: str,
     minimax_base_url: str = "",
     minimax_oauth_token: str = "",
+    vertex_project: str = "",
+    vertex_location: str = "",
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QAResult:
     """以已取得的論文結果產生回答。"""
@@ -345,6 +397,8 @@ def answer_with_results(
         ollama_base_url=ollama_base_url,
         minimax_base_url=minimax_base_url,
         minimax_oauth_token=minimax_oauth_token,
+        vertex_project=vertex_project,
+        vertex_location=vertex_location,
         fallbacks=fallbacks,
     )
     return str(detail.get("answer", "")), detail.get("sources", [])
@@ -363,6 +417,8 @@ def answer_with_results_detailed(
     ollama_base_url: str,
     minimax_base_url: str = "",
     minimax_oauth_token: str = "",
+    vertex_project: str = "",
+    vertex_location: str = "",
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QADetailResult:
     """以已取得的論文結果產生回答，附帶實際使用模型資訊。"""
@@ -380,6 +436,8 @@ def answer_with_results_detailed(
             ollama_base_url=ollama_base_url,
             minimax_base_url=minimax_base_url,
             minimax_oauth_token=minimax_oauth_token,
+            vertex_project=vertex_project,
+            vertex_location=vertex_location,
             fallbacks=fallbacks,
         )
         return {
@@ -411,6 +469,8 @@ def answer_with_search(
     ollama_base_url: str,
     minimax_base_url: str = "",
     minimax_oauth_token: str = "",
+    vertex_project: str = "",
+    vertex_location: str = "",
     forced_papers: Optional[List[Dict]] = None,
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QAResult:
@@ -428,6 +488,8 @@ def answer_with_search(
         ollama_base_url=ollama_base_url,
         minimax_base_url=minimax_base_url,
         minimax_oauth_token=minimax_oauth_token,
+        vertex_project=vertex_project,
+        vertex_location=vertex_location,
         forced_papers=forced_papers,
         fallbacks=fallbacks,
     )
@@ -448,6 +510,8 @@ def answer_with_search_detailed(
     ollama_base_url: str,
     minimax_base_url: str = "",
     minimax_oauth_token: str = "",
+    vertex_project: str = "",
+    vertex_location: str = "",
     forced_papers: Optional[List[Dict]] = None,
     fallbacks: Optional[List[Dict[str, str]]] = None,
 ) -> QADetailResult:
@@ -469,5 +533,7 @@ def answer_with_search_detailed(
         ollama_base_url=ollama_base_url,
         minimax_base_url=minimax_base_url,
         minimax_oauth_token=minimax_oauth_token,
+        vertex_project=vertex_project,
+        vertex_location=vertex_location,
         fallbacks=fallbacks,
     )

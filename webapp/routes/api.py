@@ -726,6 +726,9 @@ def submit_job():
             "rewrite_formula_retry": rewrite_formula_retry,
             "style_params": style_params,
             "model": resolved_engines["primary_model"],
+            "rewrite_primary_provider": resolved_engines.get("primary_provider") or "",
+            "vertex_project": resolved_engines.get("primary_vertex_project") or "",
+            "vertex_location": resolved_engines.get("primary_vertex_location") or "",
             "rewrite_fallback_chain": resolved_engines["fallbacks"],
             "rewrite_engine_order": resolved_engines["ordered_ids"],
         }

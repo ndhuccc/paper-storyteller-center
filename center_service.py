@@ -27,6 +27,7 @@ from retrieval_service import rebuild_index as service_rebuild_index
 from retrieval_service import search_papers as service_search_papers
 from storyteller_pipeline import DEFAULT_REWRITE_FALLBACK_CHAIN
 from storyteller_pipeline import DEFAULT_REWRITE_MODEL
+from storyteller_pipeline import VERTEX_AI_ENGINE_SPECS
 
 
 OLLAMA_BASE_URL = "http://localhost:11434"
@@ -36,12 +37,19 @@ QA_FALLBACK_CHAIN: List[Dict[str, str]] = [
     {"model": "gemma4:e2b",     "provider": "ollama",     "ollama_base_url": "http://localhost:11434"},
     {"model": "MiniMax-M2.5",   "provider": "minimax.io"},
     {"model": "deepseek-r1:8b", "provider": "ollama",     "ollama_base_url": "http://localhost:11434"},
-]
+] + list(VERTEX_AI_ENGINE_SPECS)
 ENGINE_LABELS: Dict[str, str] = {
-    "models/gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite",
+    "models/gemini-3.1-flash-lite-preview": "Gemini 3.1 Flash Lite (API Key)",
+    "gemini-3.1-pro-preview": "Vertex · Gemini 3.1 Pro preview (global)",
+    "gemini-3-flash-preview": "Vertex · Gemini 3 Flash preview (global)",
+    "gemini-3.1-flash-lite-preview": "Vertex · Gemini 3.1 Flash-Lite preview (global)",
     "gemma4:e2b": "Gemma 4 E2B",
     "MiniMax-M2.5": "MiniMax M2.5",
     "deepseek-r1:8b": "DeepSeek R1 8B",
+    "gemini-2.5-flash": "Vertex · Gemini 2.5 Flash",
+    "gemini-2.5-flash-lite": "Vertex · Gemini 2.5 Flash-Lite",
+    "gemini-2.5-pro": "Vertex · Gemini 2.5 Pro",
+    "gemini-2.0-flash": "Vertex · Gemini 2.0 Flash",
 }
 DEFAULT_MINIMAX_BASE_URL = "https://api.minimax.io"
 
@@ -115,6 +123,10 @@ def _engine_label(spec: Dict[str, Any]) -> str:
 def _engine_description(spec: Dict[str, Any]) -> str:
     provider = _normalize_provider(spec)
     model = str(spec.get("model", "")).strip()
+    if provider in ("vertex", "vertexai"):
+        loc = str(spec.get("vertex_location") or "us-central1").strip()
+        proj = str(spec.get("vertex_project") or "").strip() or "(GOOGLE_CLOUD_PROJECT)"
+        return f"Vertex AI · {model} · {loc} · {proj}"
     if provider == "gemini":
         return f"Google Gemini · {model}"
     if provider.startswith("minimax"):
@@ -126,7 +138,7 @@ def _engine_description(spec: Dict[str, Any]) -> str:
 
 
 def _engine_option(spec: Dict[str, Any], index: int) -> Dict[str, Any]:
-    return {
+    opt: Dict[str, Any] = {
         "id": _engine_id(spec),
         "label": _engine_label(spec),
         "model": str(spec.get("model", "")).strip(),
@@ -134,6 +146,10 @@ def _engine_option(spec: Dict[str, Any], index: int) -> Dict[str, Any]:
         "description": _engine_description(spec),
         "default_order": index,
     }
+    vloc = str(spec.get("vertex_location") or "").strip()
+    if vloc:
+        opt["vertex_location"] = vloc
+    return opt
 
 
 def _resolve_engine_sequence(
@@ -182,6 +198,8 @@ def resolve_qa_engine_chain(requested_order: Optional[List[str]] = None) -> Dict
         "primary_ollama_base_url": str(primary.get("ollama_base_url") or OLLAMA_BASE_URL).strip() or OLLAMA_BASE_URL,
         "primary_minimax_base_url": str(primary.get("minimax_base_url") or DEFAULT_MINIMAX_BASE_URL).strip() or DEFAULT_MINIMAX_BASE_URL,
         "primary_minimax_oauth_token": str(primary.get("minimax_oauth_token", "")).strip(),
+        "primary_vertex_project": str(primary.get("vertex_project") or "").strip(),
+        "primary_vertex_location": str(primary.get("vertex_location") or "").strip(),
         "fallbacks": fallbacks,
         "ordered_engines": [_engine_option(spec, index + 1) for index, spec in enumerate(ordered_specs)],
         "ordered_ids": [_engine_id(spec) for spec in ordered_specs],
@@ -197,6 +215,9 @@ def resolve_generation_engine_chain(requested_order: Optional[List[str]] = None)
     fallbacks = [dict(spec) for spec in ordered_specs[1:]]
     return {
         "primary_model": str(primary.get("model", DEFAULT_REWRITE_MODEL)).strip() or DEFAULT_REWRITE_MODEL,
+        "primary_provider": _normalize_provider(primary),
+        "primary_vertex_project": str(primary.get("vertex_project") or "").strip(),
+        "primary_vertex_location": str(primary.get("vertex_location") or "").strip(),
         "fallbacks": fallbacks,
         "ordered_engines": [_engine_option(spec, index + 1) for index, spec in enumerate(ordered_specs)],
         "ordered_ids": [_engine_id(spec) for spec in ordered_specs],
@@ -229,6 +250,8 @@ def answer_detailed(
         ollama_base_url=resolved["primary_ollama_base_url"],
         minimax_base_url=resolved["primary_minimax_base_url"],
         minimax_oauth_token=resolved["primary_minimax_oauth_token"],
+        vertex_project=resolved.get("primary_vertex_project") or "",
+        vertex_location=resolved.get("primary_vertex_location") or "",
         forced_papers=forced_papers,
         fallbacks=resolved["fallbacks"],
     )

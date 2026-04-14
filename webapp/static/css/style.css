@@ -337,6 +337,24 @@ a { color: var(--primary); text-decoration: none; }
   gap: 8px;
 }
 
+.engine-order-item-vertex {
+  align-items: flex-start;
+}
+
+.engine-info-vertex {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.engine-vertex-inline-select {
+  width: 100%;
+  max-width: 100%;
+  font-size: 13px;
+}
+
 .engine-order-item {
   display: flex;
   align-items: center;

@@ -21,11 +21,23 @@ from dotenv import load_dotenv
 PROJECT_DIR = Path(__file__).resolve().parent
 STORYTELLERS_DIR = PROJECT_DIR / "htmls"
 DEFAULT_REWRITE_MODEL = "models/gemini-3.1-flash-lite-preview"
+# Vertex entries use provider=vertex; project 可留空改由 GOOGLE_CLOUD_PROJECT 等環境變數提供。
+# Gemini 3.x preview 僅支援 global（見 Google「Get started with Gemini 3」）；2.5/2.0 常用 us-central1。
+# 模型 ID 以 Vertex 文件為準：https://cloud.google.com/vertex-ai/generative-ai/docs/models
+VERTEX_AI_ENGINE_SPECS: List[Dict[str, str]] = [
+    {"model": "gemini-3.1-pro-preview", "provider": "vertex", "vertex_location": "global"},
+    {"model": "gemini-3-flash-preview", "provider": "vertex", "vertex_location": "global"},
+    {"model": "gemini-3.1-flash-lite-preview", "provider": "vertex", "vertex_location": "global"},
+    {"model": "gemini-2.5-flash", "provider": "vertex", "vertex_location": "us-central1"},
+    {"model": "gemini-2.5-flash-lite", "provider": "vertex", "vertex_location": "us-central1"},
+    {"model": "gemini-2.5-pro", "provider": "vertex", "vertex_location": "us-central1"},
+    {"model": "gemini-2.0-flash", "provider": "vertex", "vertex_location": "us-central1"},
+]
 DEFAULT_REWRITE_FALLBACK_CHAIN: List[Dict[str, str]] = [
     {"model": "gemma4:e2b",     "provider": "ollama",     "ollama_base_url": "http://localhost:11434"},
     {"model": "MiniMax-M2.5",   "provider": "minimax.io"},
     {"model": "deepseek-r1:8b", "provider": "ollama",     "ollama_base_url": "http://localhost:11434"},
-]
+] + VERTEX_AI_ENGINE_SPECS
 DEFAULT_PDF_EXTRACTION_MODEL = "models/gemini-3.1-flash-lite-preview"
 PDF_EXTRACTION_FALLBACK_MODEL = "gemini-2.5-flash"
 DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434"
@@ -721,6 +733,14 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
         DEFAULT_INTEGRATE_SUBCHUNK_REWRITES,
     )
     primary_model = str(payload.get("model") or DEFAULT_REWRITE_MODEL)
+    rewrite_primary_provider = str(payload.get("rewrite_primary_provider") or "").strip().lower()
+    vertex_project = str(payload.get("vertex_project") or "").strip()
+    vertex_location = str(payload.get("vertex_location") or "").strip()
+    _rewrite_transport: Tuple[str, str, str] = (
+        rewrite_primary_provider,
+        vertex_project,
+        vertex_location,
+    )
     fallback_chain_raw = payload.get("rewrite_fallback_chain")
     if isinstance(fallback_chain_raw, list) and fallback_chain_raw:
         fallback_chain: List[Dict[str, str]] = [
@@ -839,6 +859,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 section_count=total_sections,
                 introduced_concepts=introduced_concepts if introduced_concepts else None,
                 rewrite_formula_retry=rewrite_formula_retry,
+                transport=_rewrite_transport,
             )
             _report_phase(
                 phase_reporter,
@@ -1037,6 +1058,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
                 rewrite_response_format=rewrite_response_format,
                 append_missing_formulas=append_missing_formulas,
+                transport=_rewrite_transport,
             )
             if merged and merged.strip():
                 section_story_text = merged.strip()
@@ -1140,6 +1162,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                transport=_rewrite_transport,
                 llm_failures=llm_failures,
             )
         elif style == "blog":
@@ -1165,6 +1188,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                transport=_rewrite_transport,
                 llm_failures=llm_failures,
             )
         elif style == "professor":
@@ -1190,6 +1214,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                transport=_rewrite_transport,
                 llm_failures=llm_failures,
             )
         elif style == "fairy":
@@ -1215,6 +1240,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                transport=_rewrite_transport,
                 llm_failures=llm_failures,
             )
         elif style == "lazy":
@@ -1240,6 +1266,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                transport=_rewrite_transport,
                 llm_failures=llm_failures,
             )
         elif style == "question":
@@ -1265,6 +1292,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                transport=_rewrite_transport,
                 llm_failures=llm_failures,
             )
         elif style == "log":
@@ -1290,6 +1318,7 @@ def run_storyteller_pipeline(job: Dict[str, Any], *, phase_reporter=None) -> Dic
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=gemini_rewrite_timeout_seconds,
                 fallback_timeout_seconds=rewrite_fallback_timeout_seconds,
+                transport=_rewrite_transport,
                 llm_failures=llm_failures,
             )
 
@@ -2111,6 +2140,7 @@ def _rewrite_section(
     section_count: int = 0,
     introduced_concepts: List[str] = None,
     extra_instruction: Optional[str] = None,
+    transport: Tuple[str, str, str] = ("", "", ""),
     rewrite_formula_retry: bool = False,
     _formula_retry_used: bool = False,
 ) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], bool, Optional[str], str]:
@@ -2144,9 +2174,41 @@ def _rewrite_section(
     )
     formulas = _extract_latex_expressions(text)
 
+    tr = transport if isinstance(transport, (tuple, list)) else ("", "", "")
+    rp = str(tr[0] if len(tr) > 0 else "").strip().lower()
+    vtx_p = str(tr[1] if len(tr) > 1 else "").strip()
+    vtx_l = str(tr[2] if len(tr) > 2 else "").strip()
+
     used_model = model
     try:
-        if model.startswith("models/"):
+        if rp in ("vertex", "vertexai"):
+            if gemini_preflight_enabled:
+                from vertex_client import resolve_vertex_location, resolve_vertex_project, vertex_preflight_ping
+
+                pok, pr = vertex_preflight_ping(
+                    project_id=resolve_vertex_project(vtx_p),
+                    location=resolve_vertex_location(vtx_l),
+                    model_id=model,
+                    timeout=int(gemini_preflight_timeout_seconds),
+                )
+                if not pok:
+                    raise RuntimeError(f"Vertex preflight failed: {pr}")
+            rewritten = _call_vertex_llm(
+                prompt=prompt,
+                model=model,
+                vertex_project=vtx_p,
+                vertex_location=vtx_l,
+                timeout=int(gemini_rewrite_timeout_seconds),
+            )
+        elif rp in {"minimax.io", "minimax", "minimax-portal"}:
+            rewritten = _call_minimax_portal_llm(
+                prompt=prompt,
+                model=model,
+                oauth_token=minimax_oauth_token,
+                base_url=minimax_base_url,
+                timeout=int(gemini_rewrite_timeout_seconds),
+            )
+        elif model.startswith("models/"):
             if gemini_preflight_enabled:
                 preflight_ok, preflight_reason = _gemini_rewrite_preflight(
                     model=model,
@@ -2183,6 +2245,16 @@ def _rewrite_section(
                         model=fb_model,
                         oauth_token=fb_minimax_token,
                         base_url=fb_minimax_base,
+                        timeout=int(fallback_timeout_seconds),
+                    )
+                elif fb_provider in ("vertex", "vertexai"):
+                    fb_vp = str(spec.get("vertex_project") or "").strip()
+                    fb_vl = str(spec.get("vertex_location") or "").strip()
+                    rewritten = _call_vertex_llm(
+                        prompt=prompt,
+                        model=fb_model,
+                        vertex_project=fb_vp,
+                        vertex_location=fb_vl,
                         timeout=int(fallback_timeout_seconds),
                     )
                 else:
@@ -2251,6 +2323,7 @@ def _rewrite_section(
                     section_count=section_count,
                     introduced_concepts=introduced_concepts,
                     extra_instruction=merged_extra,
+                    transport=transport,
                     rewrite_formula_retry=rewrite_formula_retry,
                     _formula_retry_used=True,
                 )
@@ -2426,6 +2499,7 @@ def _post_rewrite_storyteller_audit(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
     llm_failures: List[str],
 ) -> None:
     """One LLM audit pass after all sections: fix or rewrite sections that fail audit (storyteller only)."""
@@ -2479,6 +2553,7 @@ def _post_rewrite_storyteller_audit(
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=audit_timeout,
                 fallback_timeout_seconds=fallback_timeout_seconds,
+                transport=transport,
             )
         except Exception as exc:
             llm_failures.append(f"post_rewrite_audit batch {bi}: {type(exc).__name__}: {exc}")
@@ -2541,6 +2616,7 @@ def _post_rewrite_storyteller_audit(
                 section_count=len(rendered_sections),
                 introduced_concepts=None,
                 extra_instruction=extra,
+                transport=transport,
             )
             if ok and fixed.strip():
                 row["story_text"] = fixed.strip()
@@ -2570,6 +2646,7 @@ def _post_rewrite_blog_audit(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
     llm_failures: List[str],
 ) -> None:
     """One LLM audit pass after all sections: fix or rewrite sections that fail audit (blog only)."""
@@ -2627,6 +2704,7 @@ def _post_rewrite_blog_audit(
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=audit_timeout,
                 fallback_timeout_seconds=fallback_timeout_seconds,
+                transport=transport,
             )
         except Exception as exc:
             llm_failures.append(
@@ -2694,6 +2772,7 @@ def _post_rewrite_blog_audit(
                 section_count=len(rendered_sections),
                 introduced_concepts=None,
                 extra_instruction=extra,
+                transport=transport,
             )
             if ok and fixed.strip():
                 row["story_text"] = fixed.strip()
@@ -2726,6 +2805,7 @@ def _post_rewrite_professor_audit(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
     llm_failures: List[str],
 ) -> None:
     """One LLM audit pass after all sections: fix or rewrite sections that fail audit (professor only)."""
@@ -2784,6 +2864,7 @@ def _post_rewrite_professor_audit(
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=audit_timeout,
                 fallback_timeout_seconds=fallback_timeout_seconds,
+                transport=transport,
             )
         except Exception as exc:
             llm_failures.append(
@@ -2851,6 +2932,7 @@ def _post_rewrite_professor_audit(
                 section_count=len(rendered_sections),
                 introduced_concepts=None,
                 extra_instruction=extra,
+                transport=transport,
             )
             if ok and fixed.strip():
                 row["story_text"] = fixed.strip()
@@ -2883,6 +2965,7 @@ def _post_rewrite_fairy_audit(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
     llm_failures: List[str],
 ) -> None:
     """One LLM audit pass after all sections: fix or rewrite sections that fail audit (fairy only)."""
@@ -2941,6 +3024,7 @@ def _post_rewrite_fairy_audit(
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=audit_timeout,
                 fallback_timeout_seconds=fallback_timeout_seconds,
+                transport=transport,
             )
         except Exception as exc:
             llm_failures.append(
@@ -3008,6 +3092,7 @@ def _post_rewrite_fairy_audit(
                 section_count=len(rendered_sections),
                 introduced_concepts=None,
                 extra_instruction=extra,
+                transport=transport,
             )
             if ok and fixed.strip():
                 row["story_text"] = fixed.strip()
@@ -3040,6 +3125,7 @@ def _post_rewrite_lazy_audit(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
     llm_failures: List[str],
 ) -> None:
     """One LLM audit pass after all sections: fix or rewrite sections that fail audit (lazy only)."""
@@ -3098,6 +3184,7 @@ def _post_rewrite_lazy_audit(
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=audit_timeout,
                 fallback_timeout_seconds=fallback_timeout_seconds,
+                transport=transport,
             )
         except Exception as exc:
             llm_failures.append(
@@ -3165,6 +3252,7 @@ def _post_rewrite_lazy_audit(
                 section_count=len(rendered_sections),
                 introduced_concepts=None,
                 extra_instruction=extra,
+                transport=transport,
             )
             if ok and fixed.strip():
                 row["story_text"] = fixed.strip()
@@ -3197,6 +3285,7 @@ def _post_rewrite_question_audit(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
     llm_failures: List[str],
 ) -> None:
     """One LLM audit pass after all sections: fix or rewrite sections that fail audit (question only)."""
@@ -3254,6 +3343,7 @@ def _post_rewrite_question_audit(
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=audit_timeout,
                 fallback_timeout_seconds=fallback_timeout_seconds,
+                transport=transport,
             )
         except Exception as exc:
             llm_failures.append(
@@ -3321,6 +3411,7 @@ def _post_rewrite_question_audit(
                 section_count=len(rendered_sections),
                 introduced_concepts=None,
                 extra_instruction=extra,
+                transport=transport,
             )
             if ok and fixed.strip():
                 row["story_text"] = fixed.strip()
@@ -3353,6 +3444,7 @@ def _post_rewrite_log_audit(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
     llm_failures: List[str],
 ) -> None:
     """One LLM audit pass after all sections: fix or rewrite sections that fail audit (log only)."""
@@ -3410,6 +3502,7 @@ def _post_rewrite_log_audit(
                 gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
                 gemini_rewrite_timeout_seconds=audit_timeout,
                 fallback_timeout_seconds=fallback_timeout_seconds,
+                transport=transport,
             )
         except Exception as exc:
             llm_failures.append(
@@ -3478,6 +3571,7 @@ def _post_rewrite_log_audit(
                 section_count=len(rendered_sections),
                 introduced_concepts=None,
                 extra_instruction=extra,
+                transport=transport,
             )
             if ok and fixed.strip():
                 row["story_text"] = fixed.strip()
@@ -3514,11 +3608,44 @@ def _complete_prompt_with_model_fallback(
     gemini_preflight_timeout_seconds: int,
     gemini_rewrite_timeout_seconds: int,
     fallback_timeout_seconds: int,
+    transport: Tuple[str, str, str] = ("", "", ""),
 ) -> Tuple[str, str]:
     """Run a one-off text prompt on primary model with the same fallback chain as section rewrite."""
+    tr = transport if isinstance(transport, (tuple, list)) else ("", "", "")
+    rp = str(tr[0] if len(tr) > 0 else "").strip().lower()
+    vtx_p = str(tr[1] if len(tr) > 1 else "").strip()
+    vtx_l = str(tr[2] if len(tr) > 2 else "").strip()
+
     used_model = model
     try:
-        if model.startswith("models/"):
+        if rp in ("vertex", "vertexai"):
+            if gemini_preflight_enabled:
+                from vertex_client import resolve_vertex_location, resolve_vertex_project, vertex_preflight_ping
+
+                pok, pr = vertex_preflight_ping(
+                    project_id=resolve_vertex_project(vtx_p),
+                    location=resolve_vertex_location(vtx_l),
+                    model_id=model,
+                    timeout=int(gemini_preflight_timeout_seconds),
+                )
+                if not pok:
+                    raise RuntimeError(f"Vertex preflight failed: {pr}")
+            rewritten = _call_vertex_llm(
+                prompt=prompt,
+                model=model,
+                vertex_project=vtx_p,
+                vertex_location=vtx_l,
+                timeout=int(gemini_rewrite_timeout_seconds),
+            )
+        elif rp in {"minimax.io", "minimax", "minimax-portal"}:
+            rewritten = _call_minimax_portal_llm(
+                prompt=prompt,
+                model=model,
+                oauth_token=minimax_oauth_token,
+                base_url=minimax_base_url,
+                timeout=int(gemini_rewrite_timeout_seconds),
+            )
+        elif model.startswith("models/"):
             if gemini_preflight_enabled:
                 preflight_ok, preflight_reason = _gemini_rewrite_preflight(
                     model=model,
@@ -3554,6 +3681,16 @@ def _complete_prompt_with_model_fallback(
                         model=fb_model,
                         oauth_token=fb_minimax_token,
                         base_url=fb_minimax_base,
+                        timeout=int(fallback_timeout_seconds),
+                    )
+                elif fb_provider in ("vertex", "vertexai"):
+                    fb_vp = str(spec.get("vertex_project") or "").strip()
+                    fb_vl = str(spec.get("vertex_location") or "").strip()
+                    rewritten = _call_vertex_llm(
+                        prompt=prompt,
+                        model=fb_model,
+                        vertex_project=fb_vp,
+                        vertex_location=fb_vl,
                         timeout=int(fallback_timeout_seconds),
                     )
                 else:
@@ -3644,6 +3781,25 @@ def _call_gemini_llm(*, prompt: str, model: str, timeout: int = 240) -> str:
     if last_exc is not None:
         raise last_exc
     raise RuntimeError("Gemini generate failed with no exception detail")
+
+
+def _call_vertex_llm(
+    *,
+    prompt: str,
+    model: str,
+    vertex_project: str,
+    vertex_location: str,
+    timeout: int = 240,
+) -> str:
+    from vertex_client import vertex_generate_content_text, resolve_vertex_location, resolve_vertex_project
+
+    return vertex_generate_content_text(
+        project_id=resolve_vertex_project(vertex_project),
+        location=resolve_vertex_location(vertex_location),
+        model_id=model,
+        contents=prompt,
+        timeout=int(timeout),
+    )
 
 
 def _gemini_rewrite_preflight(*, model: str, timeout: int) -> Tuple[bool, str]:
@@ -3794,6 +3950,7 @@ def _integrate_subchunk_story_text(
     fallback_timeout_seconds: int,
     rewrite_response_format: str,
     append_missing_formulas: bool,
+    transport: Tuple[str, str, str] = ("", "", ""),
 ) -> Tuple[Optional[str], Optional[str], str]:
     """One LLM pass to merge multi-sub-block rewrites into a single coherent section story.
 
@@ -3882,6 +4039,7 @@ def _integrate_subchunk_story_text(
             gemini_preflight_timeout_seconds=gemini_preflight_timeout_seconds,
             gemini_rewrite_timeout_seconds=integrate_timeout,
             fallback_timeout_seconds=fallback_timeout_seconds,
+            transport=transport,
         )
     except Exception as exc:
         return None, f"{type(exc).__name__}: {exc}", ""

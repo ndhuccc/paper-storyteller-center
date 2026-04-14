@@ -44,7 +44,8 @@ function App() {
     qaQuestion: '',
     answering: false,
     qaHistory: [],
-    qaEngines: [],
+    qaEngineSlots: [],
+    _qaEnginesFull: [],
 
     /* ── generation ── */
     styles: [],
@@ -60,7 +61,8 @@ function App() {
     genRewriteChunkChars: 5000,
     genIntegrateSubchunks: true,
     genRewriteFormulaRetry: true,
-    genEngines: [],
+    genEngineSlots: [],
+    _genEnginesFull: [],
     genPdfPath: '',
     genAutoIndex: true,
     selectedFile: null,
@@ -412,48 +414,150 @@ function App() {
     async loadEngines() {
       try {
         const data = await api.get('/api/engines');
-        this.qaEngines = (data.data?.qa || []).map((item) => ({ ...item }));
-        this.genEngines = (data.data?.generation || []).map((item) => ({ ...item }));
+        const qa = (data.data?.qa || []).map((item) => ({ ...item }));
+        const gen = (data.data?.generation || []).map((item) => ({ ...item }));
+        this._qaEnginesFull = qa;
+        this._genEnginesFull = gen;
+        this.qaEngineSlots = this._buildEngineSlotsFromFull(qa);
+        this.genEngineSlots = this._buildEngineSlotsFromFull(gen);
       } catch (e) {
-        this.qaEngines = [];
-        this.genEngines = [];
+        this._qaEnginesFull = [];
+        this._genEnginesFull = [];
+        this.qaEngineSlots = [];
+        this.genEngineSlots = [];
         this.toast('warning', '載入 AI 引擎列表失敗，將使用後端預設順序');
       }
     },
 
-    moveEngineUp(scope, engineId) {
-      const list = scope === 'qa' ? [...this.qaEngines] : [...this.genEngines];
-      const index = list.findIndex((item) => item && item.id === engineId);
+    _isVertexProvider(provider) {
+      const p = String(provider || '').trim().toLowerCase();
+      return p === 'vertex' || p === 'vertexai';
+    },
+
+    _vertexOptionListsFromFull(list) {
+      const raw = (list || []).map((item) => ({ ...item }));
+      const vGlobal = [];
+      const vUs = [];
+      const seenG = new Set();
+      const seenU = new Set();
+      for (const e of raw) {
+        if (!e || !e.id) continue;
+        if (!this._isVertexProvider(e.provider)) continue;
+        const loc = String(e.vertex_location || '').trim().toLowerCase();
+        if (loc === 'global' && !seenG.has(e.id)) {
+          seenG.add(e.id);
+          vGlobal.push({ ...e });
+        } else if (loc === 'us-central1' && !seenU.has(e.id)) {
+          seenU.add(e.id);
+          vUs.push({ ...e });
+        }
+      }
+      const byOrder = (a, b) => (a.default_order || 999) - (b.default_order || 999);
+      vGlobal.sort(byOrder);
+      vUs.sort(byOrder);
+      return { vGlobal, vUs };
+    },
+
+    _makeVertexSlot(slotKey, location, regionLabel, selectedId, options) {
+      const opts = (options || []).map((o) => ({ ...o }));
+      const ids = new Set(opts.map((o) => o.id));
+      const sid = selectedId && ids.has(selectedId) ? selectedId : '';
+      return {
+        kind: 'vertex',
+        slotKey,
+        location,
+        regionLabel,
+        selectedId: sid,
+        options: opts,
+      };
+    },
+
+    _buildEngineSlotsFromFull(full) {
+      const sorted = [...(full || [])]
+        .filter((e) => e && e.id)
+        .sort((a, b) => (a.default_order || 999) - (b.default_order || 999));
+      const { vGlobal, vUs } = this._vertexOptionListsFromFull(full);
+      const slots = [];
+      let hasGlobalSlot = false;
+      let hasUsSlot = false;
+      for (const e of sorted) {
+        if (this._isVertexProvider(e.provider)) {
+          const loc = String(e.vertex_location || '').trim().toLowerCase();
+          if (loc === 'global' && vGlobal.length) {
+            if (!hasGlobalSlot) {
+              hasGlobalSlot = true;
+              slots.push(this._makeVertexSlot('vertex-global', 'global', 'Vertex（global）', e.id, vGlobal));
+            }
+          } else if (loc === 'us-central1' && vUs.length) {
+            if (!hasUsSlot) {
+              hasUsSlot = true;
+              slots.push(
+                this._makeVertexSlot('vertex-us-central1', 'us-central1', 'Vertex（us-central1）', e.id, vUs),
+              );
+            }
+          }
+        } else {
+          slots.push({ kind: 'core', ...e });
+        }
+      }
+      if (!hasGlobalSlot && vGlobal.length) {
+        slots.push(this._makeVertexSlot('vertex-global', 'global', 'Vertex（global）', '', vGlobal));
+      }
+      if (!hasUsSlot && vUs.length) {
+        slots.push(this._makeVertexSlot('vertex-us-central1', 'us-central1', 'Vertex（us-central1）', '', vUs));
+      }
+      return slots;
+    },
+
+    moveEngineUp(scope, rowKey) {
+      const arrKey = scope === 'qa' ? 'qaEngineSlots' : 'genEngineSlots';
+      const list = [...this[arrKey]];
+      const index = list.findIndex(
+        (s) =>
+          s &&
+          ((s.kind === 'core' && s.id === rowKey) || (s.kind === 'vertex' && s.slotKey === rowKey)),
+      );
       if (index <= 0) return;
       const temp = list[index - 1];
       list[index - 1] = list[index];
       list[index] = temp;
-      if (scope === 'qa') this.qaEngines = list;
-      else this.genEngines = list;
+      this[arrKey] = list;
     },
 
-    moveEngineDown(scope, engineId) {
-      const list = scope === 'qa' ? [...this.qaEngines] : [...this.genEngines];
-      const index = list.findIndex((item) => item && item.id === engineId);
+    moveEngineDown(scope, rowKey) {
+      const arrKey = scope === 'qa' ? 'qaEngineSlots' : 'genEngineSlots';
+      const list = [...this[arrKey]];
+      const index = list.findIndex(
+        (s) =>
+          s &&
+          ((s.kind === 'core' && s.id === rowKey) || (s.kind === 'vertex' && s.slotKey === rowKey)),
+      );
       if (index < 0 || index >= list.length - 1) return;
       const temp = list[index + 1];
       list[index + 1] = list[index];
       list[index] = temp;
-      if (scope === 'qa') this.qaEngines = list;
-      else this.genEngines = list;
+      this[arrKey] = list;
     },
 
     resetEngineOrder(scope) {
-      if (scope === 'qa') {
-        this.qaEngines = [...this.qaEngines].sort((a, b) => (a.default_order || 999) - (b.default_order || 999));
-      } else {
-        this.genEngines = [...this.genEngines].sort((a, b) => (a.default_order || 999) - (b.default_order || 999));
-      }
+      const fullKey = scope === 'qa' ? '_qaEnginesFull' : '_genEnginesFull';
+      const full = [...(this[fullKey] || [])].sort(
+        (a, b) => (a.default_order || 999) - (b.default_order || 999),
+      );
+      this[fullKey] = full;
+      const slotsKey = scope === 'qa' ? 'qaEngineSlots' : 'genEngineSlots';
+      this[slotsKey] = this._buildEngineSlotsFromFull(full);
     },
 
     getEngineOrder(scope) {
-      const list = scope === 'qa' ? this.qaEngines : this.genEngines;
-      return (list || []).map((item) => item.id).filter(Boolean);
+      const arrKey = scope === 'qa' ? 'qaEngineSlots' : 'genEngineSlots';
+      const out = [];
+      for (const s of this[arrKey] || []) {
+        if (!s) continue;
+        if (s.kind === 'core' && s.id) out.push(s.id);
+        else if (s.kind === 'vertex' && s.selectedId) out.push(s.selectedId);
+      }
+      return out;
     },
 
     formatEngineOrder(engines) {
@@ -1084,8 +1188,9 @@ function App() {
         if (Object.keys(this.genStyleParams).length > 0) {
           form.append('style_params', JSON.stringify(this.genStyleParams));
         }
-        if (this.genEngines.length > 0) {
-          form.append('engine_order', JSON.stringify(this.getEngineOrder('generate')));
+        const genOrder = this.getEngineOrder('generate');
+        if (genOrder.length > 0) {
+          form.append('engine_order', JSON.stringify(genOrder));
         }
         const data = await api.postForm('/api/jobs/submit', form);
         const jobId = data.data?.job_id || '';
