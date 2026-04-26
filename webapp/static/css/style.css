@@ -849,6 +849,42 @@ a { color: var(--primary); text-decoration: none; }
   color: var(--primary);
   font-size: 11px;
 }
+.batch-import-url-row {
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border-light);
+}
+.batch-import-url-label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+.batch-import-url-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.batch-import-url-input {
+  flex: 1 1 200px;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+}
+.batch-import-url-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+.batch-import-url-hint {
+  margin: 6px 0 0 0;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
 .batch-textarea {
   width: 100%;
   border: 1px solid var(--border);

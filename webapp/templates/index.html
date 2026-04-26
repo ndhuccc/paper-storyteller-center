@@ -449,6 +449,23 @@
                 貼上多個單元的文字，用「<code>===</code>」（獨立一行）分隔各單元。<br>
                 每個單元第一行作為標題，其後為內文。單元順序即改寫順序。
               </div>
+              <div class="batch-import-url-row">
+                <label class="form-label batch-import-url-label" for="batch-html-url">HTML 網址</label>
+                <div class="batch-import-url-controls">
+                  <input id="batch-html-url" class="batch-import-url-input" type="url"
+                         placeholder="https://example.com/page.html"
+                         x-model="batchImportUrl"
+                         :disabled="importHtmlLoading"
+                         @keydown.enter.prevent="importHtmlToBatch()">
+                  <button class="btn btn-secondary btn-sm" type="button"
+                          :disabled="importHtmlLoading"
+                          @click="importHtmlToBatch()">
+                    <span x-show="!importHtmlLoading">匯入 HTML</span>
+                    <span x-show="importHtmlLoading" x-cloak>擷取中…</span>
+                  </button>
+                </div>
+                <p class="batch-import-url-hint">從公開網址下載頁面並轉成 Markdown 填入下方文字框，可再編輯或按「匯入單元」。</p>
+              </div>
               <textarea class="batch-textarea" rows="8"
                         placeholder="單元一標題
 單元一的完整內文...

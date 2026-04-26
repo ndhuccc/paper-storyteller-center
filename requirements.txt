@@ -5,6 +5,8 @@ google-cloud-aiplatform>=1.70.0
 
 flask
 flask-cors
+requests>=2.28.0
+html2text>=2020.1.16
 markdown
 lancedb
 pymupdf

@@ -1,10 +1,15 @@
 """All REST API routes for Paper Story Rewriting Center."""
+import ipaddress
 import re
+import socket
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 from uuid import uuid4
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 
+import html2text
+import requests
 from flask import Blueprint, jsonify, request, Response, send_file
 
 import center_service
@@ -24,6 +29,12 @@ UPLOADS_DIR = PROJECT_DIR / "uploads"
 MAX_UPLOAD_SIZE_MB = 50
 UPLOAD_RETENTION_DAYS = 14
 UPLOAD_MAX_FILES = 200
+MAX_HTML_IMPORT_BYTES = 5 * 1024 * 1024  # 5 MiB
+HTML_IMPORT_TIMEOUT_SECONDS = 30
+_FETCH_USER_AGENT = (
+    "PaperStoryRewritingCenter/1.0 (+https://github.com/) "
+    "Mozilla/5.0 (compatible; HTML-import)"
+)
 
 STYLE_LABELS: Dict[str, str] = {
     "storyteller": "說書人（生活化類比，重點在「為什麼」）",
@@ -121,6 +132,82 @@ def _as_bool(v: Any) -> bool:
     if isinstance(v, str):
         return v.strip().lower() in {"1", "true", "yes", "on", "y"}
     return False
+
+
+def _validate_html_import_url(url: str) -> Tuple[Optional[str], str]:
+    """Return (normalized_url, err). err empty means success."""
+    raw = str(url or "").strip()
+    if not raw:
+        return None, "請提供 url"
+    parsed = urlparse(raw)
+    if parsed.scheme not in ("http", "https"):
+        return None, "僅支援 http 或 https"
+    if not parsed.netloc or not parsed.hostname:
+        return None, "網址格式不正確"
+    host = (parsed.hostname or "").strip().lower()
+    if host in ("localhost",) or host.endswith(".local"):
+        return None, "不允許此主機名稱"
+    try:
+        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
+    except socket.gaierror as e:
+        return None, f"無法解析主機：{e}"
+    if not infos:
+        return None, "無法解析主機位址"
+    for _fam, _typ, _proto, _canon, sockaddr in infos:
+        ip_str = sockaddr[0]
+        try:
+            addr = ipaddress.ip_address(ip_str)
+        except ValueError:
+            continue
+        if not addr.is_global:
+            return None, "不允許存取內部、本機或保留位址"
+    return raw, ""
+
+
+def _extract_html_title(html: str) -> str:
+    m = re.search(
+        r"<title[^>]*>([^<]+)</title>",
+        html,
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not m:
+        return ""
+    return re.sub(r"\s+", " ", m.group(1)).strip()
+
+
+def _html_to_markdown(html: str) -> str:
+    h = html2text.HTML2Text()
+    h.ignore_links = False
+    h.ignore_images = False
+    h.body_width = 0
+    h.unicode_snob = True
+    return h.handle(html).strip()
+
+
+def _fetch_url_bytes_capped(url: str) -> bytes:
+    headers = {
+        "User-Agent": _FETCH_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    }
+    with requests.get(
+        url,
+        headers=headers,
+        timeout=HTML_IMPORT_TIMEOUT_SECONDS,
+        stream=True,
+    ) as r:
+        r.raise_for_status()
+        total = 0
+        out: List[bytes] = []
+        for chunk in r.iter_content(chunk_size=65536):
+            if not chunk:
+                continue
+            total += len(chunk)
+            if total > MAX_HTML_IMPORT_BYTES:
+                raise RuntimeError(
+                    f"回應超過大小上限（{MAX_HTML_IMPORT_BYTES // (1024*1024)}MB），無法匯入"
+                )
+            out.append(chunk)
+    return b"".join(out)
 
 
 def _short_text(text: Any, max_len: int = 80) -> str:
@@ -756,6 +843,37 @@ def submit_job():
         })
     except Exception as e:
         return _err(str(e), 500)
+
+
+# ───────────────────── HTML import (URL → Markdown for manual units) ─────────────────────
+
+@bp.route("/html/import", methods=["POST"])
+def import_html_url():
+    """Fetch a public HTTP(S) page and convert HTML body to Markdown for batch manual input."""
+    data = request.get_json(force=True) or {}
+    url = str(data.get("url", "")).strip()
+    norm, err = _validate_html_import_url(url)
+    if not norm:
+        return _err(err, 400)
+    try:
+        raw = _fetch_url_bytes_capped(norm)
+    except requests.HTTPError as e:
+        st = e.response.status_code if e.response is not None else "?"
+        return _err(f"無法下載（HTTP {st}）", 502)
+    except requests.RequestException as e:
+        return _err(f"無法下載：{e}", 502)
+    except RuntimeError as e:
+        return _err(str(e), 400)
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        text = raw.decode("utf-8", errors="replace")
+    page_title = _extract_html_title(text)
+    try:
+        markdown = _html_to_markdown(text)
+    except Exception as e:
+        return _err(f"轉成 Markdown 失敗：{e}", 500)
+    return _ok({"markdown": markdown, "page_title": page_title})
 
 
 # ───────────────────── PDF Scan (preview sections before rewrite) ─────────────────────

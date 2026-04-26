@@ -79,6 +79,8 @@ function App() {
     manualUnits: [],         // [{id, title, body}]
     showBatchInput: false,
     batchInputText: '',
+    batchImportUrl: '',
+    importHtmlLoading: false,
     _nextUnitId: 0,
     scanning: false,         // PDF scan-preview in progress
 
@@ -1089,6 +1091,31 @@ function App() {
       this.dragTarget = null;
     },
 
+    async importHtmlToBatch() {
+      const url = (this.batchImportUrl || '').trim();
+      if (!url) {
+        this.toast('warning', '請先輸入 HTML 網址');
+        return;
+      }
+      this.importHtmlLoading = true;
+      try {
+        const data = await api.post('/api/html/import', { url });
+        const md = (data.data && data.data.markdown) ? String(data.data.markdown) : '';
+        const pageTitle = (data.data && data.data.page_title) ? String(data.data.page_title).trim() : '';
+        if (!md.trim()) {
+          this.toast('warning', '轉換後內容為空，請檢查該頁面是否可讀取');
+          return;
+        }
+        const head = pageTitle || '網頁內容';
+        this.batchInputText = `${head}\n\n${md.trim()}`;
+        this.toast('success', '已從網址轉成 Markdown 並填入文字框');
+      } catch (e) {
+        this.toast('error', '匯入失敗：' + (e && e.message ? e.message : String(e)));
+      } finally {
+        this.importHtmlLoading = false;
+      }
+    },
+
     applyBatchInput() {
       const text = this.batchInputText.trim();
       if (!text) return;
@@ -1115,6 +1142,7 @@ function App() {
       this.manualUnits = [];
       this.manualPaperTitle = '';
       this.batchInputText = '';
+      this.batchImportUrl = '';
       this.showBatchInput = false;
     },
 
